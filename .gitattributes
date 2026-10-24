@@ -1,1 +1,7 @@
-craft-i18n.rev text eol=lf
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.tiff binary
+*.wasm binary
