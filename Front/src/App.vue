@@ -1,6 +1,14 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api, resetCsrf } from "./api";
+import { locale, language, t, errorMessage } from "./i18n";
+import { normalizeSearch } from "./locales";
+import LanguagePicker from "./LanguagePicker.vue";
+const documentLanguage = ref(language.value.tag),
+  fileInput = ref(null),
+  uploading = ref(false),
+  downloading = ref(false),
+  downloadFormat = ref("docx");
 
 const user = ref(null),
   loading = ref(true),
@@ -13,7 +21,7 @@ const mode = ref("login"),
   documents = ref([]);
 const active = ref(null),
   editorFrame = ref(null),
-  editorStatus = ref("Opening document…"),
+  editorStatus = ref(t("openingDocument")),
   editorFailed = ref(false);
 const editorDirty = ref(false),
   dialog = ref(null),
@@ -22,26 +30,83 @@ const editorDirty = ref(false),
   dialogError = ref("");
 const editorSource = ref("");
 const editorPending = ref(false);
+watch(locale, () => {
+  if (!editorFailed.value)
+    editorStatus.value = t(
+      editorPending.value ? "saving" : editorDirty.value ? "unsaved" : "saved",
+    );
+});
 const visible = computed(() =>
   documents.value.filter((d) =>
-    d.title.toLocaleLowerCase().includes(search.value.toLocaleLowerCase()),
+    normalizeSearch(d.title).includes(normalizeSearch(search.value)),
   ),
 );
-const greeting = computed(() => user.value?.email?.split("@")[0] || "writer");
-const today = new Intl.DateTimeFormat(undefined, {
-  weekday: "long",
-  month: "long",
-  day: "numeric",
-}).format(new Date());
+const greeting = computed(
+  () => user.value?.email?.split("@")[0] || t("writer"),
+);
+const today = computed(() =>
+  new Intl.DateTimeFormat(language.value.tag, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date()),
+);
 const date = (timestamp) =>
-  new Intl.DateTimeFormat(undefined, {
+  new Intl.DateTimeFormat(language.value.tag, {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp);
 const size = (bytes) =>
-  bytes ? `${Math.max(1, Math.round(bytes / 1024))} KB` : "New document";
+  bytes
+    ? t("kb", {
+        value: new Intl.NumberFormat(language.value.tag).format(
+          Math.max(1, Math.round(bytes / 1024)),
+        ),
+      })
+    : t("new");
+async function upload(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  error.value = "";
+  if (!file.size || file.size > 10 * 1024 * 1024) {
+    error.value = t("tooLarge");
+    return;
+  }
+  const extension = file.name.split(".").pop().toLowerCase();
+  if (!["docx", "odt", "rtf", "txt", "md", "json"].includes(extension)) {
+    error.value = t("uploadType");
+    return;
+  }
+  uploading.value = true;
+  try {
+    const body = new FormData();
+    body.append("file", file);
+    const document = await api("/documents/upload", { method: "POST", body });
+    await refresh();
+    open(document);
+  } catch (e) {
+    error.value = errorMessage(e);
+  } finally {
+    uploading.value = false;
+  }
+}
+async function download(document, format = downloadFormat.value) {
+  downloading.value = true;
+  error.value = "";
+  try {
+    await api(
+      `/documents/${document.id}/download?format=${format}&version=${document.version}`,
+      { download: true },
+    );
+  } catch (e) {
+    error.value = errorMessage(e);
+  } finally {
+    downloading.value = false;
+  }
+}
 async function refresh() {
   documents.value = await api("/documents/");
 }
@@ -51,7 +116,7 @@ async function initialize() {
     await refresh();
     await openFromHash();
   } catch (e) {
-    if (e.status !== 401) error.value = e.message;
+    if (e.status !== 401) error.value = errorMessage(e, mode.value);
   } finally {
     loading.value = false;
   }
@@ -69,7 +134,7 @@ async function authenticate() {
     await refresh();
     await openFromHash();
   } catch (e) {
-    error.value = e.message;
+    error.value = errorMessage(e, mode.value);
   } finally {
     busy.value = false;
   }
@@ -85,26 +150,21 @@ async function logout() {
     resetCsrf();
     history.replaceState(null, "", "/");
   } catch (e) {
-    error.value = e.message;
+    error.value = errorMessage(e, mode.value);
   } finally {
     busy.value = false;
   }
 }
 function canLeave() {
-  return (
-    !editorDirty.value ||
-    window.confirm(
-      "Your document has unsaved changes. Leave without saving them?",
-    )
-  );
+  return !editorDirty.value || window.confirm(t("leave"));
 }
 function open(document) {
   active.value = document;
-  editorStatus.value = "Opening document…";
+  editorStatus.value = t("openingDocument");
   editorDirty.value = false;
   editorPending.value = false;
   editorFailed.value = false;
-  editorSource.value = `/editor/index.html?id=${document.id}`;
+  editorSource.value = `/editor/index.html?id=${document.id}&lang=${locale.value}`;
   history.replaceState(null, "", `/#/documents/${document.id}`);
 }
 async function openFromHash() {
@@ -113,7 +173,7 @@ async function openFromHash() {
   const document = documents.value.find((d) => d.id === match[1]);
   if (document) open(document);
   else {
-    error.value = "This document is unavailable in your account.";
+    error.value = t("unavailable");
     history.replaceState(null, "", "/");
   }
 }
@@ -124,12 +184,13 @@ async function closeEditor() {
   try {
     await refresh();
   } catch (e) {
-    error.value = e.message;
+    error.value = errorMessage(e, mode.value);
   }
 }
 function showDialog(kind, document = null) {
   dialog.value = { kind, document };
   title.value = document?.title || "";
+  if (kind === "create") documentLanguage.value = language.value.tag;
   dialogError.value = "";
 }
 async function submitDialog() {
@@ -140,7 +201,7 @@ async function submitDialog() {
     if (current.kind === "create") {
       const document = await api("/documents/", {
         method: "POST",
-        body: { title: title.value },
+        body: { title: title.value, language: documentLanguage.value },
       });
       dialog.value = null;
       open(document);
@@ -160,7 +221,7 @@ async function submitDialog() {
       await refresh();
     }
   } catch (e) {
-    dialogError.value = e.message;
+    dialogError.value = errorMessage(e);
   } finally {
     dialogBusy.value = false;
   }
@@ -184,20 +245,26 @@ function editorMessage(event) {
     editorDirty.value = message.dirty || message.pending;
     if (!editorFailed.value)
       editorStatus.value = message.pending
-        ? "Saving…"
+        ? t("saving")
         : message.dirty
-          ? "Unsaved changes"
-          : "All changes saved";
+          ? t("unsaved")
+          : t("saved");
   } else if (message.type === "inkstone:saved") {
     active.value = { ...active.value, ...message.document };
-    editorStatus.value = "All changes saved";
+    editorStatus.value = t("saved");
     editorFailed.value = false;
     history.replaceState(null, "", `/#/documents/${message.document.id}`);
   } else if (message.type === "inkstone:error") {
-    editorStatus.value = message.message;
+    editorStatus.value = errorMessage({
+      status: message.status,
+      message: message.message,
+    });
     editorFailed.value = true;
-  } else if (message.type === "inkstone:ready")
-    editorStatus.value = "All changes saved";
+  } else if (message.type === "inkstone:ready") {
+    if (message.document)
+      active.value = { ...active.value, ...message.document };
+    editorStatus.value = t("saved");
+  }
 }
 function unload(event) {
   if (editorDirty.value) {
@@ -219,29 +286,26 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="loading" class="loading">
     <img src="/icon.svg" alt="" width="48" />
-    <p>Opening your workspace…</p>
+    <p>{{ t("opening") }}</p>
   </div>
   <div v-else-if="!user" class="auth-layout">
     <aside class="auth-story">
-      <a class="brand brand-light" href="/"
+      <a class="brand brand-light" href="/" dir="ltr"
         ><img src="/icon.svg" alt="" />Inkstone<span class="brand-dot"
           >·</span
         ></a
       >
       <div class="story-copy">
-        <div class="eyebrow">ROOM TO THINK. SPACE TO WRITE.</div>
-        <h1>Good things<br />start with<br /><em>a blank page.</em></h1>
-        <p>
-          A quiet home for your ideas, first drafts,<br class="desktop-break" />
-          and everything they become.
-        </p>
+        <div class="eyebrow">{{ t("storyTag") }}</div>
+        <h1>{{ t("storyTitle") }}</h1>
+        <p>{{ t("storyText") }}</p>
       </div>
       <div class="story-bottom">
-        <span class="story-rule"></span
-        ><span>YOUR WORDS, IN YOUR OWN SPACE.</span><span>01 — ∞</span>
+        <span class="story-rule"></span><span>{{ t("yourWords") }}</span
+        ><span dir="ltr">01 — ∞</span>
       </div>
       <div class="paper-art" aria-hidden="true">
-        <span>Ideas worth keeping.</span>
+        <span>{{ t("page") }}</span>
         <div></div>
         <div></div>
         <div></div>
@@ -249,20 +313,17 @@ onBeforeUnmount(() => {
       </div>
     </aside>
     <main class="auth-main">
-      <div class="auth-top">A place for your words.</div>
+      <div class="auth-top">
+        <span>{{ t("place") }}</span
+        ><LanguagePicker />
+      </div>
       <form class="auth-form" @submit.prevent="authenticate">
-        <div class="eyebrow muted">YOUR PERSONAL WORKSPACE</div>
-        <h2>
-          {{ mode === "login" ? "Welcome back." : "Make yourself at home." }}
-        </h2>
+        <div class="eyebrow muted">{{ t("personal") }}</div>
+        <h2>{{ t(mode === "login" ? "welcome" : "join") }}</h2>
         <p class="auth-intro">
-          {{
-            mode === "login"
-              ? "Pick up where your thoughts left off."
-              : "Create an account and give your ideas a home."
-          }}
+          {{ t(mode === "login" ? "loginIntro" : "registerIntro") }}
         </p>
-        <div class="auth-tabs" role="group" aria-label="Account action">
+        <div class="auth-tabs" role="group" :aria-label="t('register')">
           <button
             type="button"
             :class="{ selected: mode === 'login' }"
@@ -271,8 +332,9 @@ onBeforeUnmount(() => {
               error = '';
             "
           >
-            Sign in</button
-          ><button
+            {{ t("login") }}
+          </button>
+          <button
             type="button"
             :class="{ selected: mode === 'register' }"
             @click="
@@ -280,111 +342,130 @@ onBeforeUnmount(() => {
               error = '';
             "
           >
-            Create account
+            {{ t("register") }}
           </button>
         </div>
-        <label for="email">Email address</label
+        <label for="email">{{ t("email") }}</label
         ><input
           id="email"
           v-model="email"
+          dir="ltr"
           type="email"
           placeholder="you@example.com"
           autocomplete="email"
           maxlength="254"
           required
         />
-        <label for="password">Password</label
+        <label for="password">{{ t("password") }}</label
         ><input
           id="password"
           v-model="password"
+          dir="ltr"
           type="password"
           :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
           :minlength="mode === 'register' ? 10 : 1"
           maxlength="128"
-          placeholder="Enter your password"
+          :placeholder="t('passwordPlaceholder')"
           required
         />
         <p v-if="mode === 'register'" class="field-help">
-          10+ characters, with uppercase, lowercase, and a number.
+          {{ t("passwordHelp") }}
         </p>
         <p v-if="error" class="error" role="alert">{{ error }}</p>
         <button class="primary auth-submit" :disabled="busy">
-          {{
-            busy
-              ? "One moment…"
-              : mode === "login"
-                ? "Enter your workspace"
-                : "Create your workspace"
+          {{ t(busy ? "wait" : mode === "login" ? "enter" : "createAccount")
           }}<span aria-hidden="true">↗</span>
         </button>
-        <p class="privacy-note">
-          <span aria-hidden="true">◇</span> Your documents belong to you. Only
-          you can access them.
-        </p>
+        <p class="privacy-note">◇ {{ t("privacy") }}</p>
       </form>
       <footer class="auth-footer">
-        <span>MADE FOR THE WORDS THAT MATTER.</span
-        ><span>Inkstone · {{ new Date().getFullYear() }}</span>
+        <span>{{ t("footer") }}</span
+        ><span dir="ltr">Inkstone · {{ new Date().getFullYear() }}</span>
       </footer>
     </main>
   </div>
   <div v-else-if="active" class="editor-layout">
     <header class="editor-header">
       <button class="back-button" @click="closeEditor">
-        ← <span>My documents</span>
+        <span class="back-arrow">←</span> <span>{{ t("myDocuments") }}</span>
       </button>
       <div class="editor-title">
-        <strong>{{ active.title }}</strong
+        <strong dir="auto">{{ active.title }}</strong
         ><span :class="{ 'save-error': editorFailed }" role="status">{{
           editorStatus
         }}</span>
       </div>
-      <button class="primary" :disabled="editorPending" @click="requestSave">
-        {{ editorPending ? "Saving…" : "Save document" }}
-      </button>
+      <div class="editor-tools">
+        <LanguagePicker /><select
+          v-model="downloadFormat"
+          :aria-label="t('format')"
+          dir="ltr"
+        >
+          <option
+            v-for="format in ['docx', 'pdf', 'txt', 'md', 'json']"
+            :key="format"
+            :value="format"
+          >
+            {{ format.toUpperCase() }}
+          </option>
+        </select>
+        <button
+          class="secondary"
+          :disabled="
+            downloading || editorDirty || editorPending || editorFailed
+          "
+          :title="editorDirty ? t('saveFirst') : t('download')"
+          @click="download(active)"
+        >
+          {{ t(downloading ? "downloading" : "download") }}
+        </button>
+        <button class="primary" :disabled="editorPending" @click="requestSave">
+          {{ t(editorPending ? "saving" : "save") }}
+        </button>
+      </div>
     </header>
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
     <iframe
       ref="editorFrame"
       :src="editorSource"
-      title="Document editor"
+      :title="t('editor')"
       allow="clipboard-read; clipboard-write; fullscreen"
       class="editor-frame"
     ></iframe>
     <div v-if="editorFailed" class="editor-warning" role="alert">
-      {{ editorStatus }} Use File → Save As to download a copy if you need to
-      keep unsaved work.
+      {{ editorStatus }} {{ t("recovery") }}
     </div>
   </div>
   <div v-else class="workspace">
     <aside class="sidebar">
-      <a class="brand" href="/"
+      <a class="brand" href="/" dir="ltr"
         ><img src="/icon.svg" alt="" />Inkstone<span class="brand-dot"
           >·</span
         ></a
       >
-      <div class="sidebar-heading">WORKSPACE</div>
+      <div class="sidebar-heading">{{ t("workspace") }}</div>
       <button class="nav-item active">
-        <span aria-hidden="true">▤</span> My documents
-        <span class="count">{{ documents.length }}</span>
+        <span aria-hidden="true">▤</span>{{ t("myDocuments")
+        }}<span class="count">{{
+          new Intl.NumberFormat(language.tag).format(documents.length)
+        }}</span>
       </button>
       <div class="sidebar-note">
         <span class="note-mark">✳</span>
-        <h3>A little space.<br />A lot of possibility.</h3>
-        <p>Your next great idea<br />starts right here.</p>
-        <button @click="showDialog('create')">
-          Start writing <span>↗</span>
-        </button>
+        <h3>{{ t("sidebarTitle") }}</h3>
+        <p>{{ t("sidebarText") }}</p>
+        <button @click="showDialog('create')">{{ t("startWriting") }} ↗</button>
       </div>
       <div class="account">
         <span class="avatar">{{ greeting.slice(0, 1).toUpperCase() }}</span>
         <div>
-          <strong>{{ greeting }}</strong
-          ><span :title="user.email">{{ user.email }}</span>
+          <strong dir="auto">{{ greeting }}</strong
+          ><span :title="user.email" dir="ltr">{{ user.email }}</span>
         </div>
         <button
           class="icon-button"
-          title="Sign out"
-          aria-label="Sign out"
+          :title="t('logout')"
+          :aria-label="t('logout')"
           :disabled="busy"
           @click="logout"
         >
@@ -395,70 +476,84 @@ onBeforeUnmount(() => {
     <main class="main-content">
       <header class="workspace-top">
         <span
-          >My workspace <span class="crumb">/</span>
-          <strong>Documents</strong></span
-        ><span class="private-badge"
-          ><span aria-hidden="true">◇</span> Private workspace</span
+          >{{ t("workspace") }} <span class="crumb">/</span>
+          <strong>{{ t("myDocuments") }}</strong></span
         >
+        <div class="header-tools">
+          <span class="private-badge">◇ {{ t("private") }}</span
+          ><LanguagePicker />
+        </div>
       </header>
       <div class="content-body">
         <div class="workspace-greeting">
           <div>
             <div class="eyebrow muted">{{ today }}</div>
-            <h1>A place for your words<span>.</span></h1>
-            <p>Make something worth coming back to, {{ greeting }}.</p>
+            <h1>{{ t("place") }}</h1>
+            <p>{{ t("greeting", { name: greeting }) }}</p>
           </div>
-          <button class="primary" @click="showDialog('create')">
-            <span aria-hidden="true">＋</span> New document
-          </button>
+          <div class="file-tools">
+            <button
+              class="secondary"
+              :disabled="uploading"
+              @click="fileInput.click()"
+            >
+              ↑ {{ t(uploading ? "uploading" : "upload") }}</button
+            ><button class="primary" @click="showDialog('create')">
+              ＋ {{ t("new") }}
+            </button>
+          </div>
         </div>
+        <input
+          ref="fileInput"
+          class="visually-hidden"
+          type="file"
+          accept=".docx,.odt,.rtf,.txt,.md,.json"
+          :aria-label="t('upload')"
+          @change="upload"
+        />
+        <p class="upload-help">{{ t("uploadHelp") }}</p>
         <div class="start-card">
           <div class="blank-page" aria-hidden="true"><span>＋</span></div>
           <div>
-            <div class="eyebrow muted">A FRESH START</div>
-            <h2>Every idea deserves a page.</h2>
-            <p>No distractions. Just you and what comes next.</p>
+            <div class="eyebrow muted">{{ t("fresh") }}</div>
+            <h2>{{ t("page") }}</h2>
+            <p>{{ t("pageText") }}</p>
             <button class="text-button" @click="showDialog('create')">
-              Create a blank document <span aria-hidden="true">↗</span>
+              {{ t("createBlank") }} ↗
             </button>
           </div>
-          <span class="card-decoration" aria-hidden="true">Aa</span>
+          <span class="card-decoration" aria-hidden="true">{{
+            locale === "en" ? "Aa" : "آ"
+          }}</span>
         </div>
         <section class="documents-section">
           <div class="section-heading">
             <h2>
-              Your documents <span>{{ documents.length }}</span>
+              {{ t("documents") }}
+              <span>{{
+                new Intl.NumberFormat(language.tag).format(documents.length)
+              }}</span>
             </h2>
             <label class="search"
               ><span aria-hidden="true">⌕</span
               ><input
                 v-model="search"
                 type="search"
-                placeholder="Find a document…"
-                aria-label="Search documents"
+                :placeholder="t('find')"
+                :aria-label="t('find')"
             /></label>
           </div>
           <p v-if="error" class="error" role="alert">{{ error }}</p>
           <div v-if="!visible.length" class="empty-state">
             <span aria-hidden="true">▤</span>
-            <h3>
-              {{
-                search ? "No matching documents" : "Your first page is waiting."
-              }}
-            </h3>
-            <p>
-              {{
-                search
-                  ? "Try another title."
-                  : "Create a document and it will be right here whenever you return."
-              }}
-            </p>
+            <h3>{{ t(search ? "noMatches" : "empty") }}</h3>
+            <p>{{ t(search ? "tryTitle" : "emptyText") }}</p>
             <button
               v-if="!search"
               class="text-button"
               @click="showDialog('create')"
             >
-              Write something new ↗
+              {{ t("create") }} ↗
             </button>
           </div>
           <div v-else class="document-grid">
@@ -469,18 +564,22 @@ onBeforeUnmount(() => {
             >
               <button
                 class="document-preview"
-                :aria-label="`Open ${document.title}`"
+                :aria-label="t('open', { title: document.title })"
                 @click="open(document)"
               >
                 <div class="preview-paper" aria-hidden="true">
-                  <b>{{ document.title }}</b
+                  <b dir="auto">{{ document.title }}</b
                   ><span></span><span></span><span></span
                   ><span class="short-line"></span>
                 </div>
-                <span class="document-type">DOCUMENT</span>
+                <span class="document-type">{{ t("document") }}</span>
               </button>
               <div class="document-info">
-                <button class="document-name" @click="open(document)">
+                <button
+                  class="document-name"
+                  dir="auto"
+                  @click="open(document)"
+                >
                   {{ document.title }}
                 </button>
                 <div class="document-meta">
@@ -488,12 +587,18 @@ onBeforeUnmount(() => {
                   ><span>{{ size(document.size) }}</span>
                 </div>
                 <div class="document-actions">
-                  <button @click="showDialog('rename', document)">Rename</button
+                  <button @click="showDialog('rename', document)">
+                    {{ t("rename") }}</button
+                  ><button
+                    :disabled="downloading"
+                    @click="download(document, 'docx')"
+                  >
+                    {{ t("download") }} DOCX</button
                   ><button
                     class="delete-link"
                     @click="showDialog('delete', document)"
                   >
-                    Delete
+                    {{ t("delete") }}
                   </button>
                 </div>
               </div>
@@ -501,8 +606,8 @@ onBeforeUnmount(() => {
           </div>
         </section>
         <footer class="workspace-footer">
-          <span>YOUR SPACE. YOUR PACE. YOUR WORDS.</span
-          ><span>Saved privately, ready when you are.</span>
+          <span>{{ t("pace") }}</span
+          ><span>{{ t("savedPrivate") }}</span>
         </footer>
       </div>
     </main>
@@ -519,29 +624,42 @@ onBeforeUnmount(() => {
       aria-labelledby="dialog-title"
     >
       <form @submit.prevent="submitDialog">
-        <div class="eyebrow muted">YOUR WORKSPACE</div>
+        <div class="eyebrow muted">{{ t("workspace") }}</div>
         <h2 id="dialog-title">
           {{
-            dialog.kind === "create"
-              ? "Something new starts here."
-              : dialog.kind === "rename"
-                ? "Give it a new name."
-                : "Delete this document?"
+            t(
+              dialog.kind === "create"
+                ? "createTitle"
+                : dialog.kind === "rename"
+                  ? "renameTitle"
+                  : "deleteTitle",
+            )
           }}
         </h2>
         <p v-if="dialog.kind === 'delete'">
-          “{{ dialog.document.title }}” will be permanently deleted.
+          {{ t("deleteText", { title: dialog.document.title }) }}
         </p>
         <template v-else
-          ><label for="title">Document title</label
+          ><label for="title">{{ t("title") }}</label
           ><input
             id="title"
             v-model="title"
-            placeholder="Untitled document"
+            dir="auto"
+            :placeholder="t('untitled')"
             maxlength="160"
             required
             autofocus
         /></template>
+        <template v-if="dialog.kind === 'create'"
+          ><label for="document-language">{{ t("documentLanguage") }}</label
+          ><select id="document-language" v-model="documentLanguage">
+            <option value="en-US">{{ t("english") }}</option>
+            <option value="fa-IR">{{ t("persian") }}</option>
+            <option value="ar-SA">{{ t("arabic") }}</option>
+            <option value="ur-PK">{{ t("urdu") }}</option>
+          </select>
+          <p class="field-help">{{ t("languageHelp") }}</p></template
+        >
         <p v-if="dialogError" class="error" role="alert">{{ dialogError }}</p>
         <div class="dialog-actions">
           <button
@@ -550,7 +668,7 @@ onBeforeUnmount(() => {
             :disabled="dialogBusy"
             @click="dialog = null"
           >
-            Cancel</button
+            {{ t("cancel") }}</button
           ><button
             :class="dialog.kind === 'delete' ? 'danger' : 'primary'"
             :disabled="
@@ -558,13 +676,15 @@ onBeforeUnmount(() => {
             "
           >
             {{
-              dialogBusy
-                ? "One moment…"
-                : dialog.kind === "create"
-                  ? "Create document ↗"
-                  : dialog.kind === "rename"
-                    ? "Save name"
-                    : "Delete document"
+              t(
+                dialogBusy
+                  ? "wait"
+                  : dialog.kind === "create"
+                    ? "create"
+                    : dialog.kind === "rename"
+                      ? "saveName"
+                      : "deleteDocument",
+              )
             }}
           </button>
         </div>

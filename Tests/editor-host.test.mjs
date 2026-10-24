@@ -43,6 +43,7 @@ test('loads a consistent snapshot; saves the complete model and advances acknowl
   assert.equal(JSON.parse(await b.host.load()).title, 'First document')
   assert.equal(b.host.preferenceScope(), 'writer@example.test', 'editor preferences are scoped to the authenticated account')
   b.host.bind('generation-1')
+  assert.equal(b.messages.find(m => m.type === 'inkstone:ready').document.version, 1, 'download controls receive the snapshot revision')
   const content = { body: [{ text: 'Hello سلام' }], media: { image: 'data' }, styles: { heading: {} } }
   await b.host.save(JSON.stringify(content), 'generation-1', 'First document')
   await b.host.save(JSON.stringify(content), 'generation-1', 'First document')

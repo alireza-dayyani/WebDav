@@ -5,9 +5,24 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <DefaultItemExcludes>$(DefaultItemExcludes);Tests/**</DefaultItemExcludes>
   </PropertyGroup>
+  <PropertyGroup>
+    <RustExecutableName>inkstone-cli</RustExecutableName>
+    <RustExecutableName Condition="$([MSBuild]::IsOSPlatform('Windows'))">inkstone-cli.exe</RustExecutableName>
+    <RustExecutablePath>$(MSBuildProjectDirectory)/../Application/target/debug/$(RustExecutableName)</RustExecutablePath>
+  </PropertyGroup>
+  <Target Name="BuildRustConverter" BeforeTargets="Build" Condition="'$(SkipRustBuild)' != 'true'">
+    <Exec Command="cargo build --locked -p inkstone-cli" WorkingDirectory="$(MSBuildProjectDirectory)/../Application" />
+    <Copy SourceFiles="$(RustExecutablePath)" DestinationFolder="$(OutDir)" />
+  </Target>
+  <Target Name="PublishRustConverter" AfterTargets="Publish" Condition="Exists('$(RustExecutablePath)')">
+    <Copy SourceFiles="$(RustExecutablePath)" DestinationFolder="$(PublishDir)" />
+  </Target>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.13.0" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.4" />
   </ItemGroup>
 </Project>

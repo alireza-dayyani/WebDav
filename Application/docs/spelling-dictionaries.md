@@ -83,8 +83,6 @@ Invoke-WebRequest "$base/pt_BR.dic" -OutFile "$d\pt_BR.dic" -UseBasicParsing
 ```sh
 mkdir -p ~/Library/Spelling
 cd ~/Library/Spelling
-curl -fLO 
-curl -fLO 
 ```
 
 ### Linux
@@ -100,8 +98,6 @@ Or, without root, into your own folder:
 ```sh
 mkdir -p ~/.local/share/hunspell
 cd ~/.local/share/hunspell
-curl -fLO 
-curl -fLO 
 ```
 
 Other languages work the same way: replace `pt_BR` with the language's folder and file names

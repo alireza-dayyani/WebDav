@@ -37,11 +37,14 @@
       const problem = await response.json().catch(() => ({}));
       if (response.status === 409) conflict = true;
       if (response.status === 400) token = null;
-      throw new Error(
-        problem.detail ||
-          (response.status === 401
-            ? "Your session expired. Sign in again in another tab, then retry Save."
-            : "Cannot save your work. Check your connection and try again."),
+      throw Object.assign(
+        new Error(
+          problem.detail ||
+            (response.status === 401
+              ? "Your session expired. Sign in again in another tab, then retry Save."
+              : "Cannot save your work. Check your connection and try again."),
+        ),
+        { status: response.status },
       );
     }
     return response.status === 204 ? null : response.json();
@@ -64,7 +67,7 @@
           author: account.email,
         });
       } catch (error) {
-        notify("error", { message: error.message });
+        notify("error", { message: error.message, status: error.status });
         throw error;
       }
     },
@@ -74,7 +77,7 @@
     bind(generation) {
       bindings.set(generation, initial);
       currentGeneration = generation;
-      notify("ready");
+      notify("ready", { document: initial });
     },
     async save(json, generation, title) {
       if (saving) throw new Error("A save is already in progress.");
@@ -106,7 +109,7 @@
         if (generation === currentGeneration)
           notify("saved", { document: saved });
       } catch (error) {
-        notify("error", { message: error.message });
+        notify("error", { message: error.message, status: error.status });
         throw error;
       } finally {
         saving = false;
