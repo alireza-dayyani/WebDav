@@ -1,9 +1,20 @@
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import {
+  readFile,
+  readdir,
+  writeFile,
+  mkdir,
+  copyFile,
+} from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
 const workspace = fileURLToPath(new URL("../../", import.meta.url));
 const source = join(workspace, "Application");
+await mkdir(join(workspace, "Front/public/fonts"), { recursive: true });
+await copyFile(
+  join(source, "assets/fonts/NotoNaskhArabic.ttf"),
+  join(workspace, "Front/public/fonts/NotoNaskhArabic.ttf"),
+);
 const files = ["LICENSE-MIT", "LICENSE-APACHE", "NOTICE", "ATTRIBUTION.md"];
 for (const name of await readdir(join(source, "assets/fonts"))) {
   if (name.startsWith("OFL-") && name.endsWith(".txt"))
