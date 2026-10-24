@@ -1,0 +1,17 @@
+[package]
+name = "inkstone-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Inkstone MCP server: every command as a tool, headless or bridged to the running app"
+
+[lints]
+workspace = true
+
+[dependencies]
+inkstone-doc = { workspace = true }
+inkstone-engine = { workspace = true }
+inkstone-render = { workspace = true }
+inkstone-control-key = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }

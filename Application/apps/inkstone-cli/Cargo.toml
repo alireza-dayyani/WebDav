@@ -1,0 +1,23 @@
+[package]
+name = "inkstone-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Inkstone command line: convert, inspect, render, run commands, MCP server"
+
+[[bin]]
+name = "inkstone-cli"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+inkstone-doc = { workspace = true }
+inkstone-engine = { workspace = true }
+inkstone-render = { workspace = true }
+inkstone-mcp = { workspace = true }
+inkstone-zotero = { workspace = true }
+serde_json = { workspace = true }
+sys-locale = "0.3"
