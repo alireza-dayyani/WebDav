@@ -2,6 +2,7 @@
 # Written by Inkstone contributors (MIT OR Apache-2.0); see ATTRIBUTION.md.
 # One lowercase base form per line, sorted. Plurals, -ed, -ing, -er, -ly… come from the
 # inflection rules in crates/proof/src/lib.rs, so list "desktop", not "desktops".
+
 airbag
 airfare
 artcraft
@@ -96,6 +97,7 @@ hypertext
 inbox
 incentivize
 infographic
+inkstone
 instagram
 internet
 interoperability
@@ -231,7 +233,6 @@ wifi
 wiki
 wikipedia
 wireframe
-inkstone
 workaround
 workflow
 workforce

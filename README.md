@@ -6,12 +6,12 @@ A private document workspace with a separate Vue frontend, .NET 10 API, and Rust
 
 | Directory | Purpose |
 | --- | --- |
-| Front | Vue account screens, document library, and editor host |
-| Back | Authentication, private storage, document APIs, and server integration |
-| Application | Rust document engine, browser editor, and native conversion tools |
-| Tests | API and editor integration checks |
+| Front | Vue account screens, document library, language selection and editor host |
+| Back | Authentication, private document storage, file conversion and OpenAPI |
+| Application | Rust document engine, WebAssembly editor and native converter |
+| Tests | API, file-conversion, localization and editor-bridge integration checks |
 
-## Development
+## Run locally
 
 Install .NET 10, Node.js 22.12 or later, Rust 1.95 or later, and Trunk.
 
@@ -23,11 +23,13 @@ npm ci
 npm run editor:build
 ```
 
-From the repository root, start the API:
+From the repository root, start the backend:
 
 ```powershell
 dotnet run --project Back/Inkstone.Api.csproj
 ```
+
+The first backend build also builds and copies the Rust CLI converter. Subsequent builds reuse Cargo's cache. The backend runs independently of Vue; its published output includes the converter executable for the machine it was built on. Rust is required when building, but a deployed backend does not require the Rust toolchain. Cross-platform deployment requires building the converter for that platform.
 
 In another terminal:
 
@@ -36,30 +38,43 @@ cd Front
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. The frontend proxies API calls to port 5080. Create an account to start writing.
+Open http://127.0.0.1:5173. The Vue development server proxies API calls to port 5080. Create an account to start writing. Vue and the API remain separate projects.
 
-## Documents
+## Languages and documents
 
-Documents belong to the authenticated account. Save and Ctrl+S persist the complete native document model; automatic saves run every ten seconds. Version checks prevent silent overwrites between tabs. Save As and the editor’s export commands produce local copies.
+The site supports English, Persian and Arabic, including mirrored layouts, localized dates and translated account, library and file controls. The language choice is saved in this browser. New documents can use English, Persian, Arabic or Urdu; the latter three start with right-to-left paragraphs and persist their document language. Imported documents retain their source formatting. Persian and Urdu are also available in the editor's document-language dialog.
 
-The API keeps SQLite data and signing keys in Back/App_Data. Keep this directory private, exclude it from Git, and back it up consistently. Set Storage__DataDirectory to use another location. Documents are limited to 10 MiB each.
+Noto Naskh Arabic is bundled for Persian, Arabic and Urdu, including on systems without installed fonts. The Rust document engine handles contextual shaping and mixed-direction text. Advanced menus inside the Rust editor currently use its existing interface catalogs; the bundled web setup uses English menus there. Language selection in the Vue shell does not translate those canvas menus. Persian, Arabic and Urdu spell-check dictionaries are not bundled.
+
+Upload DOCX, ODT, RTF, TXT, Markdown or native JSON through the library. Uploads become private editable documents. Download saved documents as DOCX from the library, or choose DOCX, PDF, TXT, Markdown or native JSON in the editor header. Save edits before downloading a server copy. Native JSON preserves the full document model; conversions to other formats depend on the engine's format support.
+
+Save and Ctrl+S persist the complete native model. Automatic saves run every ten seconds. Version checks protect against overwrites between tabs. File → Save As in the editor can keep a local copy of unsaved work.
+
+## Backend API
+
+Development documentation is available at http://localhost:5080/swagger and http://localhost:5080/openapi/v1.json. Swagger obtains CSRF tokens automatically for interactive requests. These documentation routes are disabled outside Development.
+
+Account, document CRUD, supported formats, upload and download are all backend endpoints. See Back/README.md for the route list and a standalone client example. API clients use a session cookie and an X-CSRF-TOKEN header on mutations; no frontend is required.
+
+SQLite data and signing keys live in Back/App_Data. Keep that directory private, exclude it from Git and back it up consistently. Set Storage__DataDirectory to change the location. Native document models and uploads are limited to 10 MiB. Compressed uploads also have entry-count and expanded-size limits. Conversion jobs have a concurrency limit and a timeout.
 
 ## Builds and checks
 
 ```powershell
 dotnet build Back/Inkstone.Api.csproj
 python Tests/api_smoke.py
-node --test Tests/editor-host.test.mjs
+python Tests/file_api_smoke.py
+node --test Tests/editor-host.test.mjs Tests/locales.test.mjs
 cd Front
 npm run build:all
 ```
 
-Use npm run editor:optimize for the optional production size pass. Normal development builds are larger and avoid that lengthy step. Generated browser bundles and build outputs are excluded from source control.
+Use npm run editor:optimize for the optional production size pass. Normal development builds are larger and avoid that lengthy step. Generated browser bundles, fonts copied into Front/public/fonts and build outputs are excluded from source control.
 
-The Rust workspace also provides formatting, lint, asset attribution, layering, and WebAssembly checks through cargo xtask ci.
+The Rust workspace provides formatting, lint, asset attribution, layering, tests and WebAssembly checks through cargo xtask ci. Native workspace tests need substantial disk space on Windows; set CARGO_PROFILE_TEST_DEBUG=0 if test debug symbols exceed the linker limit. Use the focused checks when investigating a particular component.
 
 ## Licensing
 
-Required copyright, license, font, and third-party attribution records are retained with the Rust source. Frontend builds copy applicable notices into licenses.txt. These historical records are retained separately from current product branding.
+Required copyright, license, font and third-party attribution records are retained with the Rust source. Frontend builds copy applicable notices into licenses.txt. Historical notices are kept separately from current product branding.
 
-IIS and Docker deployment, sharing, revision history, and account recovery remain later work.
+IIS and Docker deployment, sharing, revision history and account recovery remain later work.

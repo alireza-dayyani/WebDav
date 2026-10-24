@@ -403,6 +403,19 @@ mod tests {
     }
 
     #[test]
+    fn bundled_font_covers_persian_arabic_and_urdu_without_system_fonts() {
+        let db = FontDb::with_font_dirs(Vec::new());
+        db.set_system_fallback(false);
+        let face = db.face("Noto Naskh Arabic", "Regular");
+        assert_eq!(face.family, "Noto Naskh Arabic");
+        let latin = db.face(DEFAULT_FAMILY, "Regular");
+        for c in "سلام فارسی پچژگکی اردو ٹڈڑںھے۱۲۳مرحبا".chars().filter(|c| !c.is_whitespace()) {
+            assert!(face.covers(c), "bundled font lacks {c}");
+            assert!(db.fallback_for(c, latin.id()).is_some(), "no fallback for {c}");
+        }
+    }
+
+    #[test]
     fn arabic_and_persian_fall_back_to_the_craft_fonts_arabic_face() {
         // #1652: with no system fonts (a headless CLI), Arabic and Persian drew as empty boxes.
         let Some(arabic) = CRAFT_FONTS.iter().find(|f| f.scripts.contains(&"Arab")) else {

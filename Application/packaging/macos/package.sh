@@ -138,7 +138,10 @@ ln -s /Applications "$STAGE/Applications"
 # Finder window layout: background, icon size and positions (packaging/macos/dmg/README.md).
 mkdir -p "$STAGE/.background"
 cp "$HERE/dmg/background.tiff" "$STAGE/.background/background.tiff"
-cp "$HERE/dmg/dmg-layout.DS_Store" "$STAGE/.DS_Store"
+# Finder metadata is optional; regenerate it with dmg/generate.py for a custom layout.
+if [[ -f "$HERE/dmg/dmg-layout.DS_Store" ]]; then
+  cp "$HERE/dmg/dmg-layout.DS_Store" "$STAGE/.DS_Store"
+fi
 rm -f "$DMG"
 # Retries an hdiutil verb that attaches a device: on CI runners it fails now and then with
 # "Resource busy". Usage: hdiutil_retry <verb> <args...>; five tries with growing pauses.

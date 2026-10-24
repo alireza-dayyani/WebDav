@@ -13,3 +13,4 @@ Tests/*.log
 Tests/__pycache__/
 *.user
 *.suo
+Front/public/fonts/
