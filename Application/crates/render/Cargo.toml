@@ -1,0 +1,22 @@
+[package]
+name = "inkstone-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Inkstone rasteriser: pages and thumbnails from the layout display list (vello_cpu), PNG/JPEG export"
+
+[lints]
+workspace = true
+
+[dependencies]
+inkstone-geom = { workspace = true }
+inkstone-doc = { workspace = true }
+inkstone-fonts = { workspace = true }
+inkstone-layout = { workspace = true }
+inkstone-metafile = { workspace = true }
+vello_cpu = { workspace = true }
+image = { workspace = true }
+log = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+vello_cpu = { workspace = true, features = ["multithreading"] }

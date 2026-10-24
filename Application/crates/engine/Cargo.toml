@@ -1,0 +1,42 @@
+[package]
+name = "inkstone-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Inkstone engine: session, selection, undo, the command registry (every action is a command), Word's command catalog, file I/O dispatch"
+
+[lints]
+workspace = true
+
+[dependencies]
+inkstone-geom = { workspace = true }
+inkstone-doc = { workspace = true }
+inkstone-fonts = { workspace = true }
+inkstone-layout = { workspace = true }
+inkstone-render = { workspace = true }
+inkstone-proof = { workspace = true }
+inkstone-docx = { workspace = true }
+inkstone-docbin = { workspace = true }
+inkstone-pdf = { workspace = true }
+inkstone-formats = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+chrono = { workspace = true }
+regex = { workspace = true }
+regex-automata = { workspace = true }
+image = { workspace = true }
+zeroize = { workspace = true }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+# The browser clock for `now_iso` (`SystemTime::now()` panics on wasm32-unknown-unknown).
+js-sys = "0.3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+getrandom = { workspace = true }
+
+[dev-dependencies]
+encoding_rs = { workspace = true }
+zip = { workspace = true }
+cfb = { workspace = true }
