@@ -12,7 +12,8 @@ test("every site language covers the full catalog and preserves placeholders", (
     }
   }
   assert.equal(languages.find(l => l.code === "fa").dir, "rtl");
-  assert.equal(languages.find(l => l.code === "ar").dir, "rtl");
+  assert.deepEqual(languages.map(l => l.code), ["en", "fa"]);
+  assert.equal(messages.ar, undefined, "Arabic is not a website interface locale");
   assert.equal(translate("fa", "open", { title: "سند من" }), "باز کردن سند من");
 });
 

@@ -42,7 +42,7 @@ Open http://127.0.0.1:5173. The Vue development server proxies API calls to port
 
 ## Languages and documents
 
-The site supports English, Persian and Arabic, including mirrored layouts, localized dates and translated account, library and file controls. The language choice is saved in this browser. New documents can use English, Persian, Arabic or Urdu; the latter three start with right-to-left paragraphs and persist their document language. Imported documents retain their source formatting. Persian and Urdu are also available in the editor's document-language dialog.
+The site supports English and Persian, including mirrored layouts, localized dates and translated account, library and file controls. The language choice is saved in this browser. New documents can use English, Persian, Arabic or Urdu; the latter three start with right-to-left paragraphs and persist their document language. Imported documents retain their source formatting. Persian and Urdu are also available in the editor's document-language dialog.
 
 Noto Naskh Arabic is bundled for Persian, Arabic and Urdu, including on systems without installed fonts. The Rust document engine handles contextual shaping and mixed-direction text. Advanced menus inside the Rust editor currently use its existing interface catalogs; the bundled web setup uses English menus there. Language selection in the Vue shell does not translate those canvas menus. Persian, Arabic and Urdu spell-check dictionaries are not bundled.
 
@@ -56,7 +56,13 @@ Development documentation is available at http://localhost:5080/swagger and http
 
 Account, document CRUD, supported formats, upload and download are all backend endpoints. See Back/README.md for the route list and a standalone client example. API clients use a session cookie and an X-CSRF-TOKEN header on mutations; no frontend is required.
 
-SQLite data and signing keys live in Back/App_Data. Keep that directory private, exclude it from Git and back it up consistently. Set Storage__DataDirectory to change the location. Native document models and uploads are limited to 10 MiB. Compressed uploads also have entry-count and expanded-size limits. Conversion jobs have a concurrency limit and a timeout.
+SQLite data, signing keys and the private bootstrap configuration live in Back/App_Data. Keep that directory private, exclude it from Git and back it up consistently. Set Storage__DataDirectory to change the location. Uploads default to 10 MiB; administrators can change the global limit from 1 to 128 MiB. Converted native models and exports have a separate 256 MiB processing ceiling so a file under the upload limit can expand during import. Compressed uploads also have entry-count and expanded-size limits. Conversion jobs have a concurrency limit and a timeout.
+
+## Administration
+
+The local bootstrap account is configured in Back/App_Data/bootstrap/superadmin.json, outside Git and publish output. It is created once on startup; restarting does not reset its password. The configured bootstrap identity is protected from demotion. A deployment must supply its own private bootstrap file, or set BootstrapAdmin__File to its location. No bootstrap credentials are embedded in source or frontend bundles.
+
+Administrators use the Administration screen to search users, grant/revoke administrator access, inspect saved files through read-only previews/downloads, and change the upload limit. Account role checks are live: revocation applies to existing sessions. The ordinary document APIs stay owner-scoped; explicit administrator routes provide the authorized cross-account access. Existing databases are upgraded without removing accounts or documents. Upload-policy changes survive restarts and do not block saves/downloads of existing documents.
 
 ## Builds and checks
 
@@ -64,6 +70,7 @@ SQLite data and signing keys live in Back/App_Data. Keep that directory private,
 dotnet build Back/Inkstone.Api.csproj
 python Tests/api_smoke.py
 python Tests/file_api_smoke.py
+python Tests/admin_api_smoke.py
 node --test Tests/editor-host.test.mjs Tests/locales.test.mjs
 cd Front
 npm run build:all
