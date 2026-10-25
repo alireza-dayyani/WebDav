@@ -1190,3 +1190,129 @@ select:focus-visible {
     margin-block-start: 5px;
   }
 }
+
+.admin-page {
+  max-width: 1280px;
+  margin: auto;
+  padding: 36px;
+}
+.admin-header,
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.admin-header h1 {
+  font: 40px var(--serif);
+  margin-block: 8px 14px;
+}
+.admin-note {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.admin-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  margin-block: 24px;
+}
+.admin-card h2 {
+  font: 26px var(--serif);
+  margin-block: 0 16px;
+}
+.admin-limit-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.admin-limit-form label {
+  margin-block-start: 0;
+}
+.admin-limit-form input {
+  max-width: 200px;
+}
+.admin-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: start;
+}
+.admin-table th,
+.admin-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+}
+.admin-table th {
+  font-size: 12px;
+  color: var(--muted);
+}
+.admin-actions,
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.admin-actions .text-button {
+  font-size: 12px;
+}
+.pagination {
+  justify-content: flex-end;
+  margin-block-start: 20px;
+}
+.admin-preview {
+  margin-block-start: 24px;
+  padding: 24px;
+  border-radius: 8px;
+  background: #f5f7f2;
+}
+.admin-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.8;
+  max-height: 450px;
+  overflow: auto;
+}
+.success {
+  color: #155e50;
+  background: #e8f5ec;
+  border: 1px solid #b6d2bd;
+  padding: 14px;
+  border-radius: 7px;
+}
+@media (max-width: 700px) {
+  .admin-page {
+    padding: 20px;
+  }
+  .admin-card {
+    padding: 18px;
+  }
+  .admin-search {
+    width: 100%;
+  }
+}
+@media (max-width: 700px) {
+  .workspace-top {
+    height: auto;
+    min-height: 58px;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-block: 14px;
+  }
+  .admin-entry {
+    padding: 9px 12px;
+  }
+}

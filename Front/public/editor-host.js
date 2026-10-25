@@ -44,7 +44,11 @@
               ? "Your session expired. Sign in again in another tab, then retry Save."
               : "Cannot save your work. Check your connection and try again."),
         ),
-        { status: response.status },
+        {
+          status: response.status,
+          code: problem.code,
+          maxBytes: problem.maxBytes,
+        },
       );
     }
     return response.status === 204 ? null : response.json();
@@ -67,7 +71,12 @@
           author: account.email,
         });
       } catch (error) {
-        notify("error", { message: error.message, status: error.status });
+        notify("error", {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+          maxBytes: error.maxBytes,
+        });
         throw error;
       }
     },
@@ -109,7 +118,12 @@
         if (generation === currentGeneration)
           notify("saved", { document: saved });
       } catch (error) {
-        notify("error", { message: error.message, status: error.status });
+        notify("error", {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+          maxBytes: error.maxBytes,
+        });
         throw error;
       } finally {
         saving = false;

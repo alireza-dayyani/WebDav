@@ -7,6 +7,8 @@ using System.Threading.RateLimiting;
 using Inkstone.Web.Data;
 using Inkstone.Web.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -16,7 +18,9 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 var dataDirectory = Path.GetFullPath(builder.Configuration["Storage:DataDirectory"] ?? "App_Data", builder.Environment.ContentRootPath);
 Directory.CreateDirectory(dataDirectory);
-builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 12 * 1024 * 1024);
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = FileLimits.MaxRequestBytes);
+builder.Services.Configure<IISServerOptions>(o => o.MaxRequestBodySize = FileLimits.MaxRequestBytes);
+builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = (long)FileLimits.MaxUploadMiB * FileLimits.MiB);
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite($"Data Source={Path.Combine(dataDirectory, "inkstone.db")}"));
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDirectory, "keys"))).SetApplicationName("Inkstone");
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(o =>
@@ -38,10 +42,12 @@ builder.Services.ConfigureApplicationCookie(o =>
     o.Events.OnRedirectToLogin = c => { c.Response.StatusCode = 401; return Task.CompletedTask; };
     o.Events.OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; };
 });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(o => o.AddPolicy(AccessRoles.Policy, policy => policy.RequireAuthenticatedUser().AddRequirements(new AdministratorRequirement())));
+builder.Services.AddScoped<IAuthorizationHandler, AdministratorHandler>();
 builder.Services.AddAntiforgery(o =>
 {
     o.HeaderName = "X-CSRF-TOKEN";
+    o.SuppressReadingTokenFromFormBody = true;
     o.Cookie.Name = "Inkstone.Csrf";
     o.Cookie.SameSite = SameSiteMode.Strict;
     o.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
@@ -59,19 +65,23 @@ builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
 {
     document.Info.Title = "Inkstone API";
     document.Info.Version = "v1";
-    document.Info.Description = "Private document workspace. Register or log in to obtain a session cookie. Before every mutation, fetch /api/csrf with the same cookie jar and send its token in X-CSRF-TOKEN. Refresh the token after login/logout. Uploads accept multipart/form-data; downloads return file attachments. All document operations are owner-scoped.";
+    document.Info.Description = "Private document workspace. Register or log in to obtain a session cookie. Before every mutation, fetch /api/csrf with the same cookie jar and send its token in X-CSRF-TOKEN. Refresh the token after login/logout. Uploads accept multipart/form-data; downloads return file attachments. Ordinary document operations are owner-scoped. Explicit /api/admin routes allow live-role-authorized administrators to inspect accounts/files, assign administrator roles and change upload limits.";
     return Task.CompletedTask;
 }));
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.MaxDepth = 256);
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
-    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreatedAsync();
+    await BootstrapAdministration.InitializeAsync(scope.ServiceProvider, dataDirectory, builder.Configuration);
 
 app.UseExceptionHandler();
 app.Use(async (context, next) =>
 {
     try { await next(context); }
-    catch (ConversionException error) { await Results.Problem(error.Message, statusCode: error.Status).ExecuteAsync(context); }
+    catch (ConversionException error) { await Results.Problem(error.Message, statusCode: error.Status, extensions: new Dictionary<string, object?> { ["code"] = error.Code, ["maxBytes"] = error.MaxBytes }).ExecuteAsync(context); }
+    catch (BadHttpRequestException error) when (error.StatusCode == 413 && !context.Response.HasStarted)
+    {
+        await Results.Problem("The request exceeds the current size limit.", statusCode: 413, extensions: new Dictionary<string, object?> { ["code"] = "request_too_large" }).ExecuteAsync(context);
+    }
 });
 if (!app.Environment.IsDevelopment()) { app.UseHsts(); app.UseHttpsRedirection(); }
 app.Use(async (context, next) =>
@@ -88,6 +98,26 @@ app.Use(async (context, next) =>
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+// Set the transport allowance before form/CSRF binding; file bytes are checked separately in the handler.
+app.Use(async (context, next) =>
+{
+    if (context.GetEndpoint()?.Metadata.GetMetadata<UploadPolicyRequest>() is not null)
+    {
+        var db = context.RequestServices.GetRequiredService<AppDbContext>();
+        var policy = await FileLimits.ReadAsync(db, context.RequestAborted);
+        var maxFileBytes = (long)policy.MaxUploadMiB * FileLimits.MiB;
+        context.Items["UploadLimitBytes"] = maxFileBytes;
+        var allowance = maxFileBytes + FileLimits.MiB;
+        if (context.Request.ContentLength > allowance)
+        {
+            await Results.Problem("The upload exceeds the current size limit.", statusCode: 413, extensions: new Dictionary<string, object?> { ["code"] = "upload_too_large", ["maxBytes"] = maxFileBytes }).ExecuteAsync(context);
+            return;
+        }
+        var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        if (feature is { IsReadOnly: false }) feature.MaxRequestBodySize = allowance;
+    }
+    await next(context);
+});
 // Validate every API mutation, including login/logout; raw JSON endpoints do not get automatic validation.
 app.Use(async (context, next) =>
 {
@@ -111,8 +141,12 @@ if (app.Environment.IsDevelopment())
 }
 app.MapGet("/api/health", () => TypedResults.Ok(new HealthResponse("ok"))).WithTags("Session");
 app.MapGet("/api/csrf", (HttpContext c, IAntiforgery a) => TypedResults.Ok(new CsrfResponse(a.GetAndStoreTokens(c).RequestToken!))).WithTags("Session").WithSummary("Get a CSRF token for the current session");
-var accounts = app.MapGroup("/api/account").RequireRateLimiting("accounts").WithTags("Accounts");
-accounts.MapGet("/me", (ClaimsPrincipal user) => TypedResults.Ok(new AccountResponse(user.Identity!.Name!))).RequireAuthorization();
+var accounts = app.MapGroup("/api/account").WithTags("Accounts");
+accounts.MapGet("/me", async (ClaimsPrincipal principal, UserManager<IdentityUser> users) =>
+{
+    var user = await users.GetUserAsync(principal);
+    return user is null ? Results.Unauthorized() : Results.Ok(await AccessRoles.AccountAsync(user, users));
+}).RequireAuthorization().Produces<AccountResponse>();
 accounts.MapPost("/register", async (Credentials input, UserManager<IdentityUser> users, SignInManager<IdentityUser> signIn) =>
 {
     if (input.Email is null || input.Email.Length > 254 || !new EmailAddressAttribute().IsValid(input.Email) || input.Password is null || input.Password.Length > 128)
@@ -121,19 +155,21 @@ accounts.MapPost("/register", async (Credentials input, UserManager<IdentityUser
     var result = await users.CreateAsync(user, input.Password);
     if (!result.Succeeded) return Results.ValidationProblem(result.Errors.GroupBy(e => e.Code).ToDictionary(g => g.Key, g => g.Select(e => e.Description).ToArray()));
     await signIn.SignInAsync(user, isPersistent: true);
-    return Results.Ok(new { email = user.Email });
-}).Produces<AccountResponse>().ProducesValidationProblem();
-accounts.MapPost("/login", async (Credentials input, SignInManager<IdentityUser> signIn) =>
+    return Results.Ok(await AccessRoles.AccountAsync(user, users));
+}).RequireRateLimiting("accounts").Produces<AccountResponse>().ProducesValidationProblem();
+accounts.MapPost("/login", async (Credentials input, SignInManager<IdentityUser> signIn, UserManager<IdentityUser> users) =>
 {
     if (input.Email is null || input.Password is null || input.Email.Length > 254 || input.Password.Length > 128)
         return Results.Problem("Email or password is incorrect.", statusCode: 401);
     var result = await signIn.PasswordSignInAsync(input.Email.Trim(), input.Password, isPersistent: true, lockoutOnFailure: true);
-    return result.Succeeded ? Results.Ok(new { email = input.Email.Trim() }) : Results.Problem(result.IsLockedOut ? "Too many attempts. Try again in 15 minutes." : "Email or password is incorrect.", statusCode: 401);
-}).Produces<AccountResponse>().ProducesProblem(401);
-accounts.MapPost("/logout", async (SignInManager<IdentityUser> signIn) => { await signIn.SignOutAsync(); return Results.NoContent(); }).RequireAuthorization();
+    if (!result.Succeeded) return Results.Problem(result.IsLockedOut ? "Too many attempts. Try again in 15 minutes." : "Email or password is incorrect.", statusCode: 401);
+    var user = await users.FindByEmailAsync(input.Email.Trim());
+    return Results.Ok(await AccessRoles.AccountAsync(user!, users));
+}).RequireRateLimiting("accounts").Produces<AccountResponse>().ProducesProblem(401);
+accounts.MapPost("/logout", async (SignInManager<IdentityUser> signIn) => { await signIn.SignOutAsync(); return Results.NoContent(); }).RequireAuthorization().RequireRateLimiting("accounts");
 
 var documents = app.MapGroup("/api/documents").RequireAuthorization().WithTags("Documents");
-documents.MapGet("/formats", () => Results.Ok(new { upload = DocumentConverter.ImportFormats, download = DocumentConverter.ExportFormats, languages = DocumentConverter.Languages, maxUploadBytes = DocumentConverter.MaxDocumentBytes }))
+documents.MapGet("/formats", async (AppDbContext db, CancellationToken ct) => Results.Ok(new { upload = DocumentConverter.ImportFormats, download = DocumentConverter.ExportFormats, languages = DocumentConverter.Languages, maxUploadBytes = (long)(await FileLimits.ReadAsync(db, ct)).MaxUploadMiB * FileLimits.MiB, maxDocumentBytes = FileLimits.MaxModelBytes }))
     .WithSummary("Supported file formats, document languages, and upload limit");
 documents.MapGet("/", async (ClaimsPrincipal user, AppDbContext db) =>
     Results.Ok(await db.Documents.AsNoTracking().Where(d => d.OwnerId == Owner(user)).OrderByDescending(d => d.UpdatedAt)
@@ -149,35 +185,30 @@ documents.MapPost("/", async (DocumentTitle input, ClaimsPrincipal user, AppDbCo
     return Results.Created($"/api/documents/{document.Id}", Metadata(document));
 }).Produces<DocumentMetadata>(201).ProducesProblem(400);
 
-documents.MapPost("/upload", async ([FromForm] IFormFile file, [FromForm] string? title, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
+documents.MapPost("/upload", async ([FromForm] IFormFile file, [FromForm] string? title, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, HttpContext context, CancellationToken ct) =>
 {
-    if (file.Length is 0 or > DocumentConverter.MaxDocumentBytes) return Results.Problem("Choose a non-empty file up to 10 MiB.", statusCode: 413);
+    var maxUploadBytes = (long)context.Items["UploadLimitBytes"]!;
+    if (file.Length == 0 || file.Length > maxUploadBytes) return Results.Problem("Choose a non-empty file within the current upload limit.", statusCode: 413, extensions: new Dictionary<string, object?> { ["code"] = "upload_too_large", ["maxBytes"] = maxUploadBytes });
     var filename = file.FileName.Replace('\\', '/').Split('/').Last();
     var cleanTitle = CleanTitle(title ?? Path.GetFileNameWithoutExtension(filename));
     if (cleanTitle is null) return Results.Problem("A title must contain 1–160 characters.", statusCode: 400);
     var extension = Path.GetExtension(filename).TrimStart('.').ToLowerInvariant();
     using var buffer = new MemoryStream();
     await file.CopyToAsync(buffer, ct);
-    var content = await converter.ImportAsync(buffer.ToArray(), extension, ct);
+    var content = await converter.ImportAsync(buffer.ToArray(), extension, maxUploadBytes, ct);
     var document = new StoredDocument { OwnerId = Owner(user), Title = cleanTitle, Content = content };
     db.Documents.Add(document);
     await db.SaveChangesAsync(ct);
     return Results.Created($"/api/documents/{document.Id}", Metadata(document));
-}).WithSummary("Upload a file into the current account")
-  .WithDescription("Multipart fields: file (required), title (optional). Supports DOCX, ODT, RTF, TXT, Markdown and native JSON. Limit 10 MiB. The Rust engine converts uploads into editable native documents.")
+}).WithMetadata(new UploadPolicyRequest()).WithSummary("Upload a file into the current account")
+  .WithDescription("Multipart fields: file (required), title (optional). Supports DOCX, ODT, RTF, TXT, Markdown and native JSON. The current administrator-configured upload limit is returned by /api/documents/formats. The Rust engine converts uploads into editable native documents.")
   .Produces<DocumentMetadata>(201).ProducesProblem(400).ProducesProblem(413).ProducesProblem(415).ProducesProblem(422).ProducesProblem(503);
 
 documents.MapGet("/{id:guid}/download", async (Guid id, string? format, long? version, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
 {
     var document = await db.Documents.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Owner(user), ct);
     if (document is null) return Results.NotFound();
-    if (version.HasValue && document.Version != version.Value) return Conflict();
-    format = (format ?? "docx").ToLowerInvariant();
-    var bytes = await converter.ExportAsync(document.Content, format, ct);
-    var safeName = string.Concat(document.Title.Select(c => char.IsControl(c) || "<>:\"/\\|?*".Contains(c) ? '_' : c)).Trim().TrimEnd('.');
-    if (safeName.Length == 0) safeName = "document";
-    var mime = format switch { "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "pdf" => "application/pdf", "json" => "application/json", "md" => "text/markdown; charset=utf-8", _ => "text/plain; charset=utf-8" };
-    return Results.File(bytes, mime, safeName + "." + format);
+    return await DocumentDownloads.CreateAsync(document, format, version, converter, ct);
 }).WithSummary("Download the saved document as an attachment")
   .WithDescription("format: docx (default), pdf, txt, md or json. Optional version returns 409 if the saved document has changed. Only the owner can download a document.")
   .Produces(200, contentType: "application/octet-stream").ProducesProblem(409).ProducesProblem(415).ProducesProblem(422).ProducesProblem(503);
@@ -209,7 +240,7 @@ documents.MapPut("/{id:guid}/content", async (Guid id, SaveDocument input, Claim
         return Results.Problem("The document format is invalid.", statusCode: 400);
     // Preserve the submitted UTF-8 model; escaping Persian letters would inflate its storage size.
     var bytes = Encoding.UTF8.GetBytes(input.Document.GetRawText());
-    if (bytes.Length > 10 * 1024 * 1024) return Results.Problem("Documents can be up to 10 MB.", statusCode: 413);
+    if (bytes.Length > FileLimits.MaxModelBytes) return Results.Problem("The editable document exceeds the 256 MiB processing limit.", statusCode: 413, extensions: new Dictionary<string, object?> { ["code"] = "model_too_large", ["maxBytes"] = FileLimits.MaxModelBytes });
     document.Content = bytes;
     document.Version++;
     document.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -236,6 +267,7 @@ documents.MapDelete("/{id:guid}", async (Guid id, long version, ClaimsPrincipal 
     if (count != 0) return Results.NoContent();
     return await db.Documents.AnyAsync(d => d.Id == id && d.OwnerId == Owner(user)) ? Conflict() : Results.NotFound();
 }).Produces(204).ProducesProblem(409).Produces(404);
+app.MapAdministration();
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.Run();
 
@@ -245,7 +277,7 @@ static IResult Conflict() => Results.Problem("This document changed in another t
 
 public sealed record HealthResponse(string Status);
 public sealed record CsrfResponse(string Token);
-public sealed record AccountResponse(string Email);
+public sealed record AccountResponse(string Email, bool IsAdmin = false, bool IsSuperAdmin = false);
 public sealed record DocumentSnapshot(DocumentMetadata Metadata, JsonElement? Document);
 public sealed record Credentials(string? Email, string? Password);
 public sealed record DocumentTitle(string? Title, string? Language = null);

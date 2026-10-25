@@ -102,7 +102,7 @@ with tempfile.TemporaryDirectory(prefix='inkstone-files-test-') as data, open(RO
         alice.upload('broken.json', b'{"notADocument":true}', expected=422)
         archive_buffer = io.BytesIO()
         with zipfile.ZipFile(archive_buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr('oversized.xml', b'0' * (33 * 1024 * 1024))
+            archive.writestr('oversized.xml', b'0' * (129 * 1024 * 1024))
         alice.upload('oversized.docx', archive_buffer.getvalue(), expected=413)
         formats = alice.json('/documents/formats')
         assert 'fa-IR' in formats['languages'] and 'ur-PK' in formats['languages']

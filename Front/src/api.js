@@ -38,6 +38,8 @@ export async function api(path, options = {}) {
               : "Something went wrong. Please try again."),
     );
     error.status = response.status;
+    error.code = problem.code;
+    error.maxBytes = problem.maxBytes;
     if (response.status === 400) resetCsrf();
     throw error;
   }

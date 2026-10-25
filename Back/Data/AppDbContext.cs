@@ -7,10 +7,12 @@ namespace Inkstone.Web.Data;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<IdentityUser>(options)
 {
     public DbSet<StoredDocument> Documents => Set<StoredDocument>();
+    public DbSet<UploadPolicy> UploadPolicies => Set<UploadPolicy>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<UploadPolicy>().Property(p => p.Version).IsConcurrencyToken();
         builder.Entity<StoredDocument>(entity =>
         {
             entity.HasKey(d => d.Id);
@@ -20,6 +22,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.HasOne<IdentityUser>().WithMany().HasForeignKey(d => d.OwnerId).OnDelete(DeleteBehavior.Cascade);
         });
     }
+}
+
+public sealed class UploadPolicy
+{
+    public int Id { get; set; } = 1;
+    public int MaxUploadMiB { get; set; } = 10;
+    public long Version { get; set; } = 1;
 }
 
 public sealed class StoredDocument

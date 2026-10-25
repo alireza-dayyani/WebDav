@@ -4,6 +4,27 @@ import { api, resetCsrf } from "./api";
 import { locale, language, t, errorMessage } from "./i18n";
 import { normalizeSearch } from "./locales";
 import LanguagePicker from "./LanguagePicker.vue";
+import AdminPanel from "./AdminPanel.vue";
+import { maxUploadBytes, updateFileLimits } from "./fileLimits";
+const adminView = ref(false);
+const uploadLimit = computed(() =>
+  new Intl.NumberFormat(language.value.tag).format(
+    maxUploadBytes.value / 1024 / 1024,
+  ),
+);
+async function syncSession() {
+  user.value = await api("/account/me");
+  if (!user.value.isAdmin) closeAdministration();
+}
+function showAdministration() {
+  adminView.value = true;
+  history.replaceState(null, "", "/#/admin");
+}
+function closeAdministration() {
+  adminView.value = false;
+  history.replaceState(null, "", "/");
+}
+
 const documentLanguage = ref(language.value.tag),
   fileInput = ref(null),
   uploading = ref(false),
@@ -71,17 +92,18 @@ async function upload(event) {
   event.target.value = "";
   if (!file) return;
   error.value = "";
-  if (!file.size || file.size > 10 * 1024 * 1024) {
-    error.value = t("tooLarge");
-    return;
-  }
-  const extension = file.name.split(".").pop().toLowerCase();
-  if (!["docx", "odt", "rtf", "txt", "md", "json"].includes(extension)) {
-    error.value = t("uploadType");
-    return;
-  }
   uploading.value = true;
   try {
+    updateFileLimits(await api("/documents/formats"));
+    if (!file.size || file.size > maxUploadBytes.value) {
+      error.value = t("tooLarge", { limit: uploadLimit.value });
+      return;
+    }
+    const extension = file.name.split(".").pop().toLowerCase();
+    if (!["docx", "odt", "rtf", "txt", "md", "json"].includes(extension)) {
+      error.value = t("uploadType");
+      return;
+    }
     const body = new FormData();
     body.append("file", file);
     const document = await api("/documents/upload", { method: "POST", body });
@@ -93,6 +115,7 @@ async function upload(event) {
     uploading.value = false;
   }
 }
+
 async function download(document, format = downloadFormat.value) {
   downloading.value = true;
   error.value = "";
@@ -108,7 +131,12 @@ async function download(document, format = downloadFormat.value) {
   }
 }
 async function refresh() {
-  documents.value = await api("/documents/");
+  const [items, formats] = await Promise.all([
+    api("/documents/"),
+    api("/documents/formats"),
+  ]);
+  documents.value = items;
+  updateFileLimits(formats);
 }
 async function initialize() {
   try {
@@ -147,6 +175,7 @@ async function logout() {
     user.value = null;
     documents.value = [];
     active.value = null;
+    adminView.value = false;
     resetCsrf();
     history.replaceState(null, "", "/");
   } catch (e) {
@@ -168,6 +197,10 @@ function open(document) {
   history.replaceState(null, "", `/#/documents/${document.id}`);
 }
 async function openFromHash() {
+  if (location.hash === "#/admin" && user.value.isAdmin) {
+    adminView.value = true;
+    return;
+  }
   const match = location.hash.match(/^#\/documents\/([a-f\d-]+)$/i);
   if (!match) return;
   const document = documents.value.find((d) => d.id === match[1]);
@@ -258,6 +291,8 @@ function editorMessage(event) {
     editorStatus.value = errorMessage({
       status: message.status,
       message: message.message,
+      code: message.code,
+      maxBytes: message.maxBytes,
     });
     editorFailed.value = true;
   } else if (message.type === "inkstone:ready") {
@@ -436,6 +471,11 @@ onBeforeUnmount(() => {
       {{ editorStatus }} {{ t("recovery") }}
     </div>
   </div>
+  <AdminPanel
+    v-else-if="adminView && user.isAdmin"
+    @close="closeAdministration"
+    @session-changed="syncSession"
+  />
   <div v-else class="workspace">
     <aside class="sidebar">
       <a class="brand" href="/" dir="ltr"
@@ -480,6 +520,13 @@ onBeforeUnmount(() => {
           <strong>{{ t("myDocuments") }}</strong></span
         >
         <div class="header-tools">
+          <button
+            v-if="user.isAdmin"
+            class="secondary admin-entry"
+            @click="showAdministration"
+          >
+            {{ t("administration") }}
+          </button>
           <span class="private-badge">◇ {{ t("private") }}</span
           ><LanguagePicker />
         </div>
@@ -511,7 +558,7 @@ onBeforeUnmount(() => {
           :aria-label="t('upload')"
           @change="upload"
         />
-        <p class="upload-help">{{ t("uploadHelp") }}</p>
+        <p class="upload-help">{{ t("uploadHelp", { limit: uploadLimit }) }}</p>
         <div class="start-card">
           <div class="blank-page" aria-hidden="true"><span>＋</span></div>
           <div>
