@@ -1,5 +1,6 @@
 import { computed, ref, watch } from "vue";
 import { languages, translate } from "./locales";
+import { maxUploadBytes, maxDocumentBytes } from "./fileLimits";
 let preferred;
 try {
   preferred = localStorage.getItem("inkstone.locale");
@@ -32,9 +33,22 @@ watch(
 export function errorMessage(error, context) {
   if (error.status === 400 && context === "register")
     return t("registrationError");
+  const limit = new Intl.NumberFormat(language.value.tag).format(
+    (error.maxBytes || maxUploadBytes.value) / 1024 / 1024,
+  );
+  if (error.code === "model_too_large")
+    return t("modelTooLarge", {
+      limit: new Intl.NumberFormat(language.value.tag).format(
+        (error.maxBytes || maxDocumentBytes.value) / 1024 / 1024,
+      ),
+    });
+  if (error.code === "archive_too_large") return t("archiveTooLarge");
+  if (error.status === 413) return t("tooLarge", { limit });
+  if (context === "admin" && error.status === 409) return t("recordChanged");
   const key = {
     400: "invalid",
     401: context === "login" ? "authError" : "session",
+    403: "forbidden",
     404: "unavailable",
     409: "conflict",
     413: "tooLarge",

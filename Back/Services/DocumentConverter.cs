@@ -4,24 +4,26 @@ using System.Text.Json;
 
 namespace Inkstone.Web.Services;
 
-public sealed class ConversionException(string message, int status = 422) : Exception(message)
+public sealed class ConversionException(string message, int status = 422, string? code = null, long? maxBytes = null) : Exception(message)
 {
     public int Status { get; } = status;
+    public string? Code { get; } = code;
+    public long? MaxBytes { get; } = maxBytes;
 }
 
 /// <summary>Runs the existing Rust engine in a bounded, isolated job directory.</summary>
 public sealed class DocumentConverter(IConfiguration configuration, ILogger<DocumentConverter> logger) : IDisposable
 {
-    public const int MaxDocumentBytes = 10 * 1024 * 1024;
+    public const int MaxDocumentBytes = FileLimits.MaxModelBytes;
     public static readonly string[] ImportFormats = ["docx", "odt", "rtf", "txt", "md", "json"];
     public static readonly string[] ExportFormats = ["docx", "pdf", "txt", "md", "json"];
     public static readonly string[] Languages = ["en-US", "fa-IR", "ar-SA", "ur-PK"];
     private readonly SemaphoreSlim slots = new(2);
 
-    public async Task<byte[]> ImportAsync(byte[] content, string extension, CancellationToken ct)
+    public async Task<byte[]> ImportAsync(byte[] content, string extension, long maxUploadBytes, CancellationToken ct)
     {
         if (!ImportFormats.Contains(extension)) throw new ConversionException("Unsupported upload format.", 415);
-        if (content.Length is 0 or > MaxDocumentBytes) throw new ConversionException("Choose a non-empty file up to 10 MiB.", 413);
+        if (content.Length == 0 || content.Length > maxUploadBytes) throw new ConversionException("Choose a non-empty file within the current upload limit.", 413, "upload_too_large", maxUploadBytes);
         if (extension == "json") ValidateModel(content);
         if (extension is "docx" or "odt") ValidateArchive(content);
         var result = await RunAsync(content, extension, "json", null, ct);
@@ -46,7 +48,7 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
 
     public static void ValidateModel(byte[] bytes)
     {
-        if (bytes.Length > MaxDocumentBytes) throw new ConversionException("The converted document exceeds 10 MiB.", 413);
+        if (bytes.Length > MaxDocumentBytes) throw new ConversionException("The editable document exceeds the 256 MiB processing limit.", 413, "model_too_large", MaxDocumentBytes);
         try
         {
             using var json = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 256 });
@@ -61,8 +63,8 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
         try
         {
             using var archive = new ZipArchive(new MemoryStream(content), ZipArchiveMode.Read);
-            if (archive.Entries.Count > 2048 || archive.Entries.Any(e => e.Length > 32L * 1024 * 1024) || archive.Entries.Sum(e => e.Length) > 64L * 1024 * 1024)
-                throw new ConversionException("The document archive is too large.", 413);
+            if (archive.Entries.Count > 2048 || archive.Entries.Any(e => e.Length > FileLimits.MaxArchiveEntryBytes) || archive.Entries.Sum(e => e.Length) > FileLimits.MaxArchiveBytes)
+                throw new ConversionException("The expanded archive exceeds the processing limits (256 MiB total, 128 MiB per entry, 2048 entries).", 413, "archive_too_large", FileLimits.MaxArchiveBytes);
         }
         catch (InvalidDataException) { throw new ConversionException("The document archive is invalid."); }
     }
@@ -114,8 +116,8 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
                 throw new ConversionException("Document conversion timed out.");
             }
             if (process.ExitCode != 0 || !File.Exists(destination)) throw new ConversionException("This file could not be converted. Check the format and try again.");
-            if (new FileInfo(destination).Length > (outputFormat == "json" ? MaxDocumentBytes : 50L * 1024 * 1024))
-                throw new ConversionException("The converted file is too large.", 413);
+            if (new FileInfo(destination).Length > (outputFormat == "json" ? MaxDocumentBytes : FileLimits.MaxModelBytes))
+                throw new ConversionException("The converted file exceeds the 256 MiB processing limit.", 413, "model_too_large", MaxDocumentBytes);
             return await File.ReadAllBytesAsync(destination, ct);
         }
         finally
