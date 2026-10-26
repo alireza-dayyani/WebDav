@@ -29,6 +29,8 @@ No Vue server is needed to use the API. Development Swagger UI is at http://loca
 | PATCH | /api/documents/{id} | Rename with JSON title and version |
 | DELETE | /api/documents/{id}?version=1 | Delete the matching revision |
 | GET | /api/documents/{id}/download?format=docx&version=1 | Download a saved revision as an attachment |
+| GET | /api/documents/{id}/bookmarks?version=1 | List named bookmarks and whether their ranges support replacement |
+| POST | /api/documents/{id}/bookmarks/replace | Replace bookmark contents with JSON text values; saves the next revision |
 | GET | /api/admin/users?search=&page=1&pageSize=25 | Search accounts, roles and storage usage |
 | PUT | /api/admin/users/{id}/admin | Change administrator access with isAdmin and version |
 | GET | /api/admin/users/{id}/documents?page=1 | List a user's files |
@@ -69,6 +71,45 @@ Invoke-RestMethod "$apiBase/api/documents/upload" -Method Post -WebSession $sess
 ```
 
 The Vue development proxy supplies the same-origin browser arrangement. For separate production hosts, place a reverse proxy in front of /api or explicitly configure trusted origins, cookies and CSRF for that topology.
+
+## Fill a DOCX template by document ID
+
+Create named bookmarks in Word around the text to replace, then upload the DOCX using `/api/documents/upload`. The returned `id` identifies the saved native document; the API does not accept a filesystem path. Use the same authenticated cookie jar and CSRF workflow as above. All bookmark operations are owner-scoped, including calls made by an administrator.
+
+1. Get `/api/documents/{id}` for the current version, then `GET /api/documents/{id}/bookmarks?version=1`. The version query parameter is required; stale versions return 409. The response includes `id`, `version` and `bookmarks`, whose entries have `name`, `replaceable` and an optional `issue` explaining unsupported ranges.
+2. Send `POST /api/documents/{id}/bookmarks/replace` with `Content-Type: application/json` and `X-CSRF-TOKEN`:
+
+```json
+{
+  "version": 1,
+  "values": {
+    "CustomerName": "علی رضایی",
+    "InvoiceNumber": "INV-2026-001",
+    "Notes": "First line\nSecond line",
+    "OptionalText": ""
+  }
+}
+```
+
+3. The response contains `metadata` with the incremented version and `replaced`, the names that were filled. Download `/api/documents/{id}/download?format=docx&version=2`, choose another supported export format, or reopen the saved document in the editor. An already open editor must reload the saved revision; its old version cannot overwrite the server change.
+
+The API calls the Rust command registry (`document.bookmarks` and `document.fillBookmarks`) through the bounded native converter. JSON keys match bookmark names exactly, including case. Values must be strings; numbers/dates should be formatted by the caller, nested JSON is not expanded, and text is inserted literally rather than interpreted as HTML or commands. Unspecified bookmarks stay unchanged. Empty strings clear a bookmark's contents. Tabs and line breaks are supported; CRLF becomes a single line break. Start/end markers remain so the same field can be replaced again. Existing formatting outside replaced contents is retained; inserted text uses the engine's formatting at the replacement range.
+
+Supported locations include the body, table cells, headers, footers and other secondary stories. A bookmark can span consecutive paragraphs in the same container. Replacement rejects missing keys, duplicate bookmark names, missing/reversed markers, ranges crossing tables/cells, or ranges containing another bookmark marker. It does not remove a surrounding bookmark when filling a nested inner field. Stop document protection and disable Track Changes before filling. `replaceable` describes the range, not the document's current protection state.
+
+Validation errors return 400; unknown or unsupported bookmark keys return 422 with `invalidKeys`. Engine-level refusal also returns 422. No partial batch is saved, and a concurrent save/delete returns 409. The original document ID is retained, its version advances once, and unspecified content is left to the engine's normal import/export handling. Uploaded DOCX files are already converted to the native model, so exports have the same format-fidelity limits as other editor downloads. This endpoint changes the saved document in place; upload a separate copy when keeping an unchanged template is required.
+
+Each request accepts 1–256 entries, at most 512 KiB of UTF-8 value text in total, and names up to 256 UTF-8 bytes. The request body is capped at 4 MiB (including JSON escaping). Inline-object markers and control characters other than tabs/line breaks are rejected. Bookmark discovery is capped at 4096 names; normal converter time, concurrency and document-size limits still apply. Replacement inputs and generated files are temporary and are not logged.
+
+```powershell
+# Continue with the authenticated $session and an uploaded template's $document.
+$revision = Invoke-RestMethod "$apiBase/api/documents/$($document.id)" -WebSession $session
+Invoke-RestMethod "$apiBase/api/documents/$($document.id)/bookmarks?version=$($revision.version)" -WebSession $session
+$csrf = Invoke-RestMethod "$apiBase/api/csrf" -WebSession $session
+$payload = @{ version = $revision.version; values = @{ CustomerName = 'علی رضایی' } } | ConvertTo-Json
+$filled = Invoke-RestMethod "$apiBase/api/documents/$($document.id)/bookmarks/replace" -Method Post -WebSession $session -ContentType 'application/json; charset=utf-8' -Headers @{ 'X-CSRF-TOKEN' = $csrf.token } -Body ([Text.Encoding]::UTF8.GetBytes($payload))
+Invoke-WebRequest "$apiBase/api/documents/$($document.id)/download?format=docx&version=$($filled.metadata.version)" -WebSession $session -OutFile './filled.docx'
+```
 
 ## Converter and storage configuration
 

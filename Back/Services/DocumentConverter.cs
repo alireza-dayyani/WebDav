@@ -46,6 +46,22 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
         return await RunAsync(content, "json", format, null, ct);
     }
 
+    public async Task<BookmarkInfo[]> ReadBookmarksAsync(byte[] content, CancellationToken ct)
+    {
+        if (content.Length == 0) return [];
+        ValidateModel(content);
+        var result = await RunJobAsync(content, "json", null, null, ct, "document.bookmarks", new { });
+        return result.Report.GetProperty("bookmarks").Deserialize<BookmarkInfo[]>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+    }
+
+    public async Task<byte[]> FillBookmarksAsync(byte[] content, Dictionary<string, string> values, CancellationToken ct)
+    {
+        ValidateModel(content);
+        var result = await RunJobAsync(content, "json", "json", null, ct, "document.fillBookmarks", new { values });
+        ValidateModel(result.Content);
+        return result.Content;
+    }
+
     public static void ValidateModel(byte[] bytes)
     {
         if (bytes.Length > MaxDocumentBytes) throw new ConversionException("The editable document exceeds the 256 MiB processing limit.", 413, "model_too_large", MaxDocumentBytes);
@@ -70,6 +86,11 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
     }
 
     private async Task<byte[]> RunAsync(byte[]? input, string inputFormat, string outputFormat, string? language, CancellationToken ct)
+        => (await RunJobAsync(input, inputFormat, outputFormat, language, ct)).Content;
+
+    private sealed record JobResult(byte[] Content, JsonElement Report);
+
+    private async Task<JobResult> RunJobAsync(byte[]? input, string inputFormat, string? outputFormat, string? language, CancellationToken ct, string? command = null, object? parameters = null)
     {
         if (!await slots.WaitAsync(TimeSpan.FromSeconds(5), ct)) throw new ConversionException("The converter is busy. Try again shortly.", 429);
         string? directory = null;
@@ -85,7 +106,18 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
                 WorkingDirectory = directory, UseShellExecute = false, CreateNoWindow = true,
                 RedirectStandardError = true, RedirectStandardOutput = true
             };
-            if (input is not null)
+            if (command is not null)
+            {
+                await File.WriteAllBytesAsync(source, input!, ct);
+                // Values stay in a temporary JSON script, never in shell syntax or process arguments.
+                var script = Path.Combine(directory, "job.json");
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(new { commands = new[] { new { command, @params = parameters } } });
+                if (bytes.Length > 4 * FileLimits.MiB) throw new ConversionException("Bookmark values exceed the command size limit.", 413);
+                await File.WriteAllBytesAsync(script, bytes, ct);
+                foreach (var arg in new[] { "run", "--file", source, "--script", script, "--print" }) start.ArgumentList.Add(arg);
+                if (outputFormat is not null) { start.ArgumentList.Add("--save"); start.ArgumentList.Add(destination); }
+            }
+            else if (input is not null)
             {
                 await File.WriteAllBytesAsync(source, input, ct);
                 foreach (var arg in new[] { "convert", source, destination }) start.ArgumentList.Add(arg);
@@ -105,7 +137,7 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(60));
             // Drain output without retaining arbitrary converter output in memory or HTTP responses.
-            var stdout = process.StandardOutput.BaseStream.CopyToAsync(Stream.Null, timeout.Token);
+            var stdout = ReadOutputAsync(process.StandardOutput.BaseStream, command is not null, timeout.Token);
             var stderr = process.StandardError.BaseStream.CopyToAsync(Stream.Null, timeout.Token);
             try { await Task.WhenAll(process.WaitForExitAsync(timeout.Token), stdout, stderr); }
             catch (OperationCanceledException)
@@ -115,10 +147,21 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
                 ct.ThrowIfCancellationRequested();
                 throw new ConversionException("Document conversion timed out.");
             }
-            if (process.ExitCode != 0 || !File.Exists(destination)) throw new ConversionException("This file could not be converted. Check the format and try again.");
+            if (process.ExitCode != 0 || (outputFormat is not null && !File.Exists(destination)))
+                throw new ConversionException(command is null ? "This file could not be converted. Check the format and try again." : "The bookmark operation failed. Check bookmark names and ranges; disable Track Changes and document protection before replacing values.");
+            JsonElement report = default;
+            if (command is not null)
+            {
+                var output = await stdout;
+                var prefix = command + ": ";
+                if (output is null || !output.StartsWith(prefix, StringComparison.Ordinal)) throw new ConversionException("The bookmark report is invalid or too large.");
+                try { report = JsonSerializer.Deserialize<JsonElement>(output[prefix.Length..]); }
+                catch (JsonException) { throw new ConversionException("The bookmark report is invalid."); }
+            }
+            if (outputFormat is null) return new JobResult([], report);
             if (new FileInfo(destination).Length > (outputFormat == "json" ? MaxDocumentBytes : FileLimits.MaxModelBytes))
                 throw new ConversionException("The converted file exceeds the 256 MiB processing limit.", 413, "model_too_large", MaxDocumentBytes);
-            return await File.ReadAllBytesAsync(destination, ct);
+            return new JobResult(await File.ReadAllBytesAsync(destination, ct), report);
         }
         finally
         {
@@ -132,5 +175,23 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
         }
     }
 
+    private static async Task<string?> ReadOutputAsync(Stream stream, bool capture, CancellationToken ct)
+    {
+        const int maxReportBytes = 2 * FileLimits.MiB;
+        using var output = new MemoryStream();
+        var buffer = new byte[16 * 1024];
+        var overflow = false;
+        int read;
+        while ((read = await stream.ReadAsync(buffer, ct)) != 0)
+        {
+            if (!capture || overflow) continue;
+            if (output.Length + read > maxReportBytes) { overflow = true; continue; }
+            output.Write(buffer, 0, read);
+        }
+        return overflow ? null : System.Text.Encoding.UTF8.GetString(output.GetBuffer(), 0, (int)output.Length);
+    }
+
     public void Dispose() => slots.Dispose();
 }
+
+public sealed record BookmarkInfo(string Name, bool Replaceable, string? Issue);
