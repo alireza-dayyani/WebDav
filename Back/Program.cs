@@ -67,6 +67,20 @@ builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
     document.Info.Version = "v1";
     document.Info.Description = "Private document workspace. Register or log in to obtain a session cookie. Before every mutation, fetch /api/csrf with the same cookie jar and send its token in X-CSRF-TOKEN. Refresh the token after login/logout. Uploads accept multipart/form-data; downloads return file attachments. Ordinary document operations are owner-scoped. Explicit /api/admin routes allow live-role-authorized administrators to inspect accounts/files, assign administrator roles and change upload limits.";
     return Task.CompletedTask;
+}).AddSchemaTransformer((schema, context, _) =>
+{
+    if (context.JsonTypeInfo.Type == typeof(ReplaceBookmarks))
+    {
+        schema.Properties!["values"] = new Microsoft.OpenApi.OpenApiSchema
+        {
+            Type = Microsoft.OpenApi.JsonSchemaType.Object,
+            AdditionalProperties = new Microsoft.OpenApi.OpenApiSchema { Type = Microsoft.OpenApi.JsonSchemaType.String },
+            MinProperties = 1, MaxProperties = 256,
+            Description = "Exact bookmark names mapped to literal text strings; at most 512 KiB of UTF-8 text in total."
+        };
+        schema.Examples = [System.Text.Json.Nodes.JsonNode.Parse("""{"version":1,"values":{"CustomerName":"علی رضایی","Notes":"First line\nSecond line"}}""")!];
+    }
+    return Task.CompletedTask;
 }));
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.MaxDepth = 256);
 var app = builder.Build();
@@ -78,9 +92,10 @@ app.Use(async (context, next) =>
 {
     try { await next(context); }
     catch (ConversionException error) { await Results.Problem(error.Message, statusCode: error.Status, extensions: new Dictionary<string, object?> { ["code"] = error.Code, ["maxBytes"] = error.MaxBytes }).ExecuteAsync(context); }
-    catch (BadHttpRequestException error) when (error.StatusCode == 413 && !context.Response.HasStarted)
+    catch (BadHttpRequestException error) when (error.StatusCode is >= 400 and < 500 && !context.Response.HasStarted)
     {
-        await Results.Problem("The request exceeds the current size limit.", statusCode: 413, extensions: new Dictionary<string, object?> { ["code"] = "request_too_large" }).ExecuteAsync(context);
+        await Results.Problem(error.StatusCode == 413 ? "The request exceeds the current size limit." : "The request is invalid. Check its content type, JSON and required parameters.", statusCode: error.StatusCode,
+            extensions: new Dictionary<string, object?> { ["code"] = error.StatusCode == 413 ? "request_too_large" : "invalid_request" }).ExecuteAsync(context);
     }
 });
 if (!app.Environment.IsDevelopment()) { app.UseHsts(); app.UseHttpsRedirection(); }
@@ -101,6 +116,17 @@ app.UseRateLimiter();
 // Set the transport allowance before form/CSRF binding; file bytes are checked separately in the handler.
 app.Use(async (context, next) =>
 {
+    if (context.GetEndpoint()?.Metadata.GetMetadata<BookmarkValuesRequest>() is not null)
+    {
+        const long maxBookmarkRequestBytes = 4 * FileLimits.MiB;
+        if (context.Request.ContentLength > maxBookmarkRequestBytes)
+        {
+            await Results.Problem("The bookmark request exceeds the 4 MiB body limit.", statusCode: 413).ExecuteAsync(context);
+            return;
+        }
+        var bodyLimit = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        if (bodyLimit is { IsReadOnly: false }) bodyLimit.MaxRequestBodySize = maxBookmarkRequestBytes;
+    }
     if (context.GetEndpoint()?.Metadata.GetMetadata<UploadPolicyRequest>() is not null)
     {
         var db = context.RequestServices.GetRequiredService<AppDbContext>();
@@ -169,6 +195,7 @@ accounts.MapPost("/login", async (Credentials input, SignInManager<IdentityUser>
 accounts.MapPost("/logout", async (SignInManager<IdentityUser> signIn) => { await signIn.SignOutAsync(); return Results.NoContent(); }).RequireAuthorization().RequireRateLimiting("accounts");
 
 var documents = app.MapGroup("/api/documents").RequireAuthorization().WithTags("Documents");
+documents.MapBookmarks();
 documents.MapGet("/formats", async (AppDbContext db, CancellationToken ct) => Results.Ok(new { upload = DocumentConverter.ImportFormats, download = DocumentConverter.ExportFormats, languages = DocumentConverter.Languages, maxUploadBytes = (long)(await FileLimits.ReadAsync(db, ct)).MaxUploadMiB * FileLimits.MiB, maxDocumentBytes = FileLimits.MaxModelBytes }))
     .WithSummary("Supported file formats, document languages, and upload limit");
 documents.MapGet("/", async (ClaimsPrincipal user, AppDbContext db) =>

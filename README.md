@@ -56,6 +56,8 @@ Development documentation is available at http://localhost:5080/swagger and http
 
 Account, document CRUD, supported formats, upload and download are all backend endpoints. See Back/README.md for the route list and a standalone client example. API clients use a session cookie and an X-CSRF-TOKEN header on mutations; no frontend is required.
 
+DOCX templates can also be filled through the API. Upload the template, use its returned ID and version to list bookmarks, then send a flat map of bookmark names to text values to `POST /api/documents/{id}/bookmarks/replace`. The Rust engine replaces the contents and saves the next revision, which can be reopened in the editor or downloaded as DOCX/PDF. Bookmark names match exactly, markers remain reusable, and the entire batch succeeds or fails together. This edits the saved document; keep a separate template document if it needs to remain unchanged. See the bookmark example and supported range limits in Back/README.md.
+
 SQLite data, signing keys and the private bootstrap configuration live in Back/App_Data. Keep that directory private, exclude it from Git and back it up consistently. Set Storage__DataDirectory to change the location. Uploads default to 10 MiB; administrators can change the global limit from 1 to 128 MiB. Converted native models and exports have a separate 256 MiB processing ceiling so a file under the upload limit can expand during import. Compressed uploads also have entry-count and expanded-size limits. Conversion jobs have a concurrency limit and a timeout.
 
 ## Administration
@@ -71,6 +73,7 @@ dotnet build Back/Inkstone.Api.csproj
 python Tests/api_smoke.py
 python Tests/file_api_smoke.py
 python Tests/admin_api_smoke.py
+python Tests/bookmark_api_smoke.py
 node --test Tests/editor-host.test.mjs Tests/locales.test.mjs
 cd Front
 npm run build:all
