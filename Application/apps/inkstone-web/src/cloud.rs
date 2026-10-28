@@ -21,7 +21,7 @@ extern "C" {
     pub fn state(dirty: bool, pending: bool, generation: &str);
 }
 
-pub async fn load() -> Result<(Option<inkstone_doc::Document>, String, String), String> {
+pub async fn load() -> Result<(Option<inkstone_doc::Document>, String, String, Option<String>), String> {
     let value = JsFuture::from(host_load().map_err(js_error)?).await.map_err(js_error)?;
     let json = value.as_string().ok_or("Invalid storage response")?;
     let value: serde_json::Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
@@ -31,7 +31,8 @@ pub async fn load() -> Result<(Option<inkstone_doc::Document>, String, String), 
         Some(doc) => Some(serde_json::from_value(doc.clone()).map_err(|e| format!("Cannot open saved document: {e}"))?),
         None => None,
     };
-    Ok((document, title, author))
+    let bookmark = value.get("bookmark").and_then(|v| v.as_str()).map(str::to_owned);
+    Ok((document, title, author, bookmark))
 }
 
 pub fn save(bytes: &[u8], generation: u64, title: &str, saves: &AsyncSaves, ctx: &egui::Context) -> Result<(), String> {

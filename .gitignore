@@ -11,6 +11,8 @@ Application/target-*/
 Application/dist/
 Tests/*.log
 Tests/__pycache__/
+Scripts/__pycache__/
+Tests/generated/
 *.user
 *.suo
 Front/public/fonts/

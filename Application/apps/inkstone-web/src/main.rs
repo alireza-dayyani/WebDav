@@ -8,6 +8,7 @@
 //! browser file picker (bytes arrive through `Services::inbox`); Save and Export download.
 //! Preferences (theme, interface size, editing options…) are kept in `localStorage` (`prefs`).
 //! URL flags: `?webgl` forces WebGL2; `?sample` opens the sample document.
+//! Inkstone uses its authenticated parent bridge (`cloud`) for owner-scoped, versioned storage.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 #[cfg(any(target_arch = "wasm32", test))]

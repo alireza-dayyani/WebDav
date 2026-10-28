@@ -1,3 +1,4 @@
+import { studioMessages } from "./studioLocales.js";
 export const languages = [
   {
     code: "en",
@@ -14,6 +15,7 @@ export const languages = [
 ];
 export const messages = {
   en: {
+    ...studioMessages.en,
     language: "Language",
     opening: "Opening your workspace…",
     storyTitle: "Good things start with a blank page.",
@@ -98,6 +100,7 @@ export const messages = {
     tooLarge: "Choose a non-empty file up to {limit} MiB.",
     uploadType: "This file format is not supported.",
     error: "Something went wrong. Please try again.",
+    previewBlocked: "Allow pop-ups for this site to preview PDFs in a new tab.",
     network: "Cannot connect. Check your connection and try again.",
     authError:
       "Email or password is incorrect, or sign-in is temporarily locked.",
@@ -162,6 +165,7 @@ export const messages = {
       "This record changed. Refresh the administration page and try again.",
   },
   fa: {
+    ...studioMessages.fa,
     language: "زبان",
     opening: "در حال باز کردن فضای کار…",
     storyTitle: "هر نوشتهٔ خوب، از یک صفحهٔ سفید شروع می‌شود.",
@@ -245,6 +249,8 @@ export const messages = {
     tooLarge: "فایلی غیرخالی و حداکثر {limit} میبی‌بایتی انتخاب کنید.",
     uploadType: "قالب این فایل پشتیبانی نمی‌شود.",
     error: "مشکلی پیش آمد. دوباره تلاش کنید.",
+    previewBlocked:
+      "برای پیش‌نمایش PDF در زبانهٔ جدید، پنجره‌های بازشو را برای این سایت مجاز کنید.",
     network: "ارتباط برقرار نشد. اتصال اینترنت را بررسی کنید.",
     authError: "ایمیل یا گذرواژه نادرست است، یا ورود موقتاً قفل شده است.",
     session: "برای ادامه دوباره وارد حساب شوید.",

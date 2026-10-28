@@ -12,7 +12,7 @@ public sealed class ConversionException(string message, int status = 422, string
 }
 
 /// <summary>Runs the existing Rust engine in a bounded, isolated job directory.</summary>
-public sealed class DocumentConverter(IConfiguration configuration, ILogger<DocumentConverter> logger) : IDisposable
+public sealed class DocumentConverter(IConfiguration configuration, ILogger<DocumentConverter> logger) : IDocumentProcessor, IDisposable
 {
     public const int MaxDocumentBytes = FileLimits.MaxModelBytes;
     public static readonly string[] ImportFormats = ["docx", "odt", "rtf", "txt", "md", "json"];
@@ -62,6 +62,49 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
         return result.Content;
     }
 
+    private static readonly byte[] BlankModel = "{\"body\":[{\"kind\":\"para\",\"text\":\"\",\"runs\":[]}]}"u8.ToArray();
+
+    public async Task<byte[]> LetterTemplateAsync(string language, CancellationToken ct, string? paper = null)
+        => (await RunJobAsync(BlankModel, "json", "json", null, ct, "document.letterTemplate", new { language, paper })).Content;
+
+    public async Task<JsonElement> PreflightAsync(byte[] content, CancellationToken ct)
+        => (await RunJobAsync(content.Length == 0 ? BlankModel : content, "json", null, null, ct, "document.preflight", new { })).Report;
+
+    public async Task<JsonElement> BookmarkStateAsync(byte[] content, string name, CancellationToken ct)
+        => (await RunJobAsync(content, "json", null, null, ct, "document.bookmarkState", new { name })).Report;
+
+    public async Task<JsonElement> ImageInfoAsync(byte[] bytes, CancellationToken ct)
+        => (await RunJobAsync(BlankModel, "json", null, null, ct, "document.imageInfo", new { data = Convert.ToBase64String(bytes) })).Report;
+
+    public async Task<AutomationResult> AutomateAsync(byte[] content, string action, object parameters, CancellationToken ct, byte[][]? sources = null)
+    {
+        var command = action switch
+        {
+            "query" => "document.query", "batch" => "document.batch",
+            "compare" => "review.compare", "assemble" => "document.assemble",
+            _ => throw new ConversionException("Unsupported automation action.", 400)
+        };
+        var map = JsonSerializer.Deserialize<Dictionary<string, object?>>(JsonSerializer.Serialize(parameters, new JsonSerializerOptions(JsonSerializerDefaults.Web)))!;
+        var result = await RunJobAsync(content.Length == 0 ? BlankModel : content, "json", action == "query" ? null : "json", null, ct, command, map, sources: sources);
+        if (action != "query") ValidateModel(result.Content);
+        return new AutomationResult(result.Content, result.Report);
+    }
+
+    public async Task<byte[]> RenderPageAsync(byte[] content, int page, float scale, CancellationToken ct)
+    {
+        if (page < 1 || !float.IsFinite(scale) || scale is < 0.25f or > 2f) throw new ConversionException("Choose a 1-based page and scale from 0.25 to 2.", 400);
+        var parameters = new Dictionary<string, object?> { ["page"] = page, ["scale"] = scale };
+        return (await RunJobAsync(content.Length == 0 ? BlankModel : content, "json", "png", null, ct, "file.exportPng", parameters)).Content;
+    }
+
+    public async Task<byte[]> ComposeAsync(byte[] content, Dictionary<string, string> values, Dictionary<string, TemplateImage> images, byte[]? body, string? bodyBookmark, CancellationToken ct)
+    {
+        var parameters = new Dictionary<string, object?> { ["values"] = values, ["images"] = images, ["bodyBookmark"] = bodyBookmark };
+        var result = await RunJobAsync(content, "json", "json", null, ct, "document.compose", parameters, body);
+        ValidateModel(result.Content);
+        return result.Content;
+    }
+
     public static void ValidateModel(byte[] bytes)
     {
         if (bytes.Length > MaxDocumentBytes) throw new ConversionException("The editable document exceeds the 256 MiB processing limit.", 413, "model_too_large", MaxDocumentBytes);
@@ -90,7 +133,7 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
 
     private sealed record JobResult(byte[] Content, JsonElement Report);
 
-    private async Task<JobResult> RunJobAsync(byte[]? input, string inputFormat, string? outputFormat, string? language, CancellationToken ct, string? command = null, object? parameters = null)
+    private async Task<JobResult> RunJobAsync(byte[]? input, string inputFormat, string? outputFormat, string? language, CancellationToken ct, string? command = null, object? parameters = null, byte[]? body = null, byte[][]? sources = null)
     {
         if (!await slots.WaitAsync(TimeSpan.FromSeconds(5), ct)) throw new ConversionException("The converter is busy. Try again shortly.", 429);
         string? directory = null;
@@ -111,11 +154,31 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
                 await File.WriteAllBytesAsync(source, input!, ct);
                 // Values stay in a temporary JSON script, never in shell syntax or process arguments.
                 var script = Path.Combine(directory, "job.json");
-                var bytes = JsonSerializer.SerializeToUtf8Bytes(new { commands = new[] { new { command, @params = parameters } } });
+                if (command == "file.exportPng" && parameters is Dictionary<string, object?> renderParameters) renderParameters["path"] = destination;
+                if (sources is not null && parameters is Dictionary<string, object?> sourceMap)
+                {
+                    var paths = new List<string>();
+                    foreach (var sourceBytes in sources)
+                    {
+                        ValidateModel(sourceBytes);
+                        var sourcePath = Path.Combine(directory, $"part-{paths.Count}.json");
+                        await File.WriteAllBytesAsync(sourcePath, sourceBytes, ct);
+                        paths.Add(sourcePath);
+                    }
+                    sourceMap["sourcePaths"] = paths;
+                    if (command == "review.compare") sourceMap["path"] = paths.Single();
+                }
+                if (body is not null && parameters is Dictionary<string, object?> map)
+                {
+                    var bodyFile = Path.Combine(directory, "body.json");
+                    await File.WriteAllBytesAsync(bodyFile, body, ct);
+                    map["sourcePath"] = bodyFile;
+                }
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(new { commands = new[] { new { command, @params = parameters } } }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
                 if (bytes.Length > 4 * FileLimits.MiB) throw new ConversionException("Bookmark values exceed the command size limit.", 413);
                 await File.WriteAllBytesAsync(script, bytes, ct);
                 foreach (var arg in new[] { "run", "--file", source, "--script", script, "--print" }) start.ArgumentList.Add(arg);
-                if (outputFormat is not null) { start.ArgumentList.Add("--save"); start.ArgumentList.Add(destination); }
+                if (outputFormat is not null && command != "file.exportPng") { start.ArgumentList.Add("--save"); start.ArgumentList.Add(destination); }
             }
             else if (input is not null)
             {
@@ -148,7 +211,7 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
                 throw new ConversionException("Document conversion timed out.");
             }
             if (process.ExitCode != 0 || (outputFormat is not null && !File.Exists(destination)))
-                throw new ConversionException(command is null ? "This file could not be converted. Check the format and try again." : "The bookmark operation failed. Check bookmark names and ranges; disable Track Changes and document protection before replacing values.");
+                throw new ConversionException(command is null ? "This file could not be converted. Check the format and try again." : "The document operation failed. Check targets, expected matches, value types and supported ranges; the document or selected controls may be protected. No changes were saved.");
             JsonElement report = default;
             if (command is not null)
             {
@@ -195,3 +258,4 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
 }
 
 public sealed record BookmarkInfo(string Name, bool Replaceable, string? Issue);
+public sealed record TemplateImage(string Data, float Width, string Alt = "");

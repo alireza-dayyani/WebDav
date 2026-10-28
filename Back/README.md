@@ -8,7 +8,13 @@ dotnet run --project Back/Inkstone.Api.csproj
 
 No Vue server is needed to use the API. Development Swagger UI is at http://localhost:5080/swagger; the OpenAPI document is at http://localhost:5080/openapi/v1.json. Neither route is enabled in Production. Swagger's request interceptor refreshes CSRF tokens before each mutation, including registration and login.
 
+Run `dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true` from the repository root for unit and endpoint contract tests. The [test guide](../Tests/Inkstone.Api.Tests/README.md) describes the isolated SQLite/TestServer setup and real-converter integration coverage.
+
 ## Endpoints
+
+The [Document automation API](AUTOMATION_API.md) adds structured inspection, search, atomic edits, PDF/PNG previews, tables, typed controls, styles, images, review, normalization, validation, revision history, comparison, assembly, bulk rendering, background jobs and scoped machine tokens.
+
+The separate [Templates and Letters API](STUDIO_API.md) documents template snapshots/rendering, registered recipient selection, sender profiles, signature/logo images, draft validation, preview and immutable generation/download.
 
 | Method | Route | Purpose |
 | --- | --- | --- |

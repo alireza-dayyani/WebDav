@@ -14,6 +14,7 @@ const MAX_TEXT_BYTES: usize = 512 * 1024;
 pub fn specs() -> Vec<CommandSpec> {
     vec![
         CommandSpec::new("document.bookmarks", "List Template Bookmarks", "Automation", list).pure(),
+        CommandSpec::new("document.bookmarkState", "Inspect Bookmark Content", "Automation", state).params(r#"{"name": string}"#).pure(),
         CommandSpec::new("document.fillBookmarks", "Fill Template Bookmarks", "Automation", fill)
             .params(r#"{"values": {"BookmarkName": "literal text", ...}}; exact names, all keys must match; preserves markers"#),
     ]
@@ -85,7 +86,35 @@ fn list(s: &mut Session, _: &Value) -> CmdResult {
     Ok(json!({"bookmarks": bookmarks}))
 }
 
-fn fill(s: &mut Session, v: &Value) -> CmdResult {
+// Inspection may span tables; replacement deliberately keeps its stricter structural limits.
+fn state(s: &mut Session, v: &Value) -> CmdResult {
+    let name = crate::p::req_str(v, "name")?;
+    let all = scan(&s.doc)?;
+    let Some(marks) = all.get(name) else { return Ok(json!({"valid":false,"hasContent":false})) };
+    let ([start], [end]) = (marks.starts.as_slice(), marks.ends.as_slice()) else { return Ok(json!({"valid":false,"hasContent":false})) };
+    if start.story != end.story
+        || start >= end
+        || all
+            .iter()
+            .filter(|(n, _)| n.as_str() != name)
+            .flat_map(|(_, m)| m.starts.iter().chain(&m.ends))
+            .any(|p| p.story == start.story && start < p && p < end)
+    {
+        return Ok(json!({"valid":false,"hasContent":false}));
+    }
+    let has_content = s.doc.para_paths_in(start, end).iter().any(|path| {
+        let Some(para) = s.doc.para(start.story, path) else { return false };
+        let a = if *path == start.path { start.off + inkstone_doc::para::OBJ.len_utf8() } else { 0 };
+        let b = if *path == end.path { end.off } else { para.len() };
+        para.text.get(a..b).is_some_and(|text| text.chars().any(|c| !c.is_whitespace() && c != inkstone_doc::para::OBJ))
+            || para.object_offsets().iter().any(|off| {
+                *off >= a && *off < b && !matches!(para.object_at(*off), Some(InlineObject::BookmarkStart { .. } | InlineObject::BookmarkEnd { .. }))
+            })
+    });
+    Ok(json!({"valid":true,"hasContent":has_content}))
+}
+
+pub(super) fn fill(s: &mut Session, v: &Value) -> CmdResult {
     let values = v
         .get("values")
         .and_then(Value::as_object)
@@ -120,9 +149,36 @@ fn fill(s: &mut Session, v: &Value) -> CmdResult {
     Ok(json!({"replaced": values.keys().collect::<Vec<_>>()}))
 }
 
+pub(super) fn select(s: &mut Session, name: &str) -> Result<(), CmdError> {
+    let all = scan(&s.doc)?;
+    let marks = all.get(name).ok_or_else(|| CmdError::Params(format!("no bookmark `{name}`")))?;
+    let (anchor, focus) = range(&s.doc, &all, marks).map_err(|why| CmdError::Params(why.into()))?;
+    s.sel = Selection { anchor, focus };
+    s.pending = None;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Document, InlineObject, Session, StoryRef, json};
+    #[test]
+    fn content_inspection_accepts_a_table_without_allowing_destructive_replacement() {
+        let doc: Document = serde_json::from_value(json!({"body":[
+            {"kind":"para","text":"\u{fffc}","runs":[{"len":3}],"objects":[{"type":"bookmarkStart","name":"Body"}]},
+            {"kind":"table","grid":[120],"rows":[{"cells":[{"blocks":[{"kind":"para","text":"Table body","runs":[{"len":10}]}]}]}]},
+            {"kind":"para","text":"\u{fffc}","runs":[{"len":3}],"objects":[{"type":"bookmarkEnd","name":"Body"}]}
+        ]}))
+        .unwrap();
+        let mut s = Session::new(doc);
+        let before = s.doc.clone();
+        assert_eq!(s.run("document.bookmarkState", &json!({"name":"Body"})).unwrap(), json!({"valid":true,"hasContent":true}));
+        assert_eq!(s.doc, before);
+        assert!(s.run("document.fillBookmarks", &json!({"values":{"Body":"would remove table"}})).is_err());
+        assert_eq!(s.run("document.bookmarkState", &json!({"name":"Missing"})).unwrap()["valid"], false);
+        let mut empty = Session::new(Document::new());
+        empty.run("document.letterTemplate", &json!({})).unwrap();
+        assert_eq!(empty.run("document.bookmarkState", &json!({"name":"Body"})).unwrap(), json!({"valid":true,"hasContent":false}));
+    }
     use inkstone_doc::{CharProps, Paragraph, Part, PartKind, para_block};
 
     fn field(name: &str, text: &str) -> Paragraph {
