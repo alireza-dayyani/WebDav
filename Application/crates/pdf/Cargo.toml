@@ -10,7 +10,7 @@ workspace = true
 
 [dependencies]
 inkstone-doc = { workspace = true }
-inkstone-geom = { workspace = true }
+inkstone-geom = { workspace = true, features = ["image"] }
 inkstone-fonts = { workspace = true }
 inkstone-layout = { workspace = true }
 inkstone-metafile = { workspace = true }

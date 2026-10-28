@@ -447,7 +447,70 @@ pub(crate) fn unlink_sections(blocks: &mut [Block]) {
 
 /// Turn an imported document into a fragment of the session's document: bring over the media,
 /// lists and styles it refers to (renumbered so they can't collide with ours).
-fn adopt(s: &mut Session, src: Document) -> Fragment {
+pub(crate) fn adopt(s: &mut Session, mut src: Document) -> Fragment {
+    // Imported style IDs are local to their source, even when both documents call one Normal.
+    let mut prefix = "Imported_".to_string();
+    while src
+        .styles
+        .styles
+        .iter()
+        .any(|st| s.doc.styles.get(&format!("{prefix}{}", st.id)).is_some() || src.styles.get(&format!("{prefix}{}", st.id)).is_some())
+    {
+        prefix.push('_');
+    }
+    let mut styles: BTreeMap<String, String> = src
+        .styles
+        .styles
+        .iter()
+        .filter(|st| s.doc.styles.get(&st.id).is_some_and(|existing| existing != *st))
+        .map(|st| (st.id.clone(), format!("{prefix}{}", st.id)))
+        .collect();
+    // An otherwise identical child also changes meaning when its imported parent is renamed.
+    loop {
+        let dependent: Vec<_> = src
+            .styles
+            .styles
+            .iter()
+            .filter(|st| {
+                !styles.contains_key(&st.id)
+                    && s.doc.styles.get(&st.id).is_some()
+                    && [&st.based_on, &st.next, &st.linked, &st.para.style, &st.chr.style]
+                        .iter()
+                        .any(|id| id.as_ref().is_some_and(|id| styles.contains_key(id)))
+            })
+            .map(|st| (st.id.clone(), format!("{prefix}{}", st.id)))
+            .collect();
+        if dependent.is_empty() {
+            break;
+        }
+        styles.extend(dependent);
+    }
+    let rename = |id: &mut Option<String>| {
+        if let Some(new) = id.as_ref().and_then(|id| styles.get(id)) {
+            *id = Some(new.clone());
+        }
+    };
+    for st in &mut src.styles.styles {
+        if let Some(id) = styles.get(&st.id) {
+            st.id = id.clone();
+        }
+        rename(&mut st.based_on);
+        rename(&mut st.next);
+        rename(&mut st.linked);
+        rename(&mut st.para.style);
+        rename(&mut st.chr.style);
+    }
+    let remap_block_styles = |blocks: &mut [Block]| {
+        for b in blocks {
+            each_para(b, 0, &mut |p| {
+                rename(&mut p.props.style);
+                rename(&mut p.mark.style);
+                for r in &mut p.runs {
+                    rename(&mut r.props.style);
+                }
+            });
+        }
+    };
     let mut media = BTreeMap::new();
     for (key, data) in &src.media {
         let ext = key.rsplit_once('.').map(|(_, e)| e).unwrap_or("png");
@@ -482,6 +545,7 @@ fn adopt(s: &mut Session, src: Document) -> Fragment {
         *i = i.filter(|v| (*v as usize) < src_revs).and_then(|v| rev_base.checked_add(v));
     };
     let mut blocks: Vec<Block> = src.body.iter().map(|b| (**b).clone()).collect();
+    remap_block_styles(&mut blocks);
     // Pasted pictures fit our text width, like Insert › Pictures (layout keeps their size).
     let max_w = crate::io::text_width(&s.doc);
     for b in &mut blocks {
@@ -523,6 +587,27 @@ fn adopt(s: &mut Session, src: Document) -> Fragment {
     }
     unlink_sections(&mut blocks);
     // Text box stories the imported shapes show; pasting gives each a new story of its own.
-    let parts = src.parts.into_iter().filter(|(_, p)| p.kind == inkstone_doc::PartKind::TextBox).collect();
+    let parts = src
+        .parts
+        .into_iter()
+        .filter(|(_, p)| p.kind == inkstone_doc::PartKind::TextBox)
+        .map(|(id, mut part)| {
+            let mut children: Vec<Block> = part.blocks.iter().map(|b| (**b).clone()).collect();
+            remap_block_styles(&mut children);
+            for b in &mut children {
+                each_para(b, 0, &mut |p| {
+                    for obj in &mut p.objects {
+                        if let inkstone_doc::InlineObject::Image { media: key, .. } = obj
+                            && let Some(k) = media.get(key.as_str())
+                        {
+                            *key = k.clone();
+                        }
+                    }
+                });
+            }
+            part.blocks = children.into_iter().map(Arc::new).collect();
+            (id, part)
+        })
+        .collect();
     Fragment { blocks, parts }
 }

@@ -5,8 +5,42 @@ import { locale, language, t, errorMessage } from "./i18n";
 import { normalizeSearch } from "./locales";
 import LanguagePicker from "./LanguagePicker.vue";
 import AdminPanel from "./AdminPanel.vue";
+import StudioPanel from "./StudioPanel.vue";
+import LetterEditor from "./LetterEditor.vue";
+const activeLetter = ref(null),
+  selectedLetterId = ref("");
+function openLetterEditor(letter) {
+  activeLetter.value = letter;
+  history.replaceState(
+    null,
+    "",
+    `/#/letters/${letter.id}/edit?version=${letter.version}`,
+  );
+}
+function closeLetterEditor(letter) {
+  activeLetter.value = null;
+  selectedLetterId.value = letter.id;
+  showStudio("letters");
+}
 import { maxUploadBytes, updateFileLimits } from "./fileLimits";
 const adminView = ref(false);
+const studioView = ref("");
+const documentTemplates = ref([]),
+  chosenTemplate = ref("");
+function showStudio(tab) {
+  studioView.value = tab;
+  history.replaceState(null, "", `/#/${tab}`);
+}
+function closeStudio() {
+  studioView.value = "";
+  history.replaceState(null, "", "/");
+  refresh();
+}
+async function openStudioDocument(document) {
+  studioView.value = "";
+  await refresh();
+  open(document);
+}
 const uploadLimit = computed(() =>
   new Intl.NumberFormat(language.value.tag).format(
     maxUploadBytes.value / 1024 / 1024,
@@ -131,11 +165,15 @@ async function download(document, format = downloadFormat.value) {
   }
 }
 async function refresh() {
-  const [items, formats] = await Promise.all([
+  const [items, formats, templates] = await Promise.all([
     api("/documents/"),
     api("/documents/formats"),
+    api("/templates/"),
   ]);
   documents.value = items;
+  documentTemplates.value = templates.items.filter(
+    (x) => x.data.kind === "document",
+  );
   updateFileLimits(formats);
 }
 async function initialize() {
@@ -176,6 +214,7 @@ async function logout() {
     documents.value = [];
     active.value = null;
     adminView.value = false;
+    studioView.value = "";
     resetCsrf();
     history.replaceState(null, "", "/");
   } catch (e) {
@@ -197,6 +236,21 @@ function open(document) {
   history.replaceState(null, "", `/#/documents/${document.id}`);
 }
 async function openFromHash() {
+  const letterMatch = location.hash.match(
+    /^#\/letters\/([a-f\d-]+)\/edit\?version=(\d+)$/i,
+  );
+  if (letterMatch) {
+    studioView.value = "letters";
+    const result = await api(
+      `/letters/${letterMatch[1]}?version=${letterMatch[2]}`,
+    );
+    openLetterEditor(result.metadata);
+    return;
+  }
+  if (location.hash === "#/letters" || location.hash === "#/templates") {
+    studioView.value = location.hash.slice(2);
+    return;
+  }
   if (location.hash === "#/admin" && user.value.isAdmin) {
     adminView.value = true;
     return;
@@ -224,6 +278,7 @@ function showDialog(kind, document = null) {
   dialog.value = { kind, document };
   title.value = document?.title || "";
   if (kind === "create") documentLanguage.value = language.value.tag;
+  chosenTemplate.value = "";
   dialogError.value = "";
 }
 async function submitDialog() {
@@ -232,10 +287,22 @@ async function submitDialog() {
   try {
     const current = dialog.value;
     if (current.kind === "create") {
-      const document = await api("/documents/", {
-        method: "POST",
-        body: { title: title.value, language: documentLanguage.value },
-      });
+      const template = documentTemplates.value.find(
+        (x) => x.metadata.id === chosenTemplate.value,
+      );
+      const document = await api(
+        template ? `/templates/${template.metadata.id}/render` : "/documents/",
+        {
+          method: "POST",
+          body: template
+            ? {
+                title: title.value,
+                version: template.metadata.version,
+                values: {},
+              }
+            : { title: title.value, language: documentLanguage.value },
+        },
+      );
       dialog.value = null;
       open(document);
     } else if (current.kind === "rename") {
@@ -419,6 +486,11 @@ onBeforeUnmount(() => {
       </footer>
     </main>
   </div>
+  <LetterEditor
+    v-else-if="activeLetter"
+    :letter="activeLetter"
+    @close="closeLetterEditor"
+  />
   <div v-else-if="active" class="editor-layout">
     <header class="editor-header">
       <button class="back-button" @click="closeEditor">
@@ -476,6 +548,14 @@ onBeforeUnmount(() => {
     @close="closeAdministration"
     @session-changed="syncSession"
   />
+  <StudioPanel
+    v-else-if="studioView"
+    :initial-tab="studioView"
+    :initial-letter-id="selectedLetterId"
+    @close="closeStudio"
+    @open-document="openStudioDocument"
+    @open-letter-editor="openLetterEditor"
+  />
   <div v-else class="workspace">
     <aside class="sidebar">
       <a class="brand" href="/" dir="ltr"
@@ -520,6 +600,12 @@ onBeforeUnmount(() => {
           <strong>{{ t("myDocuments") }}</strong></span
         >
         <div class="header-tools">
+          <button class="secondary" @click="showStudio('letters')">
+            {{ t("studio.letters") }}
+          </button>
+          <button class="secondary" @click="showStudio('templates')">
+            {{ t("studio.templates") }}
+          </button>
           <button
             v-if="user.isAdmin"
             class="secondary admin-entry"
@@ -698,8 +784,27 @@ onBeforeUnmount(() => {
             autofocus
         /></template>
         <template v-if="dialog.kind === 'create'"
-          ><label for="document-language">{{ t("documentLanguage") }}</label
-          ><select id="document-language" v-model="documentLanguage">
+          ><label for="document-template">{{
+            t("studio.templateSelect")
+          }}</label>
+          <select id="document-template" v-model="chosenTemplate">
+            <option value="">{{ t("createBlank") }}</option>
+            <option
+              v-for="item in documentTemplates"
+              :key="item.metadata.id"
+              :value="item.metadata.id"
+            >
+              {{ item.metadata.title }} · v{{ item.metadata.version }}
+            </option>
+          </select>
+          <label v-if="!chosenTemplate" for="document-language">{{
+            t("documentLanguage")
+          }}</label
+          ><select
+            v-if="!chosenTemplate"
+            id="document-language"
+            v-model="documentLanguage"
+          >
             <option value="en-US">{{ t("english") }}</option>
             <option value="fa-IR">{{ t("persian") }}</option>
             <option value="ar-SA">{{ t("arabic") }}</option>

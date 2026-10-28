@@ -1304,6 +1304,249 @@ select:focus-visible {
     width: 100%;
   }
 }
+
+.studio-page {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 30px;
+}
+.studio-editor-note {
+  margin: 0;
+  padding: 8px 20px;
+  background: #edf2ea;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.studio-header,
+.studio-actions,
+.studio-search {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.studio-header {
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+.studio-header h1 {
+  font-size: 32px;
+  margin: 12px 0 0;
+}
+.studio-tabs {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  border-bottom: 1px solid #dcded6;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+}
+.studio-tabs button {
+  white-space: nowrap;
+  padding: 11px 18px;
+  border-radius: 7px;
+  color: #5c6d64;
+}
+.studio-tabs .selected {
+  color: #155e50;
+  background: #e5eee7;
+  font-weight: 700;
+}
+.studio-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.studio-card {
+  background: #fffefa;
+  border: 1px solid #dedfd6;
+  border-radius: 12px;
+  padding: 26px;
+  min-width: 0;
+}
+.studio-card h2 {
+  margin: 0 0 12px;
+  font-size: 23px;
+}
+.studio-card h3 {
+  font-size: 16px;
+  margin: 14px 0;
+}
+.studio-card .muted {
+  line-height: 1.7;
+  font-size: 13px;
+}
+.studio-library .section-heading {
+  display: block;
+}
+.studio-library .section-heading button {
+  margin-block: 12px;
+}
+.studio-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding: 0;
+  margin: 22px 0;
+  border: 0;
+  min-width: 0;
+}
+.studio-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  line-height: 1.6;
+}
+.studio-fields input,
+.studio-fields select,
+.studio-fields textarea,
+.studio-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #cdd2c9;
+  border-radius: 6px;
+  background: #fff;
+  color: #243d31;
+  font: inherit;
+  font-size: 14px;
+}
+.studio-fields textarea {
+  resize: vertical;
+}
+.studio-fields:disabled {
+  opacity: 0.72;
+}
+.studio-wide {
+  grid-column: 1 / -1;
+}
+.studio-actions {
+  margin-top: 16px;
+}
+.studio-actions button:not(.primary):not(.secondary),
+.studio-list-item > button {
+  color: #276654;
+  border-bottom: 1px solid #c4d1c5;
+  padding: 6px 0;
+  font-size: 12px;
+}
+.studio-list-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #e2e4db;
+  overflow-wrap: anywhere;
+}
+.studio-list-item small {
+  display: block;
+  color: #6c786d;
+  margin-top: 8px;
+}
+.studio-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-top: 26px;
+}
+.studio-note {
+  background: #edf2ea;
+  border-inline-start: 3px solid #94ad8e;
+  padding: 13px 16px;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.studio-directory {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-height: 180px;
+  overflow: auto;
+  margin-block: 14px;
+  padding: 4px;
+}
+.studio-directory > button {
+  border: 1px solid #d4ddce;
+  background: #f2f5ee;
+  padding: 8px 12px;
+  border-radius: 5px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.studio-recipient {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  border-top: 1px solid #e6e9df;
+  padding: 14px 0;
+}
+.studio-recipient select {
+  width: auto;
+  max-width: 100%;
+}
+.studio-recipient > span {
+  overflow-wrap: anywhere;
+}
+.studio-fields .studio-check,
+.studio-check {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  font-weight: 400;
+}
+.studio-check input {
+  width: auto;
+  flex: 0 0 auto;
+  accent-color: #155e50;
+}
+.studio-upload {
+  padding-block: 15px;
+}
+.studio-search input {
+  flex: 1;
+}
+.studio-image {
+  width: 180px;
+  height: 110px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #eceee5;
+}
+.studio-issues {
+  background: #fff1e5;
+  border: 1px solid #e1b992;
+  border-radius: 6px;
+  color: #794b2e;
+  line-height: 1.8;
+  padding: 16px 34px;
+}
+@media (max-width: 950px) {
+  .studio-layout {
+    grid-template-columns: 1fr;
+  }
+  .studio-library {
+    max-height: 320px;
+    overflow: auto;
+  }
+}
+@media (max-width: 600px) {
+  .studio-page {
+    padding: 16px;
+  }
+  .studio-card {
+    padding: 18px;
+  }
+  .studio-fields {
+    grid-template-columns: 1fr;
+  }
+  .header-tools {
+    flex-wrap: wrap;
+  }
+  .studio-header h1 {
+    font-size: 27px;
+  }
+}
 @media (max-width: 700px) {
   .workspace-top {
     height: auto;

@@ -31,6 +31,7 @@ watch(
   { immediate: true },
 );
 export function errorMessage(error, context) {
+  if (error.code === "image_too_large") return t("studio.imageHelp");
   if (error.status === 400 && context === "register")
     return t("registrationError");
   const limit = new Intl.NumberFormat(language.value.tag).format(
@@ -43,6 +44,7 @@ export function errorMessage(error, context) {
       ),
     });
   if (error.code === "archive_too_large") return t("archiveTooLarge");
+  if (error.code === "preview_blocked") return t("previewBlocked");
   if (error.status === 413) return t("tooLarge", { limit });
   if (context === "admin" && error.status === 409) return t("recordChanged");
   const key = {

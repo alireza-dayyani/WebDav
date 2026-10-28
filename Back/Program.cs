@@ -61,6 +61,10 @@ builder.Services.AddRateLimiter(o =>
 });
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton<DocumentConverter>();
+builder.Services.AddSingleton<IDocumentProcessor>(sp => sp.GetRequiredService<DocumentConverter>());
+builder.Services.AddScoped<LetterComposer>();
+builder.Services.AddSingleton<DocumentJobRunner>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<DocumentJobRunner>());
 builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
 {
     document.Info.Title = "Inkstone API";
@@ -91,7 +95,11 @@ app.UseExceptionHandler();
 app.Use(async (context, next) =>
 {
     try { await next(context); }
+    catch (RequestValidationException error) { await error.ToResult().ExecuteAsync(context); }
     catch (ConversionException error) { await Results.Problem(error.Message, statusCode: error.Status, extensions: new Dictionary<string, object?> { ["code"] = error.Code, ["maxBytes"] = error.MaxBytes }).ExecuteAsync(context); }
+    catch (DbUpdateConcurrencyException) { await Results.Problem("The document changed. Refresh and retry with its current version.", statusCode: 409).ExecuteAsync(context); }
+    catch (DbUpdateException error) when (error.InnerException is Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 19 } && error.Entries.Any(entry => entry.Entity is DocumentRevision or OperationReceipt))
+    { await Results.Problem("A concurrent operation completed first. Retry with the same idempotency key or refresh the document version.", statusCode: 409).ExecuteAsync(context); }
     catch (BadHttpRequestException error) when (error.StatusCode is >= 400 and < 500 && !context.Response.HasStarted)
     {
         await Results.Problem(error.StatusCode == 413 ? "The request exceeds the current size limit." : "The request is invalid. Check its content type, JSON and required parameters.", statusCode: error.StatusCode,
@@ -111,17 +119,18 @@ app.Use(async (context, next) =>
     await next(context);
 });
 app.UseAuthentication();
+app.Use(AutomationTokens.Authenticate);
 app.UseAuthorization();
 app.UseRateLimiter();
 // Set the transport allowance before form/CSRF binding; file bytes are checked separately in the handler.
 app.Use(async (context, next) =>
 {
-    if (context.GetEndpoint()?.Metadata.GetMetadata<BookmarkValuesRequest>() is not null)
+    if (context.GetEndpoint()?.Metadata.GetMetadata<BookmarkValuesRequest>() is not null || context.GetEndpoint()?.Metadata.GetMetadata<LetterEditorRequest>() is not null)
     {
-        const long maxBookmarkRequestBytes = 4 * FileLimits.MiB;
+        var maxBookmarkRequestBytes = context.GetEndpoint()?.Metadata.GetMetadata<LetterEditorRequest>() is not null ? LetterEditorEndpoints.MaxEditorBytes + FileLimits.MiB : 4L * FileLimits.MiB;
         if (context.Request.ContentLength > maxBookmarkRequestBytes)
         {
-            await Results.Problem("The bookmark request exceeds the 4 MiB body limit.", statusCode: 413).ExecuteAsync(context);
+            await Results.Problem("The request exceeds this endpoint's body limit.", statusCode: 413).ExecuteAsync(context);
             return;
         }
         var bodyLimit = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
@@ -147,7 +156,7 @@ app.Use(async (context, next) =>
 // Validate every API mutation, including login/logout; raw JSON endpoints do not get automatic validation.
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path.StartsWithSegments("/api") && !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method))
+    if (context.Request.Path.StartsWithSegments("/api") && !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method) && !context.User.HasClaim(c => c.Type == AutomationTokens.Claim))
     {
         try { await context.RequestServices.GetRequiredService<IAntiforgery>().ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { await Results.Problem("Refresh the page and try again.", statusCode: 400).ExecuteAsync(context); return; }
@@ -155,6 +164,14 @@ app.Use(async (context, next) =>
     await next(context);
 });
 app.UseAntiforgery();
+app.Use(async (context, next) =>
+{
+    // Header-authenticated machine requests do not rely on ambient browser cookies.
+    // Cookie requests still pass both explicit CSRF validation and form endpoint checks.
+    if (context.User.HasClaim(c => c.Type == AutomationTokens.Claim))
+        context.Features.Set<Microsoft.AspNetCore.Antiforgery.IAntiforgeryValidationFeature>(new TokenAntiforgeryFeature());
+    await next(context);
+});
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -295,6 +312,13 @@ documents.MapDelete("/{id:guid}", async (Guid id, long version, ClaimsPrincipal 
     return await db.Documents.AnyAsync(d => d.Id == id && d.OwnerId == Owner(user)) ? Conflict() : Results.NotFound();
 }).Produces(204).ProducesProblem(409).Produces(404);
 app.MapAdministration();
+app.MapTemplates();
+app.MapLetterResources();
+app.MapLetters();
+app.MapLetterEditor();
+app.MapDocumentAutomation();
+app.MapAutomationTokens();
+app.MapDocumentJobs();
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.Run();
 
@@ -312,6 +336,11 @@ public sealed record DocumentMetadata(Guid Id, string Title, long Version, long 
 public sealed record RenameDocument(string? Title, long Version);
 public sealed record SaveDocument(long Version, JsonElement Document);
 public partial class Program;
+public sealed class TokenAntiforgeryFeature : Microsoft.AspNetCore.Antiforgery.IAntiforgeryValidationFeature
+{
+    public bool IsValid => true;
+    public Exception? Error => null;
+}
 
 static class Ownership
 {

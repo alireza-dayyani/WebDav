@@ -9,7 +9,7 @@ description = "Inkstone rasteriser: pages and thumbnails from the layout display
 workspace = true
 
 [dependencies]
-inkstone-geom = { workspace = true }
+inkstone-geom = { workspace = true, features = ["image"] }
 inkstone-doc = { workspace = true }
 inkstone-fonts = { workspace = true }
 inkstone-layout = { workspace = true }

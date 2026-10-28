@@ -11,7 +11,7 @@
 //!
 //! - `CRAFT_I18N_DIR`, a craft-i18n checkout (storytold/craft-i18n, at the SHA in
 //!   `craft-i18n.rev`): `craft_i18n.rs` holds `CRAFT_I18N`, one (locale, shared catalog, Inkstone
-//!   catalog) entry per locale that has a `inkstone.tsv`. Unset, or not a checkout (a warning),
+//!   catalog) entry per locale that has a `wordcraft.tsv`. Unset, or not a checkout (a warning),
 //!   it is empty and the interface is English only; with `CRAFT_I18N_REQUIRED=1` (releases) that
 //!   is an error instead. Recipe: craft-i18n's `docs/integration.md`.
 
@@ -37,8 +37,8 @@ fn main() {
     }
 }
 
-/// The catalog this app reads in each locale: `locales/<locale>/inkstone.tsv`.
-const APP_CATALOG: &str = "inkstone.tsv";
+/// The catalog this app reads in each locale: `locales/<locale>/wordcraft.tsv`.
+const APP_CATALOG: &str = "wordcraft.tsv";
 
 /// `CRAFT_I18N` from `CRAFT_I18N_DIR`: the `Embedded` list the craft-i18n crate reads.
 fn craft_i18n() -> String {
@@ -73,10 +73,12 @@ fn craft_i18n() -> String {
     o
 }
 
+/// A locale's code, its `common.tsv` if any, and its app catalog.
+type Locale = (String, Option<std::path::PathBuf>, std::path::PathBuf);
+
 /// Every locale under `dir` with this app's catalog, by code: (code, its `common.tsv` if any, its
 /// app catalog). An error when `dir` isn't a craft-i18n `locales/` directory.
-#[allow(clippy::type_complexity)]
-fn locales(dir: &std::path::Path) -> Result<Vec<(String, Option<std::path::PathBuf>, std::path::PathBuf)>, String> {
+fn locales(dir: &std::path::Path) -> Result<Vec<Locale>, String> {
     // Build scripts run in the crate's directory and `include_str!` resolves against `OUT_DIR`, so
     // a relative path would mean two different places.
     if !dir.is_absolute() {
@@ -87,7 +89,7 @@ fn locales(dir: &std::path::Path) -> Result<Vec<(String, Option<std::path::PathB
     let mut out = Vec::new();
     for entry in list.flatten() {
         let path = entry.path();
-        let Some(code) = path.file_name().and_then(|n| n.to_str()).map(str::to_string) else { continue };
+        let Some(code) = path.file_name().and_then(std::ffi::OsStr::to_str).map(str::to_string) else { continue };
         let app = path.join(APP_CATALOG);
         if !app.is_file() {
             continue;
