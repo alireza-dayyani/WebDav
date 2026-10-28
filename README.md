@@ -6,8 +6,8 @@ A private document workspace with a separate Vue frontend, .NET 10 API, and Rust
 
 | Directory | Purpose |
 | --- | --- |
-| Front | Vue account screens, document library, language selection and editor host |
-| Back | Authentication, private document storage, file conversion and OpenAPI |
+| Front | Vue accounts, document/template libraries, letter workflow, languages and editor host |
+| Back | Authentication, private storage, templates, letters, file conversion and OpenAPI |
 | Application | Rust document engine, WebAssembly editor and native converter |
 | Tests | API, file-conversion, localization and editor-bridge integration checks |
 
@@ -52,6 +52,8 @@ Save and Ctrl+S persist the complete native model. Automatic saves run every ten
 
 ## Backend API
 
+For programmatic DOCX editing without opening the editor, see the [Document automation API](Back/AUTOMATION_API.md): inspect/search, apply atomic batches, preview PDF/PNG, edit tables/controls/images, review changes, restore revisions, compare/assemble documents and generate in bulk. Private background jobs and revocable scoped tokens support standalone automation clients.
+
 Development documentation is available at http://localhost:5080/swagger and http://localhost:5080/openapi/v1.json. Swagger obtains CSRF tokens automatically for interactive requests. These documentation routes are disabled outside Development.
 
 Account, document CRUD, supported formats, upload and download are all backend endpoints. See Back/README.md for the route list and a standalone client example. API clients use a session cookie and an X-CSRF-TOKEN header on mutations; no frontend is required.
@@ -59,6 +61,22 @@ Account, document CRUD, supported formats, upload and download are all backend e
 DOCX templates can also be filled through the API. Upload the template, use its returned ID and version to list bookmarks, then send a flat map of bookmark names to text values to `POST /api/documents/{id}/bookmarks/replace`. The Rust engine replaces the contents and saves the next revision, which can be reopened in the editor or downloaded as DOCX/PDF. Bookmark names match exactly, markers remain reusable, and the entire batch succeeds or fails together. This edits the saved document; keep a separate template document if it needs to remain unchanged. See the bookmark example and supported range limits in Back/README.md.
 
 SQLite data, signing keys and the private bootstrap configuration live in Back/App_Data. Keep that directory private, exclude it from Git and back it up consistently. Set Storage__DataDirectory to change the location. Uploads default to 10 MiB; administrators can change the global limit from 1 to 128 MiB. Converted native models and exports have a separate 256 MiB processing ceiling so a file under the upload limit can expand during import. Compressed uploads also have entry-count and expanded-size limits. Conversion jobs have a concurrency limit and a timeout.
+
+## Templates and letters
+
+Templates are private snapshots of existing documents, with an option to create a new ordinary file without changing the template. Use Templates to upload/select a source document, or choose a starter. New document also offers saved ordinary templates.
+
+Persian letter starters use the referenced administrative typography, with A5 for short letters and an A4 option. English starters use a 12 pt Times New Roman block layout on US Letter paper. Choose the paper size when creating a letter starter. See [letter layouts and font requirements](Application/docs/LETTER_TEMPLATES.md) for sources, exact styles and fallback behavior. Existing drafts keep their original layout.
+
+Letters are a separate workflow and library. Save sender identities/titles and private signature/logo images, choose registered users as main/copy recipients, prepare the body as text or an uploaded/saved rich document, and select attachments. Validate the draft, preview its PDF, then generate frozen DOCX/PDF files. Optional copy variants preserve recipient display choices. Generated letters retain their template, sender and recipient snapshot and can be duplicated into another draft. Recipient selection does not send letters or share files.
+
+**Preview PDF** displays the PDF in a new browser tab. Explicit download buttons still save files. Allow pop-ups for this site if the browser blocks the preview tab.
+
+Every step is available through standalone APIs. See [Templates and Letters API](Back/STUDIO_API.md) for routes, payloads, validation, limits and retry behavior. Original test examples are generated in ignored `Tests/generated/`.
+
+Choose a letter template and select **Open template and write letter** to open a private editable copy in the Rust editor. You can complete recipient and signing details before or after writing. Save and return to the letter details; **Fill selected fields** refreshes the selected identity fields without replacing the body, and final generation applies them again. The original template stays unchanged. Edited letters remain separate from ordinary documents.
+
+To populate the local database with eight demo accounts and sample letter resources, run `python Scripts/seed_letter_demo.py` after building. It stops its temporary API when finished. Private credentials are stored in ignored `Back/App_Data/demo/accounts.json`. See [demo setup](Scripts/README.md).
 
 ## Administration
 
@@ -70,11 +88,18 @@ Administrators use the Administration screen to search users, grant/revoke admin
 
 ```powershell
 dotnet build Back/Inkstone.Api.csproj
+dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true
 python Tests/api_smoke.py
 python Tests/file_api_smoke.py
 python Tests/admin_api_smoke.py
 python Tests/bookmark_api_smoke.py
-node --test Tests/editor-host.test.mjs Tests/locales.test.mjs
+python Tests/document_automation_smoke.py
+python Tests/template_api_smoke.py
+python Tests/letter_api_smoke.py
+python Tests/letter_editor_api_smoke.py
+python Tests/letter_template_layout_smoke.py
+python Tests/demo_seed_smoke.py
+node --test Tests/editor-host.test.mjs Tests/locales.test.mjs Tests/pdf-preview.test.mjs
 cd Front
 npm run build:all
 ```
@@ -85,6 +110,6 @@ The Rust workspace provides formatting, lint, asset attribution, layering, tests
 
 ## Licensing
 
-Required copyright, license, font and third-party attribution records are retained with the Rust source. Frontend builds copy applicable notices into licenses.txt. Historical notices are kept separately from current product branding.
+Required copyright, license, font and third-party attribution records are retained with the Rust source and in Back/legal. Frontend builds copy applicable notices into licenses.txt; backend builds include the QRCoder license. Historical notices are kept separately from current product branding.
 
-IIS and Docker deployment, sharing, revision history and account recovery remain later work.
+IIS and Docker deployment, sharing and account recovery remain later work.

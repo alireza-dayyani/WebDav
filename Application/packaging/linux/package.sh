@@ -75,7 +75,7 @@ if command -v appstreamcli >/dev/null; then
   appstreamcli validate --no-net --explain "$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
 fi
 
-has() { case " $FORMATS " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+has() { local item="$1"; case " $FORMATS " in *" $item "*) return 0 ;; *) return 1 ;; esac; }
 
 # ---- .tar.gz ------------------------------------------------------------------------------------
 if has tar; then
@@ -119,17 +119,18 @@ if has appimage; then
   fi
   # Downloads $1 to $3 once and checks it against SHA-256 $2, the cached copy again on every run.
   fetch_pinned() {
-    if [[ ! -x "$3" ]]; then
-      curl --proto '=https' -fsSL -o "$3.download" "$1"
-      printf '%s  %s\n' "$2" "$3.download" | sha256sum -c -
-      chmod 755 "$3.download"
-      mv "$3.download" "$3"
+    local url="$1" expected_sha="$2" target="$3"
+    if [[ ! -x "$target" ]]; then
+      curl --proto '=https' -fsSL -o "$target.download" "$url"
+      printf '%s  %s\n' "$expected_sha" "$target.download" | sha256sum -c -
+      chmod 755 "$target.download"
+      mv "$target.download" "$target"
     fi
-    printf '%s  %s\n' "$2" "$3" | sha256sum -c -
+    printf '%s  %s\n' "$expected_sha" "$target" | sha256sum -c -
+    return 0
   }
   APPDIR="$WORK/Inkstone.AppDir"
   cp -R "$STAGE" "$APPDIR"
-  mv "$APPDIR/usr/share/doc" "$WORK/doc-unused"
   ln -s usr/bin/inkstone "$APPDIR/AppRun"
   cp "$HERE/$APP_ID.desktop" "$APPDIR/$APP_ID.desktop"
   cp "$ROOT/assets/app-icon/hicolor/256x256/apps/$APP_ID.png" "$APPDIR/$APP_ID.png"
@@ -160,7 +161,7 @@ if has appimage; then
   # fetch only the blocks that changed in a newer release, through the .zsync published next to
   # each AppImage on GitHub Releases. `latest` is the newest published release that is not a
   # pre-release. A fork's builds point at its own releases through GITHUB_REPOSITORY.
-  REPO="${GITHUB_REPOSITORY:-storytold/inkstone}"
+  REPO="${GITHUB_REPOSITORY:-alireza-dayyani/WebDav}"
   UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|inkstone-*-linux-$ARCH.AppImage.zsync"
   # Extract-and-run: works without FUSE (containers, CI). The output embeds the pinned static
   # runtime, so users don't need libfuse2 either. With zsyncmake on the host (CI installs the zsync

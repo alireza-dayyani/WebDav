@@ -40,9 +40,11 @@ export async function api(path, options = {}) {
     error.status = response.status;
     error.code = problem.code;
     error.maxBytes = problem.maxBytes;
+    error.issues = problem.issues;
     if (response.status === 400) resetCsrf();
     throw error;
   }
+  if (options.blob) return response.blob();
   if (options.download) {
     const blob = await response.blob();
     const disposition = response.headers.get("Content-Disposition") || "";
@@ -67,4 +69,38 @@ export async function api(path, options = {}) {
     return;
   }
   return response.status === 204 ? null : response.json();
+}
+
+export async function previewPdf(path, options = {}) {
+  // Reserve the tab during the click, before CSRF or PDF rendering awaits.
+  const preview = window.open("about:blank", "_blank");
+  if (!preview) {
+    const error = new Error("Allow pop-ups for this site to preview PDFs.");
+    error.code = "preview_blocked";
+    throw error;
+  }
+  preview.opener = null;
+  let url;
+  try {
+    const blob = await api(path, { ...options, download: false, blob: true });
+    if (blob.type !== "application/pdf") {
+      const error = new Error("The PDF preview could not be loaded.");
+      error.status = 422;
+      throw error;
+    }
+    if (preview.closed) return;
+    url = URL.createObjectURL(blob);
+    preview.location.replace(url);
+    // Keep the PDF available for the viewer's print/save controls until closed.
+    const timer = setInterval(() => {
+      if (preview.closed) {
+        clearInterval(timer);
+        URL.revokeObjectURL(url);
+      }
+    }, 1000);
+  } catch (error) {
+    if (url) URL.revokeObjectURL(url);
+    preview.close();
+    throw error;
+  }
 }

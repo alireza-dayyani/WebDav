@@ -9,7 +9,7 @@ description = "Inkstone layout: shaping, line breaking, tabs, lists, tables, pag
 workspace = true
 
 [dependencies]
-inkstone-geom = { workspace = true }
+inkstone-geom = { workspace = true, features = ["image"] }
 inkstone-doc = { workspace = true }
 inkstone-fonts = { workspace = true }
 inkstone-proof = { workspace = true }

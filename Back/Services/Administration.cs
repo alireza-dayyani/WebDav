@@ -40,6 +40,8 @@ public static class BootstrapAdministration
     {
         var db = services.GetRequiredService<AppDbContext>();
         await db.Database.EnsureCreatedAsync();
+        await WorkspaceSchema.InitializeAsync(db);
+        await AutomationSchema.InitializeAsync(db);
         // Add the policy table to existing installations without replacing their Identity/document database.
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS UploadPolicies (Id INTEGER NOT NULL PRIMARY KEY, MaxUploadMiB INTEGER NOT NULL, Version INTEGER NOT NULL)");
         await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO UploadPolicies (Id, MaxUploadMiB, Version) VALUES (1, 10, 1)");

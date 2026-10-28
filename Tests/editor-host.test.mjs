@@ -4,7 +4,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 const source = readFileSync(new URL('../Front/public/editor-host.js', import.meta.url), 'utf8')
-function bridge() {
+function bridge(letterMode = false) {
   const messages = [], calls = [], handlers = {}, store = new Map()
   const id = '11111111-1111-1111-1111-111111111111'
   store.set(id, { id, title: 'First document', version: 1, document: null })
@@ -22,9 +22,9 @@ function bridge() {
       result = { id: `new-${next++}`, title: body.title, version: 1 }
       store.set(result.id, { ...result })
     } else {
-      const [, docId, route] = url.match(/\/api\/documents\/([^/]+)\/(snapshot|content)/) || []
+      const [, docId, route] = url.match(/\/api\/(?:documents|letters)\/([^/]+)\/(snapshot|content|editor)/) || []
       const document = store.get(docId)
-      if (route === 'snapshot') result = { metadata: { id: document.id, title: document.title, version: document.version }, document: document.document }
+      if (route === 'snapshot' || (route === 'editor' && !options.method)) result = { metadata: { id: document.id, title: document.title, version: document.version }, document: document.document, bodyBookmark: letterMode ? 'Body' : undefined }
       else {
         const body = JSON.parse(options.body)
         assert.equal(body.version, document.version, 'uses acknowledged version')
@@ -34,7 +34,7 @@ function bridge() {
     }
     return { ok: true, status: 200, json: async () => result }
   }
-  vm.runInNewContext(source, { window, fetch, URLSearchParams, location: { origin: 'http://localhost', search: `?id=${id}` } })
+  vm.runInNewContext(source, { window, fetch, URLSearchParams, location: { origin: 'http://localhost', search: letterMode ? `?letter=${id}&version=1` : `?id=${id}` } })
   return { host: window.inkstoneHost, calls, messages, store, id, parent, handlers, fail: code => fail = code }
 }
 
@@ -51,6 +51,18 @@ test('loads a consistent snapshot; saves the complete model and advances acknowl
   assert.equal(b.store.get(b.id).version, 3)
   assert.equal(b.calls.filter(c => c.options.method === 'POST').length, 0)
   assert.equal(b.calls.find(c => c.options.method === 'PUT').options.headers['X-CSRF-TOKEN'], 'csrf-token')
+})
+
+test('letter editor loads its own versioned model and never saves New/Open over the letter', async () => {
+  const b = bridge(true)
+  assert.equal(JSON.parse(await b.host.load()).bookmark, 'Body')
+  b.host.bind('letter-generation')
+  await b.host.save('{"body":[]}', 'letter-generation', 'Letter')
+  assert.equal(b.store.get(b.id).version, 2)
+  assert.equal(b.calls.find(c => c.options.method === 'PUT').url, `/api/letters/${b.id}/editor`)
+  await assert.rejects(b.host.save('{"body":[]}', 'another-generation', 'New'), /Create another letter/)
+  assert.equal(b.calls.filter(c => c.options.method === 'POST').length, 0)
+  assert.equal(b.store.size, 1)
 })
 test('New/Open receives a separate document; a failed save retries the same entry', async () => {
   const b = bridge(); await b.host.load(); b.host.bind('1')

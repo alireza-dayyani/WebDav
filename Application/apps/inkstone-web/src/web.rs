@@ -33,7 +33,7 @@ pub fn start() {
             log::error!("no unsaved-changes guard: {e}");
         }
         let mut options = eframe::WebOptions::default();
-        let (saved_document, saved_title, saved_author) = match crate::cloud::load().await {
+        let (saved_document, saved_title, saved_author, saved_bookmark) = match crate::cloud::load().await {
             Ok(loaded) => loaded,
             Err(error) => {
                 if let Some(el) = document.get_element_by_id(LOADING_ID) {
@@ -70,17 +70,23 @@ pub fn start() {
                         if sample { inkstone_engine::sample::sample_document() } else { inkstone_engine::blank_document(&region) }
                     });
                     let mut session = Session::new(doc);
+                    if let Some(bookmark) = saved_bookmark {
+                        let _ = session.run("edit.goto", &serde_json::json!({"bookmark":bookmark}));
+                        let _ = session.run("select.collapse", &serde_json::json!({"end":true}));
+                    }
                     session.path = Some(std::path::PathBuf::from(format!("{saved_title}.json")));
                     crate::cloud::bind(&session.document_id().to_string());
                     session.system_region = region;
                     let messages = Rc::new(RefCell::new(Vec::new()));
-                    let mut app = WordApp::new(session, services(inbox.clone(), cc.egui_ctx.clone(), dirty, saves.clone(), messages.clone()));
+                    let services = services(inbox.clone(), cc.egui_ctx.clone(), dirty, saves.clone(), messages.clone());
+                    let mut app = WordApp::new(session, services);
                     // Pasted pictures wait apart from dropped files: the app inserts one only when the page is the edit target (#1349).
                     app.services.pasted = Some(pasted);
                     app.autosave = false;
                     // Preferences from an earlier visit (#2132), as the desktop app reads `ui.json`.
                     let stored = stored_prefs();
                     crate::prefs::restore(&mut app, stored.as_deref());
+                    let own_author = app.session.author.clone();
                     app.session.author = saved_author;
                     // A region chosen in File › Options replaces the browser's for the first blank
                     // document too (#838).
@@ -88,7 +94,8 @@ pub fn start() {
                         let doc = app.session.blank_document();
                         app.session.set_document(doc);
                     }
-                    let prefs = crate::prefs::PrefsSync::new(stored);
+                    let mut prefs = crate::prefs::PrefsSync::new(stored);
+                    prefs.keep_own_author(&app.session.author, &own_author);
                     // No document to show: start on File › Home, as the desktop app does (#766).
                     Ok(Box::new(WebShell { app, inbox, messages, prefs, cloud_save_at: js_sys::Date::now(), cloud_saves: saves.clone() }))
                 }),
@@ -132,22 +139,10 @@ fn preferences_key() -> String {
 }
 
 impl eframe::App for WebShell {
+    /// Runs one browser frame: forwards queued host messages to the status bar, advances the app,
+    /// then writes changed preferences to browser storage immediately, because a reload or closed
+    /// tab never runs the exit path.
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let dropped = ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
-        for f in dropped {
-            let inbox = self.inbox.clone();
-            let ctx = ctx.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                let name = f.path().file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "dropped".into());
-                match f.bytes_async().await {
-                    Ok(bytes) => {
-                        inbox.lock().unwrap_or_else(|e| e.into_inner()).push((name, bytes));
-                        ctx.request_repaint();
-                    }
-                    Err(e) => log::error!("couldn't read dropped file {name}: {e}"),
-                }
-            });
-        }
         let msgs = std::mem::take(&mut *self.messages.borrow_mut());
         for msg in msgs {
             self.app.status(msg);
@@ -162,7 +157,7 @@ impl eframe::App for WebShell {
                 self.app.status(error);
             }
         }
-        crate::cloud::state(self.app.session.dirty, self.cloud_saves.pending() > 0, &self.app.session.document_id().to_string());
+        crate::cloud::state(self.app.has_unsaved_documents(), self.cloud_saves.pending() > 0, &self.app.session.document_id().to_string());
         ctx.request_repaint_after(std::time::Duration::from_millis(500));
         // Store changed preferences straight away: a reload or closed tab runs no exit code (#2132).
         if let Some(json) = self.prefs.changed(&self.app) {
@@ -177,11 +172,34 @@ impl eframe::App for WebShell {
         }
     }
 
-    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw: &mut egui::RawInput) {
-        self.app.raw_input_hook(raw);
+    /// Forwards this frame's raw browser input to the app before widgets run.
+    fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
+        self.app.raw_input_hook(ctx, raw);
     }
 
+    /// Draws the app. On the first pass of a visible frame it takes the browser's dropped files and
+    /// spawns asynchronous byte reads into the inbox; later passes only draw.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        // Browser drops are input: take them only in the first real UI pass, never in a hidden
+        // `run_logic` tick that still sees the previous shown frame's RawInput.
+        if ui.ctx().current_pass_index() == 0 {
+            let ctx = ui.ctx().clone();
+            let dropped = ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
+            for f in dropped {
+                let inbox = self.inbox.clone();
+                let ctx = ctx.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let name = f.path().file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "dropped".into());
+                    match f.bytes_async().await {
+                        Ok(bytes) => {
+                            inbox.lock().unwrap_or_else(|e| e.into_inner()).push((name, bytes));
+                            ctx.request_repaint();
+                        }
+                        Err(e) => log::error!("couldn't read dropped file {name}: {e}"),
+                    }
+                });
+            }
+        }
         self.app.ui(ui);
     }
 }
@@ -451,7 +469,7 @@ fn trigger_save_file_picker(
     bytes: &[u8],
 ) -> Result<(), String> {
     let js = |e: wasm_bindgen::JsValue| format!("{e:?}");
-    let ext = std::path::Path::new(name).extension().and_then(|e| e.to_str()).unwrap_or("docx").to_ascii_lowercase();
+    let ext = std::path::Path::new(name).extension().and_then(std::ffi::OsStr::to_str).unwrap_or("docx").to_ascii_lowercase();
     let dot_ext = format!(".{ext}");
     let mime = mime_for(name);
 

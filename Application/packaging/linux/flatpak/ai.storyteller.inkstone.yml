@@ -49,6 +49,7 @@ modules:
     build-commands:
       - cargo --offline build --release --locked -p inkstone -p inkstone-cli
       - install -Dm755 target/release/inkstone /app/bin/inkstone
+      - install -Dm644 NOTICE /app/share/doc/inkstone/NOTICE
       - install -Dm755 target/release/inkstone-cli /app/bin/inkstone-cli
       - install -Dm644 packaging/linux/ai.storyteller.inkstone.desktop /app/share/applications/ai.storyteller.inkstone.desktop
       - install -Dm644 packaging/linux/ai.storyteller.inkstone.mime.xml /app/share/mime/packages/ai.storyteller.inkstone.xml
@@ -70,6 +71,6 @@ modules:
       # The interface translations at the commit in craft-i18n.rev (a test keeps the two equal).
       - type: git
         url: https://github.com/storytold/craft-i18n
-        commit: 04600cbb1508f1b15927ec574a5e32e5f376fd8b
+        commit: 9205108cfdced5177706264038848b68b2422d2b
         dest: craft-i18n
       - cargo-sources.json

@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    watch: { ignored: /[\\/]public[\\/]editor[\\/]\.stage(?:[\\/]|$)/ },
     proxy: { "/api": apiTarget },
   },
   preview: { port: 4173, proxy: { "/api": apiTarget } },

@@ -8,7 +8,8 @@
     conflict = false,
     lastState = "",
     currentGeneration,
-    preferenceScope = "";
+    preferenceScope = "",
+    letterMode = false;
   function notify(type, data = {}) {
     window.parent.postMessage(
       { type: "inkstone:" + type, ...data },
@@ -56,11 +57,20 @@
   window.inkstoneHost = {
     async load() {
       try {
-        const id = new URLSearchParams(location.search).get("id");
+        const parameters = new URLSearchParams(location.search);
+        letterMode = parameters.has("letter");
+        const id = parameters.get(letterMode ? "letter" : "id");
         if (!/^[a-f\d-]{36}$/i.test(id || ""))
           throw new Error("Select a document from your workspace.");
+        const version = parameters.get("version");
+        if (letterMode && !/^[1-9]\d{0,18}$/.test(version || ""))
+          throw new Error("Open this letter from its saved revision.");
         const [snapshot, account] = await Promise.all([
-          request("/documents/" + id + "/snapshot"),
+          request(
+            letterMode
+              ? `/letters/${id}/editor?version=${version}`
+              : "/documents/" + id + "/snapshot",
+          ),
           request("/account/me"),
         ]);
         initial = snapshot.metadata;
@@ -69,6 +79,7 @@
           document: snapshot.document,
           title: initial.title,
           author: account.email,
+          bookmark: snapshot.bodyBookmark,
         });
       } catch (error) {
         notify("error", {
@@ -99,6 +110,10 @@
         let document = bindings.get(generation);
         // New/Open in the editor creates a separate account document; never overwrite the previous one.
         if (!document) {
+          if (letterMode)
+            throw new Error(
+              "Create another letter from Letters. Use File → Save As to keep this opened document separately, then reopen your saved letter.",
+            );
           document = await request("/documents/", {
             method: "POST",
             body: JSON.stringify({
@@ -107,13 +122,18 @@
           });
           bindings.set(generation, document);
         }
-        const saved = await request(`/documents/${document.id}/content`, {
-          method: "PUT",
-          body: JSON.stringify({
-            version: document.version,
-            document: JSON.parse(json),
-          }),
-        });
+        const saved = await request(
+          letterMode
+            ? `/letters/${document.id}/editor`
+            : `/documents/${document.id}/content`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              version: document.version,
+              document: JSON.parse(json),
+            }),
+          },
+        );
         bindings.set(generation, saved);
         if (generation === currentGeneration)
           notify("saved", { document: saved });
