@@ -54,7 +54,7 @@ class Client:
 
     def register(self, name):
         self.json('/account/register', 'POST', {'email': name + '@example.test', 'password': 'StudioTests123'})
-        return next(u for u in self.json('/letters/directory?search=' + name)['items'] if u['email'] == name + '@example.test')
+        return next(u for u in self.json('/letters/directory?search=' + name + '@example.test')['items'] if u['email'] == name + '@example.test')
 
     def multipart(self, path, name, data, fields=None, expected=201, csrf=True):
         boundary = 'inkstone-studio-fixture'

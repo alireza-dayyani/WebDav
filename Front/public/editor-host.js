@@ -1,11 +1,11 @@
 /* Same-origin bridge between the Rust editor and the account API. No document data is kept in browser storage. */
 (() => {
   const bindings = new Map();
+  const conflicts = new Set();
   let initial,
     token,
     requested = false,
     saving = false,
-    conflict = false,
     lastState = "",
     currentGeneration,
     preferenceScope = "",
@@ -31,12 +31,12 @@
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-TOKEN": token || "",
+        ...(preferenceScope ? { "X-Inkstone-Account": preferenceScope } : {}),
         ...options.headers,
       },
     });
     if (!response.ok) {
       const problem = await response.json().catch(() => ({}));
-      if (response.status === 409) conflict = true;
       if (response.status === 400) token = null;
       throw Object.assign(
         new Error(
@@ -65,16 +65,14 @@
         const version = parameters.get("version");
         if (letterMode && !/^[1-9]\d{0,18}$/.test(version || ""))
           throw new Error("Open this letter from its saved revision.");
-        const [snapshot, account] = await Promise.all([
-          request(
-            letterMode
-              ? `/letters/${id}/editor?version=${version}`
-              : "/documents/" + id + "/snapshot",
-          ),
-          request("/account/me"),
-        ]);
-        initial = snapshot.metadata;
+        const account = await request("/account/me");
         preferenceScope = account.email;
+        const snapshot = await request(
+          letterMode
+            ? `/letters/${id}/editor?version=${version}`
+            : "/documents/" + id + "/snapshot",
+        );
+        initial = snapshot.metadata;
         return JSON.stringify({
           document: snapshot.document,
           title: initial.title,
@@ -103,9 +101,17 @@
       if (saving) throw new Error("A save is already in progress.");
       saving = true;
       try {
-        if (conflict)
+        if (conflicts.has(generation))
           throw new Error(
             "This document changed in another tab. Download your work using File → Save As, then reopen the saved document.",
+          );
+        const account = await request("/account/me");
+        if (account.email !== preferenceScope)
+          throw Object.assign(
+            new Error(
+              "The signed-in account changed. Sign in to the original account before saving this document.",
+            ),
+            { code: "account_changed" },
           );
         let document = bindings.get(generation);
         // New/Open in the editor creates a separate account document; never overwrite the previous one.
@@ -138,12 +144,14 @@
         if (generation === currentGeneration)
           notify("saved", { document: saved });
       } catch (error) {
-        notify("error", {
-          message: error.message,
-          status: error.status,
-          code: error.code,
-          maxBytes: error.maxBytes,
-        });
+        if (error.status === 409) conflicts.add(generation);
+        if (generation === currentGeneration)
+          notify("error", {
+            message: error.message,
+            status: error.status,
+            code: error.code,
+            maxBytes: error.maxBytes,
+          });
         throw error;
       } finally {
         saving = false;
@@ -155,7 +163,7 @@
       return value;
     },
     canAutosave() {
-      return !conflict;
+      return !conflicts.has(currentGeneration);
     },
     state(dirty, pending, generation) {
       currentGeneration = generation;

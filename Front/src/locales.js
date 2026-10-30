@@ -1,4 +1,5 @@
 import { studioMessages } from "./studioLocales.js";
+import { workspaceMessages } from "./workspaceLocales.js";
 export const languages = [
   {
     code: "en",
@@ -15,6 +16,22 @@ export const languages = [
 ];
 export const messages = {
   en: {
+    ...workspaceMessages.en,
+    emptyTrash: "Trash is empty.",
+    trashHelp:
+      "Deleted documents stay here until you restore or permanently delete them.",
+    trash: "Trash",
+    purge: "Delete permanently",
+    purgeConfirm:
+      "Permanently delete this document and all its revision history? This cannot be undone.",
+    history: "History",
+    historyHelp:
+      "Restore creates a new version and keeps the existing history. History begins with the first saved revision after history support was installed.",
+    restore: "Restore",
+    restoreConfirm: "Restore this revision as a new version?",
+    version: "Version",
+    loadMore: "Load more",
+    close: "Close",
     ...studioMessages.en,
     language: "Language",
     opening: "Opening your workspace…",
@@ -38,7 +55,7 @@ export const messages = {
     wait: "One moment…",
     enter: "Enter your workspace",
     createAccount: "Create your workspace",
-    privacy: "Your documents belong to you. Only you can access them.",
+    privacy: "Private by default. You control document sharing.",
     footer: "Made for the words that matter.",
     myDocuments: "My documents",
     private: "Private workspace",
@@ -53,7 +70,7 @@ export const messages = {
     find: "Find a document…",
     noMatches: "No matching documents",
     empty: "Your first page is waiting.",
-    tryTitle: "Try another title.",
+    tryTitle: "Try another title or phrase from the document text.",
     emptyText:
       "Create or upload a document and it will be here whenever you return.",
     open: "Open {title}",
@@ -66,7 +83,7 @@ export const messages = {
     createTitle: "Something new starts here.",
     renameTitle: "Give it a new name.",
     deleteTitle: "Delete this document?",
-    deleteText: "“{title}” will be permanently deleted.",
+    deleteText: "Move “{title}” to Trash? You can restore it later.",
     title: "Document title",
     untitled: "Untitled document",
     cancel: "Cancel",
@@ -160,11 +177,29 @@ export const messages = {
     grantConfirm:
       "Allow {email} to administer accounts, roles, files and upload settings?",
     revokeConfirm: "Remove administrator access from {email}?",
-    forbidden: "You do not have administrator access.",
+    forbidden: "You do not have permission for this action.",
+    accountChanged:
+      "The signed-in account changed. Sign in to the original account before saving this document.",
     recordChanged:
       "This record changed. Refresh the administration page and try again.",
   },
   fa: {
+    ...workspaceMessages.fa,
+    emptyTrash: "سطل زباله خالی است.",
+    trashHelp:
+      "سندهای حذف‌شده تا زمان بازیابی یا حذف همیشگی در اینجا می‌مانند.",
+    trash: "سطل زباله",
+    purge: "حذف همیشگی",
+    purgeConfirm:
+      "این سند و تمام تاریخچهٔ آن برای همیشه حذف شود؟ این کار برگشت‌پذیر نیست.",
+    history: "تاریخچه",
+    historyHelp:
+      "بازیابی، نسخه‌ای جدید می‌سازد و تاریخچه را حفظ می‌کند. تاریخچه از نخستین ذخیره پس از نصب این قابلیت آغاز می‌شود.",
+    restore: "بازیابی",
+    restoreConfirm: "این نسخه به عنوان نسخه‌ای جدید بازیابی شود؟",
+    version: "نسخه",
+    loadMore: "نمایش بیشتر",
+    close: "بستن",
     ...studioMessages.fa,
     language: "زبان",
     opening: "در حال باز کردن فضای کار…",
@@ -188,7 +223,7 @@ export const messages = {
     wait: "لطفاً صبر کنید…",
     enter: "ورود به فضای کار",
     createAccount: "ساخت فضای کار",
-    privacy: "سندهای شما خصوصی‌اند و فقط خودتان به آن‌ها دسترسی دارید.",
+    privacy: "سندها در ابتدا خصوصی‌اند. اشتراک‌گذاری در اختیار شماست.",
     footer: "برای نوشته‌هایی که ارزش دارند",
     myDocuments: "سندهای من",
     private: "فضای کار خصوصی",
@@ -203,7 +238,7 @@ export const messages = {
     find: "جست‌وجوی سند…",
     noMatches: "سندی پیدا نشد",
     empty: "اولین صفحه منتظر شماست.",
-    tryTitle: "عنوان دیگری را جست‌وجو کنید.",
+    tryTitle: "عنوان یا عبارت دیگری از متن سند را جست‌وجو کنید.",
     emptyText: "سندی بسازید یا بارگذاری کنید تا همیشه در اینجا در دسترس باشد.",
     open: "باز کردن {title}",
     document: "سند",
@@ -215,7 +250,8 @@ export const messages = {
     createTitle: "یک نوشتهٔ تازه از اینجا شروع می‌شود.",
     renameTitle: "نام تازه‌ای انتخاب کنید.",
     deleteTitle: "این سند حذف شود؟",
-    deleteText: "«{title}» برای همیشه حذف خواهد شد.",
+    deleteText:
+      "«{title}» به سطل زباله منتقل شود؟ می‌توانید بعداً آن را بازیابی کنید.",
     title: "عنوان سند",
     untitled: "سند بدون عنوان",
     cancel: "انصراف",
@@ -309,7 +345,9 @@ export const messages = {
     grantConfirm:
       "دسترسی مدیریت کاربران، نقش‌ها، فایل‌ها و تنظیمات بارگذاری به {email} داده شود؟",
     revokeConfirm: "دسترسی مدیریت از {email} گرفته شود؟",
-    forbidden: "دسترسی مدیریت ندارید.",
+    forbidden: "اجازهٔ انجام این کار را ندارید.",
+    accountChanged:
+      "حساب واردشده تغییر کرده است. پیش از ذخیرهٔ این سند، دوباره وارد حساب اصلی شوید.",
     recordChanged:
       "این اطلاعات تغییر کرده است. صفحهٔ مدیریت را تازه‌سازی و دوباره تلاش کنید.",
   },

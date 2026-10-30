@@ -12,18 +12,18 @@ public static class BookmarkEndpoints
     {
         documents.MapGet("/{id:guid}/bookmarks", async (Guid id, long version, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
         {
-            var document = await db.Documents.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Ownership.Owner(user), ct);
+            var document = await DocumentAccess.Visible(db, user).AsNoTracking().SingleOrDefaultAsync(d => d.Id == id, ct);
             if (document is null) return Results.NotFound();
             if (document.Version != version) return VersionConflict();
             var bookmarks = await converter.ReadBookmarksAsync(document.Content, ct);
             return Results.Ok(new BookmarkList(document.Id, document.Version, bookmarks));
-        }).WithSummary("List bookmarks in an owned document revision")
+        }).WithSummary("List bookmarks in an accessible document revision")
           .WithDescription("Upload a DOCX first, then use its document ID and version. Includes body, tables, headers, footers and other document stories. Replaceable describes the bookmark range; protection or Track Changes can still prevent replacement.")
           .Produces<BookmarkList>().Produces(401).Produces(404).ProducesProblem(400).ProducesProblem(409).ProducesProblem(422).ProducesProblem(503);
 
         documents.MapPost("/{id:guid}/bookmarks/replace", async (Guid id, ReplaceBookmarks input, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
         {
-            var document = await db.Documents.SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Ownership.Owner(user), ct);
+            var document = await DocumentAccess.FindAsync(db, user, id, ct, true);
             if (document is null) return Results.NotFound();
             if (document.Version != input.Version) return VersionConflict();
             if (input.Values.ValueKind != JsonValueKind.Object)
@@ -51,6 +51,7 @@ public static class BookmarkEndpoints
             var content = await converter.FillBookmarksAsync(document.Content, values, ct);
             document.Content = content;
             document.Version++;
+            DocumentAccess.Audit(db, document, Ownership.Owner(user), "bookmarks");
             document.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateConcurrencyException) { return VersionConflict(); }
@@ -58,7 +59,7 @@ public static class BookmarkEndpoints
                 new DocumentMetadata(document.Id, document.Title, document.Version, document.CreatedAt, document.UpdatedAt, document.Content.Length),
                 values.Keys.Order(StringComparer.Ordinal).ToArray()));
         }).WithMetadata(new BookmarkValuesRequest()).WithSummary("Replace bookmark contents with JSON text values and save the next revision")
-          .WithDescription("Body: {version: 1, values: {CustomerName: 'literal text'}}. Exact case-sensitive key matching. All keys must exist and have valid ranges; otherwise nothing is saved. Unspecified bookmarks stay unchanged; empty strings clear contents. Markers remain reusable. Rejects duplicate/malformed ranges, ranges crossing table cells, and ranges containing other bookmark markers. Protected documents or Track Changes must be disabled first. Only the owner can modify a document, including when the caller is an administrator.")
+          .WithDescription("Body: {version: 1, values: {CustomerName: 'literal text'}}. Exact case-sensitive key matching. All keys must exist and have valid ranges; otherwise nothing is saved. Unspecified bookmarks stay unchanged; empty strings clear contents. Markers remain reusable. Rejects duplicate/malformed ranges, ranges crossing table cells, and ranges containing other bookmark markers. Protected documents or Track Changes must be disabled first. The owner or an explicitly granted editor can modify a document. Administrator roles do not bypass document access; scoped tokens remain owner-only.")
           .Produces<BookmarkReplacement>().Produces(401).Produces(404).ProducesProblem(400).ProducesProblem(409).ProducesProblem(413).ProducesProblem(422).ProducesProblem(429).ProducesProblem(503);
     }
 

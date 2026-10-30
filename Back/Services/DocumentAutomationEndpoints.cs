@@ -36,7 +36,7 @@ public static class DocumentAutomationEndpoints
         routes.MapPost("/preview", Preview).WithSummary("Preview a proposed batch as PDF without saving the document");
         routes.MapGet("/pages/{page:int}/preview", async (Guid id, int page, long version, float? scale, ClaimsPrincipal user, AppDbContext db, IDocumentProcessor converter, CancellationToken ct) =>
         {
-            var document = await Automation.Find(db, Ownership.Owner(user), id, ct);
+            var document = await DocumentAccess.FindAsync(db, user, id, ct);
             if (document is null) return Results.NotFound();
             if (document.Version != version) return Studio.Conflict();
             return Results.File(await converter.RenderPageAsync(document.Content, page, scale ?? 1, ct), "image/png");
@@ -73,7 +73,7 @@ public static class DocumentAutomationEndpoints
 
     private static async Task<IResult> Query(Guid id, long version, object parameters, ClaimsPrincipal user, AppDbContext db, IDocumentProcessor converter, CancellationToken ct)
     {
-        var document = await Automation.Find(db, Ownership.Owner(user), id, ct);
+        var document = await DocumentAccess.FindAsync(db, user, id, ct);
         if (document is null) return Results.NotFound();
         if (document.Version != version) return Studio.Conflict();
         var result = await converter.AutomateAsync(document.Content, "query", parameters, ct);
@@ -83,7 +83,7 @@ public static class DocumentAutomationEndpoints
     public static async Task<IResult> Batch(Guid id, EditBatch input, ClaimsPrincipal user, AppDbContext db, IDocumentProcessor converter, CancellationToken ct)
     {
         var owner = Ownership.Owner(user);
-        var document = await Automation.Find(db, owner, id, ct);
+        var document = await DocumentAccess.FindAsync(db, user, id, ct, true);
         if (document is null) return Results.NotFound();
         var scope = $"document:{id}:batch";
         if (await Automation.Replay(db, owner, scope, input.IdempotencyKey, input, ct) is { } replay) return replay;
@@ -91,6 +91,7 @@ public static class DocumentAutomationEndpoints
         Automation.ValidateOperations(input.Operations);
         var result = await converter.AutomateAsync(document.Content, "batch", new { input.Operations, actor = user.Identity?.Name }, ct);
         document.Content = result.Content; Automation.Touch(document);
+        DocumentAccess.Audit(db, document, owner, "batch");
         var response = new { metadata = Automation.Metadata(document), report = result.Report };
         Automation.Receipt(db, owner, scope, input.IdempotencyKey, input, response);
         return await Automation.Save(db, response, ct);
@@ -98,15 +99,15 @@ public static class DocumentAutomationEndpoints
 
     private static async Task<IResult> Preview(Guid id, DocumentPreview input, ClaimsPrincipal user, AppDbContext db, IDocumentProcessor converter, CancellationToken ct)
     {
-        var document = await Automation.Find(db, Ownership.Owner(user), id, ct);
+        var document = await DocumentAccess.FindAsync(db, user, id, ct);
         if (document is null) return Results.NotFound();
         if (document.Version != input.Version) return Studio.Conflict();
-        if (await db.DocumentJobs.CountAsync(j => j.OwnerId == document.OwnerId, ct) >= 100) return Studio.Bad("At most 100 retained jobs/previews per account; results expire after 24 hours.", 429);
+        if (await db.DocumentJobs.CountAsync(j => j.OwnerId == Ownership.Owner(user), ct) >= 100) return Studio.Bad("At most 100 retained jobs/previews per account; results expire after 24 hours.", 429);
         Automation.ValidateOperations(input.Operations);
         var result = await converter.AutomateAsync(document.Content, "batch", new { input.Operations, actor = user.Identity?.Name }, ct);
         if (input.Format is not ("pdf" or "png")) return Studio.Bad("Preview format must be pdf or png.");
         var output = input.Format == "png" ? await converter.RenderPageAsync(result.Content, input.Page, input.Scale, ct) : await converter.ExportAsync(result.Content, "pdf", ct);
-        var job = new DocumentJob { OwnerId = document.OwnerId, Kind = "preview", Status = "succeeded", Result = output, Format = input.Format, Report = Studio.Encode(new { documentId = id, baseVersion = input.Version, result = result.Report }) };
+        var job = new DocumentJob { OwnerId = Ownership.Owner(user), Kind = "preview", Status = "succeeded", Result = output, Format = input.Format, Report = Studio.Encode(new { documentId = id, baseVersion = input.Version, result = result.Report }) };
         db.DocumentJobs.Add(job); await db.SaveChangesAsync(ct);
         return Results.Ok(Automation.JobSummary(job));
     }

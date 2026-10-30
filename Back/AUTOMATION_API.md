@@ -2,7 +2,30 @@
 
 These endpoints work with saved private documents without opening the editor. Upload DOCX through the existing upload API, inspect the returned document ID, apply typed operations, then download DOCX or PDF. All editing uses the Rust command registry. Clients never supply server file paths or arbitrary engine commands.
 
-Use the existing session cookie and `X-CSRF-TOKEN` for browser clients, or a scoped bearer token for scripts. Each resource and every source document is checked against the authenticated owner, including administrator callers. Another owner's resource returns 404. New automation reads require the expected document version; stale versions return 409. New mutations retain the original document on any error. Import/export uses the native document model and does not promise lossless preservation of unsupported Word features.
+Use the existing session cookie and `X-CSRF-TOKEN` for browser clients, or a scoped bearer token for scripts. Cookie-authenticated document reads accept ownership or an explicit reader/editor grant; editing accepts ownership or editor access. Complete history, restore, sharing administration, Trash, template copies and multi-source/background job inputs remain owner-only. Scoped tokens always retain the owner-only boundary. Another account's unauthorized resource returns 404, including for administrator callers. New automation reads require the expected document version; stale versions return 409. New mutations retain the original document on any error. Import/export uses the native document model and does not promise lossless preservation of unsupported Word features.
+
+## Library, retention, sharing and approvals
+
+All routes require authentication. Cookie mutations also require CSRF. The new library, retention and review groups are cookie-only; automation clients retain the existing scoped document/job APIs.
+
+| Method | Route | Contract |
+| --- | --- | --- |
+| GET | `/api/library?q=term&page=1&trash=false` | Title and native-text prefix search; all terms must match. Returns `items`, `page`, `total`, `hasMore`. 50 items/page, 200 query characters, 16 literal terms; FTS query operators are escaped. Persian/Arabic letters and combining marks are normalized. Shared active documents are included; Trash remains owner-only. No content snippets from inaccessible documents are returned. |
+| GET/PUT | `/api/retention/` | GET returns the account policy (version 0 when absent). PUT accepts `{version,enabled,keepLatest,days}`; 5–1000 latest revisions, 7–3650 days. Version conflicts return 409. Disabled by default. |
+| POST | `/api/retention/preview` | `{version}` returns eligible revision count and content bytes. No deletion. |
+| POST | `/api/retention/apply` | `{version}` removes eligible owned history only when the current policy is enabled. First/current/latest versions and every submitted review revision are excluded. Enabling also applies the policy on subsequent document saves, including Trash. |
+| GET | `/api/documents/{id}/access` | Current metadata and `permission`: `owner`, `read`, or `edit`. |
+| GET/PUT | `/api/documents/{id}/shares` | Owner GET requires `?version=currentDocumentVersion`. PUT accepts `{version,email,permission:"read|edit",grantVersion:0}`; updating requires the existing grant version. Only existing registered accounts can receive grants. |
+| DELETE | `/api/documents/{id}/shares/{userId}?version=...&grantVersion=...` | Owner-only revocation with both expected versions. Future access stops; previously downloaded copies cannot be recalled. |
+| GET | `/api/documents/{id}/audit?version=...&page=1` | Owner-only, 50 recent events/page with `hasMore`. Append-only application events include actor ID, document version, action, timestamp and detail. This is operational history, not a tamper-proof ledger. |
+| POST | `/api/documents/{id}/reviews` | Owner submits `{version,reviewerId}`. The reviewer must already have a grant; the owner cannot self-approve. The exact native revision and its SHA-256 content hash are retained. Duplicate pending requests for the same reviewer/revision conflict. |
+| GET | `/api/reviews/?page=1` | Owner and currently authorized assigned reviewer inbox; 50/page. Compare `currentVersion` with `documentVersion` to detect staleness. |
+| POST | `/api/reviews/{id}/decision` | `{version,documentVersion,decision:"approved|returned|cancelled",note:""}`. Only the assigned reviewer can approve/return a pending current revision; only its owner can cancel. Notes: 2000 characters. Both expected versions are checked. Editing invalidates approval applicability without rewriting the earlier decision. |
+| GET | `/api/reviews/{id}/download?version=requestVersion` | Owner or authorized assigned reviewer receives PDF rendered from the retained native revision using the current engine/fonts. Revocation and Trash hide it from reviewers. These are internal decisions, not certificate signatures. |
+
+The full-text index is updated in the same transaction as saves/revisions and backfilled for existing installations. Indexing covers the first one million title/text characters, including nested document stories; scanned-image OCR is not included. Purging a document removes its search entry. The index is private database data and is included in normal database backups. Retention excludes database overhead and does not compact the SQLite file; freed pages can be reused by SQLite. Approval evidence remains retained until permanent document deletion.
+
+Editor writes include a concurrency check on the grant, so revocation/downgrade during conversion rolls back the document, revision, search index and operation receipt. Revoked grants are hidden from access checks and share listings but retain their version counter. Re-granting uses `grantVersion:0` and returns a new, higher version; clients must use that returned version for subsequent updates or revocation. Shared read-only previews create results owned by the requesting account. Source-copy endpoints intentionally require ownership rather than inheriting grants, and existing tokens cannot manage sharing or reviews.
 
 ## Inspect, edit, preview, export
 
@@ -131,7 +154,7 @@ Content-control fill accepts strings for plain/rich text and dates (`YYYY-MM-DD`
 
 An optional `idempotencyKey` of 1–128 printable characters binds the request to its exact serialized input and owner/resource scope. Retrying the same successful request returns its original response without applying it again, even if the current version advanced. Reusing the key with different input returns 409. Simultaneous first attempts can return one success and one 409; retry the same input/key to obtain the retained result. Failed requests leave no receipt. Batch shortcuts share the document's batch-key scope.
 
-All ordinary document saves, renames and automation mutations now retain full snapshots atomically with the document write. Restoring creates a new revision. Deleting a document deletes its history. Existing installations retain their current snapshot on their next save; historical content from before this upgrade cannot be reconstructed. Template and letter resources continue using their separate version/snapshot contracts.
+All ordinary document saves, renames and automation mutations retain full snapshots atomically with the document write. Restoring creates a new revision. DELETE moves a document to Trash and advances its version; ordinary reads, downloads and automation exclude it. GET `/api/documents/trash` lists owned trash. POST `/api/documents/{id}/recover` with `{version}` returns it to the library as another version. DELETE `/api/documents/{id}/purge?version=...` permanently removes an owned trashed document and its history; active documents cannot be purged. Existing installations retain their current snapshot on their next save; historical content from before this upgrade cannot be reconstructed. Template and letter resources continue using their separate version/snapshot contracts.
 
 ## Compare, assemble and generate in bulk
 

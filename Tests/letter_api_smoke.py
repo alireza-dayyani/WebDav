@@ -22,7 +22,11 @@ with server(5098, 'letter-api') as (base, _):
     alice_user = alice.register('letter-alice'); bob_user = bob.register('letter-bob'); carol_user = carol.register('letter-carol')
     directory = alice.json('/letters/directory')['items']
     assert all(set(user) == {'id', 'email', 'name'} for user in directory)
-    assert {u['id'] for u in directory} == {alice_user['id'], bob_user['id'], carol_user['id']}
+    assert {u['id'] for u in directory} == {alice_user['id']}
+    assert alice.json('/letters/directory?search=letter')['items'] == []
+    for recipient in (bob_user, carol_user):
+        found = alice.json('/letters/directory?search=' + recipient['email'])['items']
+        assert [u['id'] for u in found] == [recipient['id']]
     guest.json('/letters/directory', expected=401)
     profile = {'version': 0, 'fullName': 'علی آزمایشی', 'title': 'مدیر', 'organization': 'سازمان نمونه', 'address': 'تهران'}
     sender = alice.json('/letters/senders/', 'POST', profile, expected=201)
