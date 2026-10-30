@@ -1,5 +1,6 @@
 """Real HTTP/native-engine coverage for document automation and private machine access."""
 import base64
+from contextlib import closing
 import concurrent.futures
 import io
 import json
@@ -128,6 +129,23 @@ with server(5101, 'document-automation') as (base, data_dir):
     assert 'علی ک ۱۲۳' in json.dumps(alice.json(path + '/content'), ensure_ascii=False)
     assert any(v['version'] == before_save for v in alice.json(path + f'/versions?version={current["version"]}')['items'])
 
+    # Normalization must not flatten styled text between two changed letters.
+    styled_model = model('ي Bold ك  \n')
+    styled_model['body'][0]['runs'] = [
+        {'len': len('ي '.encode()), 'props': {}},
+        {'len': 4, 'props': {'bold': True}},
+        {'len': 1, 'props': {}},
+        {'len': len('ك'.encode()), 'props': {'italic': True}},
+        {'len': 3, 'props': {}},
+    ]
+    styled = alice.upload(styled_model, 'Styled normalization')
+    styled_path = '/documents/' + styled['id']
+    alice.json(styled_path + '/normalize', 'POST', {'version': styled['version'], 'rules': ['persianLetters', 'trimTrailingSpaces'], 'apply': True})
+    normalized = alice.json(styled_path + '/content')['body'][0]
+    assert normalized['text'] == 'ی Bold ک\n', normalized
+    assert any(run['len'] == 4 and run['props'].get('bold') for run in normalized['runs']), normalized
+    assert any(run['len'] == len('ک'.encode()) and run['props'].get('italic') for run in normalized['runs']), normalized
+
     picture = base64.b64encode(png()).decode()
     result = alice.json(path + '/images', 'POST', {'version': current['version'], 'target': {'ref': 'b.0', 'start': 0, 'end': 0}, 'data': picture, 'width': 60, 'alt': 'Original logo'})
     current = result['metadata']
@@ -236,10 +254,10 @@ with server(5101, 'document-automation') as (base, data_dir):
     bearer(base, secret, '/documents/', expected=401)
     # Expiry is checked live, just like revocation. Only the disposable fixture database is edited.
     import sqlite3
-    with sqlite3.connect(data_dir / 'inkstone.db') as database:
+    with closing(sqlite3.connect(data_dir / 'inkstone.db')) as database:
         database.execute('UPDATE AutomationTokens SET ExpiresAt=0 WHERE Id=?', (write_token['id'].upper(),))
         assert database.total_changes == 1
-    database.close()
+        database.commit()
     bearer(base, write_token['token'], '/documents/', expected=401)
 
     # Concurrent writes advance once and leave a complete revision history.
@@ -250,7 +268,12 @@ with server(5101, 'document-automation') as (base, data_dir):
         assert sorted(pool.map(race, ['A', 'B'])) == [200, 409]
     assert len(alice.json('/documents/' + race_doc['id'] + '/versions?version=2')['items']) == 2
     alice.json('/documents/' + race_doc['id'] + '?version=2', 'DELETE', expected=204)
-    with sqlite3.connect(data_dir / 'inkstone.db') as database:
+    alice.json('/documents/' + race_doc['id'] + '/snapshot', expected=404)
+    trashed = next(doc for doc in alice.json('/documents/trash') if doc['id'] == race_doc['id'])
+    assert trashed['version'] == 3
+    with closing(sqlite3.connect(data_dir / 'inkstone.db')) as database:
+        assert database.execute('SELECT COUNT(*) FROM DocumentRevisions WHERE DocumentId=?', (race_doc['id'].upper(),)).fetchone()[0] == 3
+    alice.json('/documents/' + race_doc['id'] + '/purge?version=3', 'DELETE', expected=204)
+    with closing(sqlite3.connect(data_dir / 'inkstone.db')) as database:
         assert database.execute('SELECT COUNT(*) FROM DocumentRevisions WHERE DocumentId=?', (race_doc['id'].upper(),)).fetchone()[0] == 0
-    database.close()
     print('PASS: structure/search, transactional edits, retry keys, DOCX tables and controls, formatting, images, comments, revisions, normalization, comparison, assembly, template batches, private previews/jobs, scoped tokens, revocation, CSRF and owner/version isolation.')

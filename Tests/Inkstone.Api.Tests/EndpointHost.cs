@@ -38,9 +38,13 @@ internal sealed class EndpointHost : IAsyncDisposable
         builder.WebHost.UseTestServer();
         builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(host.connection));
         builder.Services.AddSingleton<IDocumentProcessor>(host.Processor);
+        builder.Services.AddOptions<ConverterCapacityOptions>();
+        builder.Services.AddSingleton<ConverterCapacity>();
+        builder.Services.AddSingleton<DocumentConverter>();
         builder.Services.AddSingleton<DocumentJobRunner>(); // Cancellation only; the worker is deliberately not hosted.
         builder.Services.AddAuthentication(TestAuthentication.Scheme).AddScheme<AuthenticationSchemeOptions, TestAuthentication>(TestAuthentication.Scheme, _ => { });
         builder.Services.AddAuthorization();
+        builder.Services.AddAntiforgery();
         host.app = builder.Build();
         host.app.Use(async (context, next) =>
         {
@@ -51,7 +55,12 @@ internal sealed class EndpointHost : IAsyncDisposable
         host.app.UseAuthentication();
         host.app.Use(AutomationTokens.Authenticate);
         host.app.UseAuthorization();
+        host.app.UseAntiforgery();
+        host.app.MapLetterResources();
         host.app.MapDocumentAutomation(); host.app.MapDocumentJobs(); host.app.MapAutomationTokens();
+        host.app.MapLibraryRecovery();
+        host.app.MapLibrarySearch(); host.app.MapRevisionRetention();
+        host.app.MapCollaboration();
         await host.WithDatabase(async db =>
         {
             await db.Database.EnsureCreatedAsync();
@@ -95,13 +104,15 @@ internal sealed class FakeProcessor : IDocumentProcessor
     public static byte[] Changed => "{\"body\":[{\"kind\":\"para\",\"text\":\"Changed\",\"runs\":[]}]}"u8.ToArray();
     public int Calls { get; private set; }
     public bool Fail { get; set; }
+    public Func<Task>? BeforeAutomate { get; set; }
     public byte[]? LastInput { get; private set; }
     public object? LastParameters { get; private set; }
-    public Task<AutomationResult> AutomateAsync(byte[] content, string action, object parameters, CancellationToken ct, byte[][]? sources = null)
+    public async Task<AutomationResult> AutomateAsync(byte[] content, string action, object parameters, CancellationToken ct, byte[][]? sources = null)
     {
         Calls++; LastInput = content.ToArray(); LastParameters = parameters;
+        if (BeforeAutomate is not null) await BeforeAutomate();
         if (Fail) throw new ConversionException("Engine refused a document-specific edit.");
-        return Task.FromResult(new AutomationResult(Changed, Automation.Json(new { action, results = new[] { new { replaced = 1 } } })));
+        return new AutomationResult(Changed, Automation.Json(new { action, results = new[] { new { replaced = 1 } } }));
     }
     public Task<byte[]> CreateAsync(string language, CancellationToken ct) { Calls++; return Task.FromResult(Original); }
     public Task<byte[]> ExportAsync(byte[] content, string format, CancellationToken ct) { Calls++; return Task.FromResult("%PDF-fixture"u8.ToArray()); }

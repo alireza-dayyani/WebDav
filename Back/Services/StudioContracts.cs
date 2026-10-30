@@ -50,7 +50,7 @@ public static class Studio
         try { await db.SaveChangesAsync(ct); return true; }
         catch (DbUpdateConcurrencyException) { return false; }
         catch (DbUpdateException error) when (error.InnerException is Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 19 }
-            && error.Entries.Any(entry => entry.Entity is LetterArtifact)) { return false; }
+            && error.Entries.Any(entry => entry.Entity is LetterArtifact or DocumentGrant or DocumentReview or RetentionPolicy)) { return false; }
     }
     public static async Task<IResult> Delete(AppDbContext db, string owner, string kind, Guid id, long version, CancellationToken ct)
     {

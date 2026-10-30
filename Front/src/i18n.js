@@ -31,6 +31,7 @@ watch(
   { immediate: true },
 );
 export function errorMessage(error, context) {
+  if (error.code === "account_changed") return t("accountChanged");
   if (error.code === "image_too_large") return t("studio.imageHelp");
   if (error.status === 400 && context === "register")
     return t("registrationError");

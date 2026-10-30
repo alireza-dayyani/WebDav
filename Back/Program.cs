@@ -55,11 +55,22 @@ builder.Services.AddAntiforgery(o =>
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = 429;
+    o.GlobalLimiter = ApiTraffic.Create(builder.Configuration.GetValue("Traffic:AuthenticatedPerMinute", 600), builder.Configuration.GetValue("Traffic:AnonymousPerMinute", 120));
+    o.OnRejected = async (context, ct) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retry))
+            context.HttpContext.Response.Headers.RetryAfter = Math.Ceiling(retry.TotalSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        await Results.Problem("Too many requests. Wait before retrying.", statusCode: 429,
+            extensions: new Dictionary<string, object?> { ["code"] = "rate_limited" }).ExecuteAsync(context.HttpContext);
+    };
     o.AddPolicy("accounts", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 builder.Services.AddProblemDetails();
+builder.Services.AddOptions<ConverterCapacityOptions>().BindConfiguration("Conversion")
+    .Validate(o => o.ValidationSlots is >= 1 and <= 16 && o.ConversionSlots is >= 1 and <= 16, "Converter slot counts must be 1–16.").ValidateOnStart();
+builder.Services.AddSingleton<ConverterCapacity>();
 builder.Services.AddSingleton<DocumentConverter>();
 builder.Services.AddSingleton<IDocumentProcessor>(sp => sp.GetRequiredService<DocumentConverter>());
 builder.Services.AddScoped<LetterComposer>();
@@ -69,7 +80,7 @@ builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
 {
     document.Info.Title = "Inkstone API";
     document.Info.Version = "v1";
-    document.Info.Description = "Private document workspace. Register or log in to obtain a session cookie. Before every mutation, fetch /api/csrf with the same cookie jar and send its token in X-CSRF-TOKEN. Refresh the token after login/logout. Uploads accept multipart/form-data; downloads return file attachments. Ordinary document operations are owner-scoped. Explicit /api/admin routes allow live-role-authorized administrators to inspect accounts/files, assign administrator roles and change upload limits.";
+    document.Info.Description = "Private document workspace. Register or log in to obtain a session cookie. Before every mutation, fetch /api/csrf with the same cookie jar and send its token in X-CSRF-TOKEN. Refresh the token after login/logout. Uploads accept multipart/form-data; downloads return file attachments. Documents are private by default; explicit reader/editor grants authorize cookie-session access. Sharing management and complete history remain owner-only; scoped tokens never inherit grants. Explicit /api/admin routes allow live-role-authorized administrators to inspect accounts/files, assign administrator roles and change upload limits.";
     return Task.CompletedTask;
 }).AddSchemaTransformer((schema, context, _) =>
 {
@@ -88,6 +99,20 @@ builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
 }));
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.MaxDepth = 256);
 var app = builder.Build();
+// Only explicitly configured infrastructure may supply client/protocol headers.
+if (builder.Configuration["Proxy:KnownProxy"] is { Length: > 0 } knownProxy)
+{
+    var forwarding = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto,
+        ForwardLimit = 1
+    };
+    forwarding.KnownProxies.Add(System.Net.IPAddress.Parse(knownProxy));
+    app.UseForwardedHeaders(forwarding);
+}
+// The in-process queue owns this data directory exclusively. A second API process
+// must fail before startup recovery can invalidate the first process's running jobs.
+using var instanceLease = new FileStream(Path.Combine(dataDirectory, "instance.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
 using (var scope = app.Services.CreateScope())
     await BootstrapAdministration.InitializeAsync(scope.ServiceProvider, dataDirectory, builder.Configuration);
 
@@ -106,7 +131,11 @@ app.Use(async (context, next) =>
             extensions: new Dictionary<string, object?> { ["code"] = error.StatusCode == 413 ? "request_too_large" : "invalid_request" }).ExecuteAsync(context);
     }
 });
-if (!app.Environment.IsDevelopment()) { app.UseHsts(); app.UseHttpsRedirection(); }
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseWhen(context => context.Request.Path != "/api/health" && context.Request.Path != "/api/ready", branch => branch.UseHttpsRedirection());
+}
 app.Use(async (context, next) =>
 {
     context.Response.Headers.XContentTypeOptions = "nosniff";
@@ -121,6 +150,20 @@ app.Use(async (context, next) =>
 app.UseAuthentication();
 app.Use(AutomationTokens.Authenticate);
 app.UseAuthorization();
+// An editor tab is bound to the account that opened it. This header is only an
+// additional constraint; authentication and resource authorization still apply.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Headers.TryGetValue("X-Inkstone-Account", out var expected)
+        && context.User.Identity?.IsAuthenticated == true
+        && !string.Equals(expected.ToString(), context.User.Identity.Name, StringComparison.OrdinalIgnoreCase))
+    {
+        await Results.Problem("The signed-in account changed. Sign in to the original account before saving this document.", statusCode: 403,
+            extensions: new Dictionary<string, object?> { ["code"] = "account_changed" }).ExecuteAsync(context);
+        return;
+    }
+    await next(context);
+});
 app.UseRateLimiter();
 // Set the transport allowance before form/CSRF binding; file bytes are checked separately in the handler.
 app.Use(async (context, next) =>
@@ -183,6 +226,12 @@ if (app.Environment.IsDevelopment())
     });
 }
 app.MapGet("/api/health", () => TypedResults.Ok(new HealthResponse("ok"))).WithTags("Session");
+app.MapGet("/api/ready", async (AppDbContext db, CancellationToken ct) =>
+{
+    var executable = builder.Configuration["Rust:Executable"] ?? Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "inkstone-cli.exe" : "inkstone-cli");
+    try { return await db.Database.CanConnectAsync(ct) && File.Exists(executable) ? Results.Ok(new { status = "ready" }) : Results.StatusCode(503); }
+    catch (Exception) when (!ct.IsCancellationRequested) { return Results.StatusCode(503); }
+}).WithTags("Session");
 app.MapGet("/api/csrf", (HttpContext c, IAntiforgery a) => TypedResults.Ok(new CsrfResponse(a.GetAndStoreTokens(c).RequestToken!))).WithTags("Session").WithSummary("Get a CSRF token for the current session");
 var accounts = app.MapGroup("/api/account").WithTags("Accounts");
 accounts.MapGet("/me", async (ClaimsPrincipal principal, UserManager<IdentityUser> users) =>
@@ -192,6 +241,7 @@ accounts.MapGet("/me", async (ClaimsPrincipal principal, UserManager<IdentityUse
 }).RequireAuthorization().Produces<AccountResponse>();
 accounts.MapPost("/register", async (Credentials input, UserManager<IdentityUser> users, SignInManager<IdentityUser> signIn) =>
 {
+    if (!builder.Configuration.GetValue("Accounts:AllowRegistration", true)) return Results.Problem("Registration is disabled by the operator.", statusCode: 403);
     if (input.Email is null || input.Email.Length > 254 || !new EmailAddressAttribute().IsValid(input.Email) || input.Password is null || input.Password.Length > 128)
         return Results.Problem("Enter a valid email and a password of 10–128 characters.", statusCode: 400);
     var user = new IdentityUser { UserName = input.Email.Trim(), Email = input.Email.Trim() };
@@ -250,34 +300,34 @@ documents.MapPost("/upload", async ([FromForm] IFormFile file, [FromForm] string
 
 documents.MapGet("/{id:guid}/download", async (Guid id, string? format, long? version, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
 {
-    var document = await db.Documents.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Owner(user), ct);
+    var document = await DocumentAccess.Visible(db, user).AsNoTracking().SingleOrDefaultAsync(d => d.Id == id, ct);
     if (document is null) return Results.NotFound();
     return await DocumentDownloads.CreateAsync(document, format, version, converter, ct);
 }).WithSummary("Download the saved document as an attachment")
-  .WithDescription("format: docx (default), pdf, txt, md or json. Optional version returns 409 if the saved document has changed. Only the owner can download a document.")
+  .WithDescription("format: docx (default), pdf, txt, md or json. Optional version returns 409 if the saved document has changed. The owner or an explicitly shared reader/editor can download the current document.")
   .Produces(200, contentType: "application/octet-stream").ProducesProblem(409).ProducesProblem(415).ProducesProblem(422).ProducesProblem(503);
 documents.MapGet("/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var document = await db.Documents.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Owner(user));
+    var document = await DocumentAccess.Visible(db, user).AsNoTracking().SingleOrDefaultAsync(d => d.Id == id);
     return document is null ? Results.NotFound() : Results.Ok(Metadata(document));
 }).Produces<DocumentMetadata>().Produces(404);
 documents.MapGet("/{id:guid}/content", async (Guid id, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var document = await db.Documents.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Owner(user));
+    var document = await DocumentAccess.Visible(db, user).AsNoTracking().SingleOrDefaultAsync(d => d.Id == id);
     if (document is null) return Results.NotFound();
     return document.Content.Length == 0 ? Results.NoContent() : Results.Bytes(document.Content, "application/json");
 }).Produces<System.Text.Json.JsonElement>().Produces(204).Produces(404);
 // Metadata and content come from one database read, so an opening tab cannot mix revisions.
 documents.MapGet("/{id:guid}/snapshot", async (Guid id, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var document = await db.Documents.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Owner(user));
+    var document = await DocumentAccess.Visible(db, user).AsNoTracking().SingleOrDefaultAsync(d => d.Id == id);
     if (document is null) return Results.NotFound();
     JsonElement? content = document.Content.Length == 0 ? null : JsonSerializer.Deserialize<JsonElement>(document.Content, new JsonSerializerOptions { MaxDepth = 256 });
     return Results.Ok(new DocumentSnapshot(Metadata(document), content));
 }).Produces<DocumentSnapshot>().Produces(404);
-documents.MapPut("/{id:guid}/content", async (Guid id, SaveDocument input, ClaimsPrincipal user, AppDbContext db) =>
+documents.MapPut("/{id:guid}/content", async (Guid id, SaveDocument input, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
 {
-    var document = await db.Documents.SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Owner(user));
+    var document = await DocumentAccess.FindAsync(db, user, id, ct, true);
     if (document is null) return Results.NotFound();
     if (document.Version != input.Version) return Conflict();
     if (input.Document.ValueKind != JsonValueKind.Object || !input.Document.TryGetProperty("body", out var body) || body.ValueKind != JsonValueKind.Array)
@@ -285,10 +335,14 @@ documents.MapPut("/{id:guid}/content", async (Guid id, SaveDocument input, Claim
     // Preserve the submitted UTF-8 model; escaping Persian letters would inflate its storage size.
     var bytes = Encoding.UTF8.GetBytes(input.Document.GetRawText());
     if (bytes.Length > FileLimits.MaxModelBytes) return Results.Problem("The editable document exceeds the 256 MiB processing limit.", statusCode: 413, extensions: new Dictionary<string, object?> { ["code"] = "model_too_large", ["maxBytes"] = FileLimits.MaxModelBytes });
+    // Validate with the same native parser used by the editor before replacing
+    // a usable revision. Keep the submitted model, including extension metadata.
+    await converter.PreflightAsync(bytes, ct);
     document.Content = bytes;
     document.Version++;
+    DocumentAccess.Audit(db, document, Owner(user), "edit");
     document.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-    try { await db.SaveChangesAsync(); }
+    try { await db.SaveChangesAsync(ct); }
     catch (DbUpdateConcurrencyException) { return Conflict(); }
     return Results.Ok(Metadata(document));
 }).Produces<DocumentMetadata>().ProducesProblem(409).ProducesProblem(400).ProducesProblem(413).Produces(404);
@@ -296,21 +350,30 @@ documents.MapPatch("/{id:guid}", async (Guid id, RenameDocument input, ClaimsPri
 {
     var title = CleanTitle(input.Title);
     if (title is null) return Results.Problem("A title must contain 1–160 characters.", statusCode: 400);
-    var document = await db.Documents.SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Owner(user));
+    var document = await DocumentAccess.FindAsync(db, user, id, CancellationToken.None, true);
     if (document is null) return Results.NotFound();
     if (document.Version != input.Version) return Conflict();
     document.Title = title;
     document.Version++;
+    DocumentAccess.Audit(db, document, Owner(user), "edit");
     document.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     try { await db.SaveChangesAsync(); } catch (DbUpdateConcurrencyException) { return Conflict(); }
     return Results.Ok(Metadata(document));
 }).Produces<DocumentMetadata>().ProducesProblem(409).ProducesProblem(400).Produces(404);
 documents.MapDelete("/{id:guid}", async (Guid id, long version, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var count = await db.Documents.Where(d => d.Id == id && d.OwnerId == Owner(user) && d.Version == version).ExecuteDeleteAsync();
-    if (count != 0) return Results.NoContent();
-    return await db.Documents.AnyAsync(d => d.Id == id && d.OwnerId == Owner(user)) ? Conflict() : Results.NotFound();
+    var document = await db.Documents.SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == Owner(user));
+    if (document is null) return Results.NotFound();
+    if (document.Version != version) return Conflict();
+    document.Version++; document.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    db.TrashedDocuments.Add(new TrashedDocument { DocumentId = id });
+    await db.SaveChangesAsync();
+    return Results.NoContent();
 }).Produces(204).ProducesProblem(409).Produces(404);
+app.MapLibraryRecovery();
+app.MapLibrarySearch();
+app.MapRevisionRetention();
+app.MapCollaboration();
 app.MapAdministration();
 app.MapTemplates();
 app.MapLetterResources();

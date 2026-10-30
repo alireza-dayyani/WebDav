@@ -45,6 +45,7 @@ public static class BootstrapAdministration
         // Add the policy table to existing installations without replacing their Identity/document database.
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS UploadPolicies (Id INTEGER NOT NULL PRIMARY KEY, MaxUploadMiB INTEGER NOT NULL, Version INTEGER NOT NULL)");
         await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO UploadPolicies (Id, MaxUploadMiB, Version) VALUES (1, 10, 1)");
+        await SchemaUpgrades.InitializeAsync(db);
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         foreach (var role in new[] { AccessRoles.Admin, AccessRoles.SuperAdmin })
             if (!await roleManager.RoleExistsAsync(role)) Check(await roleManager.CreateAsync(new IdentityRole(role)));

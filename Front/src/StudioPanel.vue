@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { api, previewPdf } from "./api";
+import { api, allPages, previewPdf } from "./api";
+import { useUnsavedChanges } from "./unsavedChanges";
 import { language, locale, t, errorMessage } from "./i18n";
 import LanguagePicker from "./LanguagePicker.vue";
 const props = defineProps({
@@ -32,6 +33,7 @@ const directory = ref([]),
   directoryMore = ref(false),
   directorySearch = ref("");
 const generated = computed(() => current.value?.metadata.state === "generated");
+useUnsavedChanges(() => dirty.value);
 const form = reactive({
   title: "",
   subject: "",
@@ -101,6 +103,7 @@ function navigate(value) {
   );
 }
 async function task(action) {
+  if (busy.value) return;
   busy.value = true;
   error.value = "";
   notice.value = "";
@@ -114,14 +117,7 @@ async function task(action) {
   }
 }
 async function all(path) {
-  const result = [];
-  let page = 1,
-    response;
-  do {
-    response = await api(`${path}?page=${page++}`);
-    result.push(...response.items);
-  } while (response.hasMore && page <= 100);
-  return result;
+  return allPages(path);
 }
 async function refresh() {
   [
@@ -331,6 +327,7 @@ async function download(artifact, format) {
   );
 }
 async function duplicate(item) {
+  if (dirty.value && !window.confirm(t("leave"))) return;
   const name = window.prompt(st("documentName"), item.metadata.title);
   if (!name) return;
   const copy = await api(`/letters/${item.metadata.id}/duplicate`, {
@@ -473,6 +470,7 @@ async function saveTemplate(starter = false) {
   notice.value = st("saved");
 }
 async function createDocument(item) {
+  if (dirty.value && !window.confirm(t("leave"))) return;
   const title = window.prompt(st("documentName"), item.metadata.title);
   if (!title) return;
   const document = await api(`/templates/${item.metadata.id}/render`, {
@@ -498,6 +496,7 @@ async function uploadDocument(event, target) {
   }
 }
 function close() {
+  if (busy.value) return;
   if (!dirty.value || window.confirm(t("leave"))) emit("close");
 }
 onMounted(() =>
@@ -521,7 +520,9 @@ onMounted(() =>
   <main class="studio-page">
     <header class="studio-header">
       <div>
-        <button class="text-button" @click="close">← {{ st("back") }}</button>
+        <button class="text-button" :disabled="busy" @click="close">
+          ← {{ st("back") }}
+        </button>
         <h1>{{ st(tab) }}</h1>
       </div>
       <div class="header-tools">
@@ -535,6 +536,7 @@ onMounted(() =>
         v-for="name in ['letters', 'templates', 'senders', 'images']"
         :key="name"
         :class="{ selected: tab === name }"
+        :disabled="busy"
         @click="navigate(name)"
       >
         {{ st(name) }}
@@ -558,15 +560,22 @@ onMounted(() =>
           :key="item.metadata.id"
           class="studio-list-item"
         >
-          <button class="text-button" @click="task(() => openLetter(item))">
+          <button
+            class="text-button"
+            :disabled="busy"
+            @click="task(() => openLetter(item))"
+          >
             {{ item.metadata.title }}</button
           ><small
             >{{ st(item.metadata.state) }} · v{{ item.metadata.version }}</small
           >
           <div class="studio-actions">
-            <button @click="task(() => duplicate(item))">
+            <button :disabled="busy" @click="task(() => duplicate(item))">
               {{ st("duplicate") }}</button
-            ><button @click="task(() => remove(item, '/letters'))">
+            ><button
+              :disabled="busy"
+              @click="task(() => remove(item, '/letters'))"
+            >
               {{ st("delete") }}
             </button>
           </div>
@@ -1072,7 +1081,12 @@ onMounted(() =>
             @click="task(() => saveTemplate(true))"
           >
             {{ st("starter") }}</button
-          ><button v-if="templateForm.id" type="button" @click="clearTemplate">
+          ><button
+            v-if="templateForm.id"
+            type="button"
+            :disabled="busy"
+            @click="clearTemplate"
+          >
             {{ st("cancel") }}
           </button>
         </div>
@@ -1096,11 +1110,13 @@ onMounted(() =>
             ><button
               v-else
               class="secondary"
+              :disabled="busy"
               @click="newLetter(item.metadata.id)"
             >
               {{ st("useTemplate") }}</button
             ><button
               v-if="item.data.kind === 'letter'"
+              :disabled="busy"
               @click="task(() => editTemplate(item))"
             >
               {{ st("editMappings") }}</button
@@ -1163,7 +1179,8 @@ onMounted(() =>
           <p>{{ item.data.title }}</p>
           <p class="muted">{{ item.data.organization }}</p>
           <div class="studio-actions">
-            <button @click="editSender(item)">{{ st("edit") }}</button
+            <button :disabled="busy" @click="editSender(item)">
+              {{ st("edit") }}</button
             ><button @click="task(() => remove(item, '/letters/senders'))">
               {{ st("delete") }}
             </button>

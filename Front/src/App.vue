@@ -1,8 +1,12 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { api, resetCsrf } from "./api";
+import { api, allPages, resetCsrf, previewPdf } from "./api";
+import DocumentHistory from "./DocumentHistory.vue";
+import LibrarySettings from "./LibrarySettings.vue";
+import CollaborationPanel from "./CollaborationPanel.vue";
+import ReviewInbox from "./ReviewInbox.vue";
+import AutomationPanel from "./AutomationPanel.vue";
 import { locale, language, t, errorMessage } from "./i18n";
-import { normalizeSearch } from "./locales";
 import LanguagePicker from "./LanguagePicker.vue";
 import AdminPanel from "./AdminPanel.vue";
 import StudioPanel from "./StudioPanel.vue";
@@ -27,6 +31,41 @@ const adminView = ref(false);
 const studioView = ref("");
 const documentTemplates = ref([]),
   chosenTemplate = ref("");
+const historyDocument = ref(null);
+const librarySettings = ref(false),
+  loadingMore = ref(false),
+  libraryPage = ref(1),
+  libraryMore = ref(false),
+  libraryTotal = ref(0);
+const shareDocument = ref(null),
+  reviewInbox = ref(false);
+const automationPanel = ref(false);
+let searchTimer;
+const trashView = ref(false);
+let refreshTicket = 0;
+async function toggleTrash() {
+  trashView.value = !trashView.value;
+  try {
+    await refresh();
+  } catch (e) {
+    error.value = errorMessage(e);
+  }
+}
+async function recoverDocument(document, purge = false) {
+  if (purge && !window.confirm(t("purgeConfirm"))) return;
+  error.value = "";
+  try {
+    await api(
+      `/documents/${document.id}/${purge ? "purge?version=" + document.version : "recover"}`,
+      purge
+        ? { method: "DELETE" }
+        : { method: "POST", body: { version: document.version } },
+    );
+    await refresh();
+  } catch (e) {
+    error.value = errorMessage(e);
+  }
+}
 function showStudio(tab) {
   studioView.value = tab;
   history.replaceState(null, "", `/#/${tab}`);
@@ -91,11 +130,33 @@ watch(locale, () => {
       editorPending.value ? "saving" : editorDirty.value ? "unsaved" : "saved",
     );
 });
-const visible = computed(() =>
-  documents.value.filter((d) =>
-    normalizeSearch(d.title).includes(normalizeSearch(search.value)),
-  ),
-);
+const visible = computed(() => documents.value);
+watch(search, () => {
+  clearTimeout(searchTimer);
+  if (!user.value) return;
+  searchTimer = setTimeout(
+    () => refresh().catch((e) => (error.value = errorMessage(e))),
+    250,
+  );
+});
+async function loadMoreDocuments() {
+  if (loadingMore.value) return;
+  loadingMore.value = true;
+  const ticket = refreshTicket;
+  try {
+    const result = await api(
+      `/library?page=${libraryPage.value + 1}&trash=${trashView.value}&q=${encodeURIComponent(search.value)}`,
+    );
+    if (ticket !== refreshTicket) return;
+    documents.value.push(...result.items);
+    libraryPage.value++;
+    libraryMore.value = result.hasMore;
+  } catch (e) {
+    error.value = errorMessage(e);
+  } finally {
+    loadingMore.value = false;
+  }
+}
 const greeting = computed(
   () => user.value?.email?.split("@")[0] || t("writer"),
 );
@@ -165,15 +226,20 @@ async function download(document, format = downloadFormat.value) {
   }
 }
 async function refresh() {
+  const ticket = ++refreshTicket;
   const [items, formats, templates] = await Promise.all([
-    api("/documents/"),
+    api(
+      `/library?page=1&trash=${trashView.value}&q=${encodeURIComponent(search.value)}`,
+    ),
     api("/documents/formats"),
-    api("/templates/"),
+    allPages("/templates/"),
   ]);
-  documents.value = items;
-  documentTemplates.value = templates.items.filter(
-    (x) => x.data.kind === "document",
-  );
+  if (ticket !== refreshTicket) return;
+  documents.value = items.items;
+  libraryPage.value = 1;
+  libraryMore.value = items.hasMore;
+  libraryTotal.value = items.total;
+  documentTemplates.value = templates.filter((x) => x.data.kind === "document");
   updateFileLimits(formats);
 }
 async function initialize() {
@@ -211,7 +277,15 @@ async function logout() {
   try {
     await api("/account/logout", { method: "POST" });
     user.value = null;
+    search.value = "";
+    refreshTicket++;
     documents.value = [];
+    trashView.value = false;
+    historyDocument.value = null;
+    librarySettings.value = false;
+    shareDocument.value = null;
+    reviewInbox.value = false;
+    automationPanel.value = false;
     active.value = null;
     adminView.value = false;
     studioView.value = "";
@@ -227,6 +301,12 @@ function canLeave() {
   return !editorDirty.value || window.confirm(t("leave"));
 }
 function open(document) {
+  if (document.permission === "read") {
+    previewPdf(
+      `/documents/${document.id}/download?format=pdf&version=${document.version}`,
+    ).catch((e) => (error.value = errorMessage(e)));
+    return;
+  }
   active.value = document;
   editorStatus.value = t("openingDocument");
   editorDirty.value = false;
@@ -257,7 +337,7 @@ async function openFromHash() {
   }
   const match = location.hash.match(/^#\/documents\/([a-f\d-]+)$/i);
   if (!match) return;
-  const document = documents.value.find((d) => d.id === match[1]);
+  const document = await api(`/documents/${match[1]}/access`);
   if (document) open(document);
   else {
     error.value = t("unavailable");
@@ -380,6 +460,7 @@ onMounted(() => {
   initialize();
 });
 onBeforeUnmount(() => {
+  clearTimeout(searchTimer);
   window.removeEventListener("message", editorMessage);
   window.removeEventListener("beforeunload", unload);
 });
@@ -661,10 +742,20 @@ onBeforeUnmount(() => {
         </div>
         <section class="documents-section">
           <div class="section-heading">
+            <button @click="automationPanel = true">
+              {{ t("ws.automation") }}
+            </button>
+            <button @click="reviewInbox = true">{{ t("ws.reviews") }}</button>
+            <button @click="librarySettings = true">
+              {{ t("ws.storage") }}
+            </button>
+            <button @click="toggleTrash">
+              {{ t(trashView ? "documents" : "trash") }}
+            </button>
             <h2>
-              {{ t("documents") }}
+              {{ t(trashView ? "trash" : "documents") }}
               <span>{{
-                new Intl.NumberFormat(language.tag).format(documents.length)
+                new Intl.NumberFormat(language.tag).format(libraryTotal)
               }}</span>
             </h2>
             <label class="search"
@@ -672,6 +763,7 @@ onBeforeUnmount(() => {
               ><input
                 v-model="search"
                 type="search"
+                maxlength="200"
                 :placeholder="t('find')"
                 :aria-label="t('find')"
             /></label>
@@ -679,10 +771,16 @@ onBeforeUnmount(() => {
           <p v-if="error" class="error" role="alert">{{ error }}</p>
           <div v-if="!visible.length" class="empty-state">
             <span aria-hidden="true">▤</span>
-            <h3>{{ t(search ? "noMatches" : "empty") }}</h3>
-            <p>{{ t(search ? "tryTitle" : "emptyText") }}</p>
+            <h3>
+              {{ t(search ? "noMatches" : trashView ? "emptyTrash" : "empty") }}
+            </h3>
+            <p>
+              {{
+                t(search ? "tryTitle" : trashView ? "trashHelp" : "emptyText")
+              }}
+            </p>
             <button
-              v-if="!search"
+              v-if="!search && !trashView"
               class="text-button"
               @click="showDialog('create')"
             >
@@ -698,6 +796,7 @@ onBeforeUnmount(() => {
               <button
                 class="document-preview"
                 :aria-label="t('open', { title: document.title })"
+                :disabled="trashView"
                 @click="open(document)"
               >
                 <div class="preview-paper" aria-hidden="true">
@@ -711,6 +810,7 @@ onBeforeUnmount(() => {
                 <button
                   class="document-name"
                   dir="auto"
+                  :disabled="trashView"
                   @click="open(document)"
                 >
                   {{ document.title }}
@@ -719,8 +819,38 @@ onBeforeUnmount(() => {
                   <span>{{ date(document.updatedAt) }}</span
                   ><span>{{ size(document.size) }}</span>
                 </div>
-                <div class="document-actions">
-                  <button @click="showDialog('rename', document)">
+                <div v-if="trashView" class="document-actions">
+                  <button @click="recoverDocument(document)">
+                    {{ t("restore") }}
+                  </button>
+                  <button
+                    class="delete-link"
+                    @click="recoverDocument(document, true)"
+                  >
+                    {{ t("purge") }}
+                  </button>
+                </div>
+                <div v-else class="document-actions">
+                  <button
+                    v-if="
+                      !document.permission || document.permission === 'owner'
+                    "
+                    @click="shareDocument = document"
+                  >
+                    {{ t("ws.sharing") }}
+                  </button>
+                  <button
+                    v-if="
+                      !document.permission || document.permission === 'owner'
+                    "
+                    @click="historyDocument = document"
+                  >
+                    {{ t("history") }}
+                  </button>
+                  <button
+                    v-if="document.permission !== 'read'"
+                    @click="showDialog('rename', document)"
+                  >
                     {{ t("rename") }}</button
                   ><button
                     :disabled="downloading"
@@ -729,6 +859,9 @@ onBeforeUnmount(() => {
                     {{ t("download") }} DOCX</button
                   ><button
                     class="delete-link"
+                    v-if="
+                      !document.permission || document.permission === 'owner'
+                    "
                     @click="showDialog('delete', document)"
                   >
                     {{ t("delete") }}
@@ -737,6 +870,13 @@ onBeforeUnmount(() => {
               </div>
             </article>
           </div>
+          <button
+            v-if="libraryMore"
+            :disabled="loadingMore"
+            @click="loadMoreDocuments"
+          >
+            {{ t("loadMore") }}
+          </button>
         </section>
         <footer class="workspace-footer">
           <span>{{ t("pace") }}</span
@@ -745,6 +885,35 @@ onBeforeUnmount(() => {
       </div>
     </main>
   </div>
+  <DocumentHistory
+    v-if="user && historyDocument"
+    :document="historyDocument"
+    @close="historyDocument = null"
+    @restored="
+      historyDocument = null;
+      refresh();
+    "
+  />
+  <LibrarySettings
+    v-if="user && librarySettings"
+    @close="librarySettings = false"
+  />
+  <CollaborationPanel
+    v-if="user && shareDocument"
+    :document="shareDocument"
+    @close="
+      shareDocument = null;
+      refresh();
+    "
+  />
+  <ReviewInbox v-if="user && reviewInbox" @close="reviewInbox = false" />
+  <AutomationPanel
+    v-if="user && automationPanel"
+    @close="
+      automationPanel = false;
+      refresh();
+    "
+  />
   <div
     v-if="dialog"
     class="dialog-backdrop"

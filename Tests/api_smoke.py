@@ -20,11 +20,12 @@ class Client:
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
         self.token = None
 
-    def request(self, path, method='GET', body=None, expected=200, csrf=True):
+    def request(self, path, method='GET', body=None, expected=200, csrf=True, account=None):
         if method != 'GET' and csrf and self.token is None:
             self.token = self.request('/csrf')['token']
         data = json.dumps(body).encode() if body is not None else None
         headers = {'Content-Type': 'application/json'}
+        if account is not None: headers['X-Inkstone-Account'] = account
         if csrf and self.token:
             headers['X-CSRF-TOKEN'] = self.token
         req = urllib.request.Request(BASE + '/api' + path, data=data, headers=headers, method=method)
@@ -68,6 +69,9 @@ with tempfile.TemporaryDirectory(prefix='inkstone-tests-') as data, open(ROOT / 
         guest.request('/account/register', 'POST', {'email': 'invalid', 'password': 'short'}, expected=400)
         alice.account('alice@example.test')
         bob.account('bob@example.test')
+        alice.request('/documents/', 'POST', {'title': 'Wrong account'}, expected=403, account='bob@example.test')
+        assert alice.request('/documents/', account='alice@example.test') == []
+        guest.request('/documents/', expected=401, account='alice@example.test')
         alice.request('/documents/', 'POST', {'title': '   '}, expected=400)
         document = alice.request('/documents/', 'POST', {'title': 'First private draft'}, expected=201)
         identifier = document['id']
@@ -79,6 +83,9 @@ with tempfile.TemporaryDirectory(prefix='inkstone-tests-') as data, open(ROOT / 
         bob.request(f'/documents/{identifier}', 'PATCH', {'version': 1, 'title': 'Stolen'}, expected=404)
         bob.request(f'/documents/{identifier}?version=1', 'DELETE', expected=404)
         alice.request(f'/documents/{identifier}/content', 'PUT', {'version': 1, 'document': {'bad': True}}, expected=400)
+        alice.request(f'/documents/{identifier}/content', 'PUT', {'version': 1, 'document': {'body': [{'kind': 'not-a-native-block', 'text': 'Invalid'}]}}, expected=422)
+        assert alice.request(f'/documents/{identifier}')['version'] == 1
+        alice.request(f'/documents/{identifier}/content', expected=204)
         payload = {'body': [], 'testText': 'A persistent draft — سلام'}
         saved = alice.request(f'/documents/{identifier}/content', 'PUT', {'version': 1, 'document': payload})
         assert saved['version'] == 2

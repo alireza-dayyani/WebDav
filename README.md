@@ -4,6 +4,9 @@ A private document workspace with a separate Vue frontend, .NET 10 API, and Rust
 
 ## Projects
 
+For the next development stages and deferred database, search, storage, worker and
+Docker work, see the [production roadmap](docs/PRODUCTION_ROADMAP.md).
+
 | Directory | Purpose |
 | --- | --- |
 | Front | Vue accounts, document/template libraries, letter workflow, languages and editor host |
@@ -50,6 +53,14 @@ Upload DOCX, ODT, RTF, TXT, Markdown or native JSON through the library. Uploads
 
 Save and Ctrl+S persist the complete native model. Automatic saves run every ten seconds. Version checks protect against overwrites between tabs. File → Save As in the editor can keep a local copy of unsaved work.
 
+The library's History dialog downloads earlier revisions and restores them as a new version. Delete moves ordinary documents to Trash; restore them there or explicitly delete them and their history permanently. Trashed documents are excluded from ordinary document editing, downloads and automation. Templates and generated letters keep their own saved snapshots. `GET /api/storage` reports the authenticated owner's document, history, resource, generated-artifact and result bytes, including Trash; database overhead and queued job inputs are excluded.
+
+Library search matches titles and document text with Persian/Arabic letter normalization and paginated results. It indexes up to the first one million characters of each native document's title/text; it does not OCR scanned images. Storage and retention provides an opt-in policy, a preview and explicit cleanup. The first version, current version, recent versions and all versions submitted for review are preserved. Enabling retention also applies it to subsequent saves; keep backups for recovery of removed history.
+
+Sharing and review grants an existing registered account reader or editor access. Readers view/download the current document; editors can also save changes. Only owners manage sharing, complete revision history, Trash, retention and template copies. Reviews apply to an exact revision, retain that native revision as evidence, and become stale after edits. These are internal review decisions, not certificate signatures or external delivery. Owners see sharing/review/edit audit events. Revocation prevents future server access but cannot recall previously downloaded copies.
+
+Automation offers a live job list with cancellation, private output downloads and reports; guided template generation for up to 100 records; and creation/revocation of scoped, expiring API tokens. A token secret is shown once and is not saved in browser storage. Tokens retain owner-only access even when their account has shared access to someone else's documents. All features are available through the standalone API; see Back/AUTOMATION_API.md.
+
 ## Backend API
 
 For programmatic DOCX editing without opening the editor, see the [Document automation API](Back/AUTOMATION_API.md): inspect/search, apply atomic batches, preview PDF/PNG, edit tables/controls/images, review changes, restore revisions, compare/assemble documents and generate in bulk. Private background jobs and revocable scoped tokens support standalone automation clients.
@@ -82,7 +93,7 @@ To populate the local database with eight demo accounts and sample letter resour
 
 The local bootstrap account is configured in Back/App_Data/bootstrap/superadmin.json, outside Git and publish output. It is created once on startup; restarting does not reset its password. The configured bootstrap identity is protected from demotion. A deployment must supply its own private bootstrap file, or set BootstrapAdmin__File to its location. No bootstrap credentials are embedded in source or frontend bundles.
 
-Administrators use the Administration screen to search users, grant/revoke administrator access, inspect saved files through read-only previews/downloads, and change the upload limit. Account role checks are live: revocation applies to existing sessions. The ordinary document APIs stay owner-scoped; explicit administrator routes provide the authorized cross-account access. Existing databases are upgraded without removing accounts or documents. Upload-policy changes survive restarts and do not block saves/downloads of existing documents.
+Administrators use the Administration screen to search users, grant/revoke administrator access, inspect saved files through read-only previews/downloads, and change the upload limit. Account role checks are live: revocation applies to existing sessions. Ordinary document APIs require ownership or an explicit reader/editor grant; administrator roles do not bypass those checks. Explicit administrator routes provide administrative inspection. Existing databases are upgraded without removing accounts or documents. Upload-policy changes survive restarts and do not block saves/downloads of existing documents.
 
 ## Builds and checks
 
@@ -100,6 +111,9 @@ python Tests/letter_editor_api_smoke.py
 python Tests/letter_template_layout_smoke.py
 python Tests/demo_seed_smoke.py
 node --test Tests/editor-host.test.mjs Tests/locales.test.mjs Tests/pdf-preview.test.mjs
+node --test Tests/workspace-ui.test.mjs Tests/automation-ui.test.mjs Tests/studio-state.test.mjs
+python Tests/workspace_sequence_smoke.py
+python Tests/production_readiness_smoke.py
 cd Front
 npm run build:all
 ```
@@ -112,4 +126,4 @@ The Rust workspace provides formatting, lint, asset attribution, layering, tests
 
 Required copyright, license, font and third-party attribution records are retained with the Rust source and in Back/legal. Frontend builds copy applicable notices into licenses.txt; backend builds include the QRCoder license. Historical notices are kept separately from current product branding.
 
-IIS and Docker deployment, sharing and account recovery remain later work.
+See the [production roadmap](docs/PRODUCTION_ROADMAP.md) for future deployment work. The standalone `Scripts/backup.py` tool supports consistent backup and verified restore into a new directory; stop the API before taking a backup so data and keys form one recovery point. Run `python Scripts/backup.py --help` for usage. Account recovery and Docker deployment remain later work.

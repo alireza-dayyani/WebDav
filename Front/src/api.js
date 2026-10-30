@@ -8,6 +8,16 @@ export async function csrf() {
 export function resetCsrf() {
   token = undefined;
 }
+export async function allPages(path) {
+  const items = [];
+  for (let page = 1; ; page++) {
+    const response = await api(
+      `${path}${path.includes("?") ? "&" : "?"}page=${page}`,
+    );
+    items.push(...response.items);
+    if (!response.hasMore) return items;
+  }
+}
 export async function api(path, options = {}) {
   const method = options.method || "GET";
   const form = options.body instanceof FormData;

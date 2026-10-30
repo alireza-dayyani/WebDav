@@ -1,0 +1,26 @@
+name: Inkstone checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  api-and-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Front/package-lock.json
+      - run: npm ci
+        working-directory: Front
+      - run: node --test Tests/editor-host.test.mjs Tests/locales.test.mjs Tests/pdf-preview.test.mjs Tests/workspace-ui.test.mjs Tests/automation-ui.test.mjs Tests/studio-state.test.mjs
+      - run: npm run build
+        working-directory: Front
+      - run: dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true
+      - run: python3 Tests/backup_test.py

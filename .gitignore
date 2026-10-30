@@ -15,4 +15,5 @@ Scripts/__pycache__/
 Tests/generated/
 *.user
 *.suo
+*.inkstone-backup.zip
 Front/public/fonts/

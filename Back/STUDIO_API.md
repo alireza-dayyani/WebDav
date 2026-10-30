@@ -61,7 +61,7 @@ For custom letter templates, `fields` maps logical names to DOCX bookmarks, such
 
 Sender JSON contains `version`, `fullName`, `title`, `organization`, `address`. Users can save multiple titles. Images are limited to 512 KiB and 4096 pixels per dimension, verified by decoding. Knowing an image ID does not grant access. A selected signature image is a visual signature, not certificate-based signing.
 
-The authenticated directory returns only user IDs, email addresses and email-derived labels. It never exposes roles, signatures, sender profiles or files. Lists use the same paging contract. Choosing a recipient formats the letter; it does not share or deliver files.
+The authenticated directory returns only user IDs, email addresses and email-derived labels. Empty search returns only the signed-in account; another recipient requires an exact full email address, case insensitive. Partial searches return no matches, and pagination cannot browse accounts. Exact lookup can still reveal registration of a known email address; invitation-based discovery and verified email ownership are future work. The directory never exposes roles, signatures, sender profiles or files. Choosing a recipient formats the letter; it does not share or deliver files.
 
 ## Letter lifecycle
 

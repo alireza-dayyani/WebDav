@@ -11,7 +11,9 @@ with server(5092, 'demo-seed') as (base, data):
     assert len(manifest['accounts']) == 8 and len({a['password'] for a in manifest['accounts']}) == 8
     account = manifest['accounts'][0]
     api = Client(base); api.json('/account/login','POST',{'email':account['email'],'password':account['password']})
-    assert len(api.json('/letters/directory')['items']) == 8
+    assert [u['email'] for u in api.json('/letters/directory')['items']] == [account['email']]
+    for recipient in manifest['accounts']:
+        assert [u['email'] for u in api.json('/letters/directory?search=' + recipient['email'])['items']] == [recipient['email']]
     before = api.json('/letters/')['items']
     assert len(before) == 3 and len(api.json('/templates/')['items']) == 5
     assert len(api.json('/letters/senders/')['items']) == 2 and len(api.json('/letters/images/')['items']) == 3

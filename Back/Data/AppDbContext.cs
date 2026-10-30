@@ -14,10 +14,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<OperationReceipt> OperationReceipts => Set<OperationReceipt>();
     public DbSet<AutomationToken> AutomationTokens => Set<AutomationToken>();
     public DbSet<DocumentJob> DocumentJobs => Set<DocumentJob>();
+    public DbSet<TrashedDocument> TrashedDocuments => Set<TrashedDocument>();
+    public DbSet<RetentionPolicy> RetentionPolicies => Set<RetentionPolicy>();
+    public DbSet<DocumentGrant> DocumentGrants => Set<DocumentGrant>();
+    public DbSet<DocumentReview> DocumentReviews => Set<DocumentReview>();
+    public DbSet<DocumentAudit> DocumentAudits => Set<DocumentAudit>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        await using var transaction = Database.CurrentTransaction is null ? await Database.BeginTransactionAsync(cancellationToken) : null;
+        await Inkstone.Web.Services.LibrarySearch.EnsureAsync(this, cancellationToken);
         ChangeTracker.DetectChanges();
+        var changed = ChangeTracker.Entries<StoredDocument>().Where(e => e.State is EntityState.Added or EntityState.Modified).Select(e => e.Entity).ToArray();
         foreach (var entry in ChangeTracker.Entries<StoredDocument>().Where(e => e.State is EntityState.Added or EntityState.Modified).ToArray())
         {
             var document = entry.Entity;
@@ -25,18 +33,36 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             {
                 var previous = entry.OriginalValues;
                 var oldVersion = previous.GetValue<long>(nameof(StoredDocument.Version));
-                if (!await DocumentRevisions.AnyAsync(r => r.DocumentId == document.Id && r.Version == oldVersion, cancellationToken))
+                if (oldVersion != document.Version && !await HasRevisionAsync(document.Id, oldVersion, cancellationToken))
                     DocumentRevisions.Add(new DocumentRevision { DocumentId = document.Id, Version = oldVersion, Title = previous.GetValue<string>(nameof(StoredDocument.Title)), Content = previous.GetValue<byte[]>(nameof(StoredDocument.Content)).ToArray(), CreatedAt = previous.GetValue<long>(nameof(StoredDocument.UpdatedAt)) });
             }
-            if (!await DocumentRevisions.AnyAsync(r => r.DocumentId == document.Id && r.Version == document.Version, cancellationToken))
+            if (!await HasRevisionAsync(document.Id, document.Version, cancellationToken))
                 DocumentRevisions.Add(new DocumentRevision { DocumentId = document.Id, Version = document.Version, Title = document.Title, Content = document.Content.ToArray(), CreatedAt = document.UpdatedAt });
         }
-        return await base.SaveChangesAsync(cancellationToken);
+        var saved = await base.SaveChangesAsync(cancellationToken);
+        foreach (var document in changed)
+        {
+            await Inkstone.Web.Services.LibrarySearch.IndexAsync(this, document, cancellationToken);
+            var policy = await RetentionPolicies.AsNoTracking().SingleOrDefaultAsync(p => p.OwnerId == document.OwnerId && p.Enabled, cancellationToken);
+            if (policy is not null) await Inkstone.Web.Services.RevisionRetention.Eligible(this, document.OwnerId, policy, document.Id).ExecuteDeleteAsync(cancellationToken);
+        }
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+        return saved;
     }
+
+    private Task<bool> HasRevisionAsync(Guid documentId, long version, CancellationToken ct)
+        => DocumentRevisions.Local.Any(r => r.DocumentId == documentId && r.Version == version)
+            ? Task.FromResult(true)
+            : DocumentRevisions.AnyAsync(r => r.DocumentId == documentId && r.Version == version, ct);
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<DocumentGrant>(e => { e.HasKey(x => new { x.DocumentId, x.UserId }); e.HasQueryFilter(x => x.Permission == "read" || x.Permission == "edit"); e.Property(x => x.Version).IsConcurrencyToken(); e.HasOne<StoredDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade); e.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade); });
+        builder.Entity<DocumentReview>(e => { e.HasKey(x => x.Id); e.HasIndex(x => new { x.DocumentId, x.DocumentVersion, x.ReviewerId }).IsUnique().HasFilter("Status = 'pending'"); e.HasIndex(x => new { x.ReviewerId, x.CreatedAt }); e.Property(x => x.Version).IsConcurrencyToken(); e.HasOne<StoredDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade); e.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.ReviewerId).OnDelete(DeleteBehavior.Cascade); });
+        builder.Entity<DocumentAudit>(e => { e.HasKey(x => x.Id); e.HasIndex(x => new { x.DocumentId, x.CreatedAt }); e.HasOne<StoredDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade); });
+        builder.Entity<RetentionPolicy>(e => { e.HasKey(x => x.OwnerId); e.Property(x => x.Version).IsConcurrencyToken(); e.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade); });
+        builder.Entity<TrashedDocument>(e => { e.HasKey(x => x.DocumentId); e.HasOne<StoredDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade); });
         builder.Entity<DocumentRevision>(e => { e.HasKey(x => new { x.DocumentId, x.Version }); e.HasOne<StoredDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade); });
         builder.Entity<OperationReceipt>(e => { e.HasIndex(x => new { x.OwnerId, x.Scope, x.Key }).IsUnique(); e.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade); });
         builder.Entity<AutomationToken>(e => { e.HasIndex(x => x.Hash).IsUnique(); e.Property(x => x.Version).IsConcurrencyToken(); e.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade); });
@@ -55,6 +81,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         builder.Entity<UploadPolicy>().Property(p => p.Version).IsConcurrencyToken();
         builder.Entity<StoredDocument>(entity =>
         {
+            entity.HasQueryFilter(d => !TrashedDocuments.Any(t => t.DocumentId == d.Id));
             entity.HasKey(d => d.Id);
             entity.Property(d => d.Title).HasMaxLength(160);
             entity.Property(d => d.Version).IsConcurrencyToken();
@@ -62,6 +89,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.HasOne<IdentityUser>().WithMany().HasForeignKey(d => d.OwnerId).OnDelete(DeleteBehavior.Cascade);
         });
     }
+}
+
+public sealed class TrashedDocument
+{
+    public Guid DocumentId { get; set; }
+    public long DeletedAt { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+}
+public sealed class RetentionPolicy
+{
+    public required string OwnerId { get; set; }
+    public bool Enabled { get; set; }
+    public int KeepLatest { get; set; } = 50;
+    public int Days { get; set; } = 30;
+    public long Version { get; set; }
 }
 
 public sealed class UploadPolicy
