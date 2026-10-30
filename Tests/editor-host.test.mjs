@@ -10,13 +10,13 @@ function bridge(letterMode = false) {
   store.set(id, { id, title: 'First document', version: 1, document: null })
   const parent = { postMessage: message => messages.push(message) }
   const window = { parent, addEventListener: (name, handler) => handlers[name] = handler }
-  let fail = null, next = 2
+  let fail = null, next = 2, email = 'writer@example.test'
   const fetch = async (url, options = {}) => {
     calls.push({ url, options })
     if (fail && options.method === 'PUT') return { ok: false, status: fail, json: async () => ({ detail: 'Concurrent edit' }) }
     let result
     if (url === '/api/csrf') result = { token: 'csrf-token' }
-    else if (url === '/api/account/me') result = { email: 'writer@example.test' }
+    else if (url === '/api/account/me') result = { email }
     else if (url === '/api/documents/') {
       const body = JSON.parse(options.body)
       result = { id: `new-${next++}`, title: body.title, version: 1 }
@@ -35,7 +35,7 @@ function bridge(letterMode = false) {
     return { ok: true, status: 200, json: async () => result }
   }
   vm.runInNewContext(source, { window, fetch, URLSearchParams, location: { origin: 'http://localhost', search: letterMode ? `?letter=${id}&version=1` : `?id=${id}` } })
-  return { host: window.inkstoneHost, calls, messages, store, id, parent, handlers, fail: code => fail = code }
+  return { host: window.inkstoneHost, calls, messages, store, id, parent, handlers, fail: code => fail = code, account: value => email = value }
 }
 
 test('loads a consistent snapshot; saves the complete model and advances acknowledged versions', async () => {
@@ -95,4 +95,23 @@ test('an acknowledgement from a replaced editor document does not change the cur
   await b.host.save('{"body":[]}', '1', 'Old document')
   assert.equal(b.messages.filter(m => m.type === 'inkstone:saved').length, 0)
   assert.equal(b.store.get(b.id).version, 2, 'the old document still completes its own save')
+})
+
+test('a conflict in a replaced document does not disable saves or report errors on the new document', async () => {
+  const b = bridge(); await b.host.load(); b.host.bind('1'); b.host.state(true, false, '2'); b.fail(409)
+  await assert.rejects(b.host.save('{"body":[]}', '1', 'Old'))
+  assert.equal(b.host.canAutosave(), true)
+  assert.equal(b.messages.filter(m => m.type === 'inkstone:error').length, 0)
+  b.fail(null); await b.host.save('{"body":[]}', '2', 'New')
+  assert.equal(b.store.size, 2)
+  b.host.state(true, false, '1'); assert.equal(b.host.canAutosave(), false)
+})
+
+test('switching accounts blocks saving or copying an open document into the new account', async () => {
+  const b = bridge(); await b.host.load(); b.host.bind('1'); b.account('other@example.test')
+  await assert.rejects(b.host.save('{"body":[]}', '1', 'Existing'), /account/i)
+  await assert.rejects(b.host.save('{"body":[]}', '2', 'New'), /account/i)
+  assert.equal(b.calls.filter(c => ['POST','PUT'].includes(c.options.method)).length, 0)
+  b.account('writer@example.test'); await b.host.save('{"body":[]}', '1', 'Existing')
+  assert.equal(b.store.get(b.id).version, 2)
 })

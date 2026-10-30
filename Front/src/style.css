@@ -1559,3 +1559,85 @@ select:focus-visible {
     padding: 9px 12px;
   }
 }
+.history-dialog {
+  max-height: 85vh;
+  overflow: auto;
+  width: 100%;
+  max-width: 850px;
+}
+.history-list {
+  list-style: none;
+  padding: 0;
+}
+.history-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-block: 12px;
+  border-bottom: 1px solid #ddd;
+}
+.history-list li span {
+  flex: 1;
+  min-width: 220px;
+}
+.workspace-form {
+  display: grid;
+  gap: 12px;
+  margin-block: 16px;
+}
+.workspace-form label,
+.workspace-record label {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0;
+}
+.workspace-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 16px;
+}
+.workspace-tabs button {
+  padding: 9px 14px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.workspace-tabs button[aria-pressed="true"] {
+  background: var(--green);
+  color: white;
+}
+.workspace-record {
+  padding-block: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.workspace-record button {
+  margin-inline-end: 12px;
+  margin-block: 8px;
+}
+.workspace-record textarea {
+  width: 100%;
+  min-height: 80px;
+}
+.automation-report {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 300px;
+  overflow: auto;
+}
+.section-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.history-dialog fieldset {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+.workspace-controls {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 0 !important;
+  padding: 0 !important;
+}

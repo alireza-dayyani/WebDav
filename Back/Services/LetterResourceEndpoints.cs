@@ -64,17 +64,18 @@ public static class LetterResourceEndpoints
         }).WithSummary("Read an owned image revision; image IDs do not grant access");
         images.MapDelete("/{id:guid}", (Guid id, long version, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) => Studio.Delete(db, Ownership.Owner(user), "image", id, version, ct));
 
-        app.MapGet("/api/letters/directory", async (string? search, int? page, AppDbContext db, CancellationToken ct) =>
+        app.MapGet("/api/letters/directory", async (string? search, int? page, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var index = page ?? 1;
             if (index is < 1 or > 100000 || search?.Length > 100) return Studio.Bad("Invalid directory search or page.");
+            var term = search?.Trim().ToUpperInvariant();
             var query = db.Users.AsNoTracking();
-            if (!string.IsNullOrWhiteSpace(search)) { var term = search.Trim().ToUpperInvariant(); query = query.Where(u => u.NormalizedEmail!.Contains(term)); }
+            query = string.IsNullOrEmpty(term) ? query.Where(u => u.Id == Ownership.Owner(user)) : query.Where(u => u.NormalizedEmail == term);
             var users = await query.OrderBy(u => u.NormalizedEmail).ThenBy(u => u.Id).Skip((index - 1) * 50).Take(51)
                 .Select(u => new { u.Id, u.Email }).ToListAsync(ct);
             return Results.Ok(new { page = index, hasMore = users.Count > 50, items = users.Take(50).Select(u => new { u.Id, u.Email, name = u.Email!.Split('@')[0] }) });
         }).RequireAuthorization().WithTags("Letters").WithSummary("Search registered users for letter recipients")
-          .WithDescription("Authenticated directory exposes only user IDs, email addresses and display labels. It never grants file access, delivery, signing authority or administrator access.");
+          .WithDescription("Blank search returns only the signed-in account. Other recipients require an exact email address; partial search and directory browsing are unavailable. Lookup never grants file access or verifies email ownership.");
     }
 
     private static SenderProfile? Clean(SaveSender input)

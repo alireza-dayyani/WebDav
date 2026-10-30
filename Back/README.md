@@ -10,7 +10,34 @@ No Vue server is needed to use the API. Development Swagger UI is at http://loca
 
 Run `dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true` from the repository root for unit and endpoint contract tests. The [test guide](../Tests/Inkstone.Api.Tests/README.md) describes the isolated SQLite/TestServer setup and real-converter integration coverage.
 
-## Endpoints
+## Capacity and recipient privacy
+
+`Conversion:ValidationSlots` and `Conversion:ConversionSlots` default to 2 each
+(allowed range 1–16). Native preflight uses its own pool so exports cannot occupy
+save-validation permits. This allows up to four simultaneous CLI processes by
+default; tune both values to the machine's measured memory/CPU budget. Validation
+also serves template/letter preflight and is not a dedicated autosave-only queue.
+Both pools wait at most five seconds before returning 429 `converter_busy`.
+The `Inkstone.Conversion` .NET meter publishes `inkstone.converter.queue_wait`
+(milliseconds), `inkstone.converter.active`, and `inkstone.converter.rejected`.
+The only metric label is pool (`validation` or `conversion`); no account/document
+identifiers or content are emitted. Connect a .NET metrics collector to export
+these instruments; a dashboard/alert backend is future infrastructure work.
+
+`Traffic:AuthenticatedPerMinute` defaults to 600 API requests per account;
+`Traffic:AnonymousPerMinute` defaults to 120 per client IP. Values must be positive.
+These process-local fixed-window budgets include polls and CSRF requests; normal
+account endpoint limits also apply. Overload returns 429 `rate_limited` with
+`Retry-After` when available. Health/readiness bypass the global budget. Tokens
+share their account's budget. Configure trusted proxies before relying on IP
+limits; distributed enforcement is future infrastructure work.
+
+Recipient lookup returns only the signed-in account when search is empty. Another
+account requires its exact email address (case insensitive); partial queries and
+paging cannot browse the directory. Exact lookup can still reveal whether a known
+email is registered. Verified-email and invitation-based discovery remain planned.
+
+## Endpoint reference
 
 The [Document automation API](AUTOMATION_API.md) adds structured inspection, search, atomic edits, PDF/PNG previews, tables, typed controls, styles, images, review, normalization, validation, revision history, comparison, assembly, bulk rendering, background jobs and scoped machine tokens.
 
@@ -33,7 +60,11 @@ The separate [Templates and Letters API](STUDIO_API.md) documents template snaps
 | GET | /api/documents/{id}/content | Native JSON; 204 for an untouched legacy blank document |
 | PUT | /api/documents/{id}/content | Save JSON containing version and document |
 | PATCH | /api/documents/{id} | Rename with JSON title and version |
-| DELETE | /api/documents/{id}?version=1 | Delete the matching revision |
+| DELETE | /api/documents/{id}?version=1 | Move the matching revision to Trash |
+| GET | /api/documents/trash | List this account's trashed documents |
+| POST | /api/documents/{id}/recover | Restore an owned trashed document with `{version}` |
+| DELETE | /api/documents/{id}/purge?version=1 | Permanently delete an owned trashed document and its history |
+| GET | /api/storage | Account storage totals including Trash; excludes database overhead and queued input snapshots |
 | GET | /api/documents/{id}/download?format=docx&version=1 | Download a saved revision as an attachment |
 | GET | /api/documents/{id}/bookmarks?version=1 | List named bookmarks and whether their ranges support replacement |
 | POST | /api/documents/{id}/bookmarks/replace | Replace bookmark contents with JSON text values; saves the next revision |
@@ -45,7 +76,9 @@ The separate [Templates and Letters API](STUDIO_API.md) documents template snaps
 | GET | /api/admin/settings | Current upload policy and revision |
 | PUT | /api/admin/settings | Set maxUploadMiB and version |
 
-Ordinary document routes require authentication and scope reads/writes to the current owner. Another account's document returns 404. Mutations require CSRF protection; saves, renames and deletion also require the current version. Download's version parameter is optional and rejects a stale revision with 409. Upload creates a new document and never overwrites an existing one.
+Ordinary document routes require authentication and allow the owner or an explicit reader/editor grant. Readers can read and download; editors can also save and rename. History, Trash, sharing management and document copies remain owner-only. Scoped API tokens retain owner-only access. An inaccessible document returns 404. Mutations require CSRF protection; saves, renames and deletion also require the current version. Download's version parameter is optional and rejects a stale revision with 409. Upload creates a new document and never overwrites an existing one.
+
+Content saves are checked by the native document parser before replacing the stored revision. An unsupported model returns 422 and leaves the content and version unchanged; a busy converter can return 429. Valid submissions retain their original JSON, including extension metadata. Browser editor tabs also send the optional `X-Inkstone-Account` header with the email returned by `/api/account/me`; a different authenticated account returns 403 with code `account_changed`. This header only constrains an already authenticated request and never grants access.
 
 Language values for creation: en-US, fa-IR, ar-SA, ur-PK. Omitting language preserves the existing lazy-blank behavior. Upload formats: docx, odt, rtf, txt, md, json. Download formats: docx (default), pdf, txt, md, json. Unknown formats return 415. Failed conversions return 422; an unavailable converter returns 503. Uploads default to 10 MiB and may be configured by administrators from 1 to 128 MiB. Converted native models and exports have an independent 256 MiB processing ceiling. GET /api/documents/formats reports the current upload/model limits. Multipart transport includes an additional 1 MiB allowance; the file itself is still checked against the exact policy. Each conversion uses a temporary directory, a 60-second timeout, and one of two execution slots. Compressed uploads may contain at most 2048 entries, 256 MiB total expanded data, and 128 MiB per entry.
 
@@ -80,7 +113,7 @@ The Vue development proxy supplies the same-origin browser arrangement. For sepa
 
 ## Fill a DOCX template by document ID
 
-Create named bookmarks in Word around the text to replace, then upload the DOCX using `/api/documents/upload`. The returned `id` identifies the saved native document; the API does not accept a filesystem path. Use the same authenticated cookie jar and CSRF workflow as above. All bookmark operations are owner-scoped, including calls made by an administrator.
+Create named bookmarks in Word around the text to replace, then upload the DOCX using `/api/documents/upload`. The returned `id` identifies the saved native document; the API does not accept a filesystem path. Use the same authenticated cookie jar and CSRF workflow as above. Cookie bookmark reads accept reader/editor grants and replacement requires editor access or ownership. Scoped tokens remain owner-only; administrator roles do not bypass access checks. See [library, retention, sharing and approvals](AUTOMATION_API.md#library-retention-sharing-and-approvals) for the full access contract.
 
 1. Get `/api/documents/{id}` for the current version, then `GET /api/documents/{id}/bookmarks?version=1`. The version query parameter is required; stale versions return 409. The response includes `id`, `version` and `bookmarks`, whose entries have `name`, `replaceable` and an optional `issue` explaining unsupported ranges.
 2. Send `POST /api/documents/{id}/bookmarks/replace` with `Content-Type: application/json` and `X-CSRF-TOKEN`:

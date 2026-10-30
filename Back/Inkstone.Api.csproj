@@ -8,13 +8,18 @@
   <PropertyGroup>
     <RustExecutableName>inkstone-cli</RustExecutableName>
     <RustExecutableName Condition="$([MSBuild]::IsOSPlatform('Windows'))">inkstone-cli.exe</RustExecutableName>
-    <RustExecutablePath>$(MSBuildProjectDirectory)/../Application/target/debug/$(RustExecutableName)</RustExecutablePath>
+    <RustProfileDirectory>debug</RustProfileDirectory>
+    <RustBuildArguments></RustBuildArguments>
+    <RustProfileDirectory Condition="'$(Configuration)' == 'Release'">release</RustProfileDirectory>
+    <RustBuildArguments Condition="'$(Configuration)' == 'Release'">--release</RustBuildArguments>
+    <RustExecutablePath>$(MSBuildProjectDirectory)/../Application/target/$(RustProfileDirectory)/$(RustExecutableName)</RustExecutablePath>
   </PropertyGroup>
   <Target Name="BuildRustConverter" BeforeTargets="Build" Condition="'$(SkipRustBuild)' != 'true'">
-    <Exec Command="cargo build --locked -p inkstone-cli" WorkingDirectory="$(MSBuildProjectDirectory)/../Application" />
+    <Exec Command="cargo build --locked -p inkstone-cli $(RustBuildArguments)" WorkingDirectory="$(MSBuildProjectDirectory)/../Application" />
     <Copy SourceFiles="$(RustExecutablePath)" DestinationFolder="$(OutDir)" />
   </Target>
-  <Target Name="PublishRustConverter" AfterTargets="Publish" Condition="Exists('$(RustExecutablePath)')">
+  <Target Name="PublishRustConverter" AfterTargets="Publish">
+    <Error Condition="!Exists('$(RustExecutablePath)')" Text="The $(RustProfileDirectory) Rust converter is missing. Build the converter for the deployment platform before publishing." />
     <Copy SourceFiles="$(RustExecutablePath)" DestinationFolder="$(PublishDir)" />
   </Target>
   <ItemGroup>

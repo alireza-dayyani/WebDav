@@ -12,13 +12,12 @@ public sealed class ConversionException(string message, int status = 422, string
 }
 
 /// <summary>Runs the existing Rust engine in a bounded, isolated job directory.</summary>
-public sealed class DocumentConverter(IConfiguration configuration, ILogger<DocumentConverter> logger) : IDocumentProcessor, IDisposable
+public sealed class DocumentConverter(IConfiguration configuration, ILogger<DocumentConverter> logger, ConverterCapacity capacity) : IDocumentProcessor
 {
     public const int MaxDocumentBytes = FileLimits.MaxModelBytes;
     public static readonly string[] ImportFormats = ["docx", "odt", "rtf", "txt", "md", "json"];
     public static readonly string[] ExportFormats = ["docx", "pdf", "txt", "md", "json"];
     public static readonly string[] Languages = ["en-US", "fa-IR", "ar-SA", "ur-PK"];
-    private readonly SemaphoreSlim slots = new(2);
 
     public async Task<byte[]> ImportAsync(byte[] content, string extension, long maxUploadBytes, CancellationToken ct)
     {
@@ -135,7 +134,7 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
 
     private async Task<JobResult> RunJobAsync(byte[]? input, string inputFormat, string? outputFormat, string? language, CancellationToken ct, string? command = null, object? parameters = null, byte[]? body = null, byte[][]? sources = null)
     {
-        if (!await slots.WaitAsync(TimeSpan.FromSeconds(5), ct)) throw new ConversionException("The converter is busy. Try again shortly.", 429);
+        using var permit = await capacity.EnterAsync(command == "document.preflight", ct);
         string? directory = null;
         try
         {
@@ -234,7 +233,6 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
                 catch (IOException) { logger.LogWarning("Could not remove a converter temporary directory."); }
                 catch (UnauthorizedAccessException) { logger.LogWarning("Could not remove a converter temporary directory."); }
             }
-            slots.Release();
         }
     }
 
@@ -254,7 +252,6 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
         return overflow ? null : System.Text.Encoding.UTF8.GetString(output.GetBuffer(), 0, (int)output.Length);
     }
 
-    public void Dispose() => slots.Dispose();
 }
 
 public sealed record BookmarkInfo(string Name, bool Replaceable, string? Issue);
