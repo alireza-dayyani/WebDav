@@ -2667,7 +2667,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "arboard",
  "chrono",
@@ -2701,7 +2701,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-cli"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "inkstone-doc",
  "inkstone-engine",
@@ -2714,11 +2714,11 @@ dependencies = [
 
 [[package]]
 name = "inkstone-control-key"
-version = "0.11.0"
+version = "0.12.0"
 
 [[package]]
 name = "inkstone-doc"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "base64 0.23.1",
  "inkstone-geom",
@@ -2732,7 +2732,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-docbin"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "cfb",
  "chrono",
@@ -2749,7 +2749,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-docx"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "aes",
  "base64 0.23.1",
@@ -2773,7 +2773,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-engine"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "cfb",
  "chrono",
@@ -2804,7 +2804,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-fonts"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "brotli-decompressor",
  "harfrust 0.13.3",
@@ -2818,7 +2818,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-formats"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "cfb",
  "chardetng",
@@ -2827,6 +2827,7 @@ dependencies = [
  "image",
  "inkstone-doc",
  "inkstone-geom",
+ "inkstone-metafile",
  "js-sys",
  "log",
  "proptest",
@@ -2836,7 +2837,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-geom"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "image",
  "serde",
@@ -2844,7 +2845,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-layout"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "image",
  "inkstone-doc",
@@ -2864,7 +2865,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-mcp"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "inkstone-control-key",
  "inkstone-doc",
@@ -2876,7 +2877,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-metafile"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "kurbo",
  "thiserror 2.0.21",
@@ -2884,7 +2885,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-pdf"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "chrono",
  "craft-pdf",
@@ -2905,7 +2906,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-proof"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "log",
  "miniz_oxide 0.9.1",
@@ -2915,7 +2916,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-render"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "image",
  "inkstone-doc",
@@ -2929,7 +2930,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-ui-egui"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "cfb",
  "chrono",
@@ -2959,7 +2960,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-web"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "eframe",
  "egui",
@@ -2978,7 +2979,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-zotero"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "inkstone-doc",
  "inkstone-docx",
@@ -6947,7 +6948,7 @@ checksum = "9440ea3e5aeabb0ac63af70daf835274065238cdd0cec83418f417eae38bacee"
 
 [[package]]
 name = "xtask"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "serde_json",
 ]

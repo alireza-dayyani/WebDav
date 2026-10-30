@@ -11,6 +11,7 @@ workspace = true
 [dependencies]
 inkstone-doc = { workspace = true }
 inkstone-geom = { workspace = true, features = ["image"] }
+inkstone-metafile = { workspace = true }
 image = { workspace = true }
 quick-xml = { workspace = true }
 zip = { workspace = true }
