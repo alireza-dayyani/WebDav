@@ -213,34 +213,6 @@ pub(super) fn properties(s: &mut Session, v: &Value) -> CmdResult {
     s.run("file.properties", v)
 }
 
-fn normalize_text(text: &str, rules: &[String]) -> String {
-    let mut out = text.to_string();
-    for rule in rules {
-        out = match rule.as_str() {
-            "persianLetters" => out.replace('ي', "ی").replace('ك', "ک"),
-            "persianDigits" => out
-                .chars()
-                .map(|c| {
-                    c.to_digit(10)
-                        .or_else(|| "٠١٢٣٤٥٦٧٨٩".chars().position(|n| n == c).map(|i| i as u32))
-                        .and_then(|n| char::from_u32('۰' as u32 + n))
-                        .unwrap_or(c)
-                })
-                .collect(),
-            "latinDigits" => out
-                .chars()
-                .map(|c| "۰۱۲۳۴۵۶۷۸۹".chars().position(|n| n == c).or_else(|| "٠١٢٣٤٥٦٧٨٩".chars().position(|n| n == c)))
-                .zip(out.chars())
-                .map(|(n, c)| n.and_then(|n| char::from_u32('0' as u32 + n as u32)).unwrap_or(c))
-                .collect(),
-            "trimTrailingSpaces" => out.lines().map(|line| line.trim_end_matches([' ', '\t'])).collect::<Vec<_>>().join("\n"),
-            "halfSpace" => out.replace("می ", "می‌").replace("نمی ", "نمی‌"),
-            _ => out,
-        };
-    }
-    out
-}
-
 pub(super) fn normalization(s: &mut Session, v: &Value, apply: bool) -> CmdResult {
     let rules: Vec<String> = serde_json::from_value(v["rules"].clone()).map_err(|_| bad("rules must be an array"))?;
     if rules.is_empty()
@@ -257,9 +229,9 @@ pub(super) fn normalization(s: &mut Session, v: &Value, apply: bool) -> CmdResul
             if let Some(para) = s.doc.para(story, &path) {
                 // Preserve object markers and all existing formatting by editing changed scalar ranges.
                 let before = para.text.clone();
-                let after = normalize_text(&before, &rules);
+                let (after, edits) = super::normalization::plan(para, &rules);
                 if before != after {
-                    changes.push((story, path, before, after));
+                    changes.push((story, path, before, after, edits));
                 }
                 if changes.len() > 4000 {
                     return Err(bad("too many changed paragraphs"));
@@ -268,21 +240,19 @@ pub(super) fn normalization(s: &mut Session, v: &Value, apply: bool) -> CmdResul
         }
     }
     let report: Vec<_> =
-        changes.iter().map(|(story, path, before, after)| json!({"ref":super::reference(*story,path),"before":before,"after":after})).collect();
+        changes.iter().map(|(story, path, before, after, _)| json!({"ref":super::reference(*story,path),"before":before,"after":after})).collect();
     if apply {
-        for (story, path, before, after) in changes.into_iter().rev() {
-            // A shared prefix/suffix confines the replacement and leaves unrelated runs intact.
-            let prefix = before.chars().zip(after.chars()).take_while(|(a, b)| a == b).map(|(c, _)| c.len_utf8()).sum::<usize>();
-            let old_tail = before.get(prefix..).unwrap_or("");
-            let new_tail = after.get(prefix..).unwrap_or("");
-            let suffix = old_tail.chars().rev().zip(new_tail.chars().rev()).take_while(|(a, b)| a == b).map(|(c, _)| c.len_utf8()).sum::<usize>();
-            let end = before.len().saturating_sub(suffix);
-            let text = after.get(prefix..after.len().saturating_sub(suffix)).unwrap_or("");
-            if before.get(prefix..end).is_some_and(|t| t.contains('\u{fffc}')) {
-                return Err(bad("normalization crosses an inline object; narrow the rules"));
+        for (story, path, _, _, edits) in changes.into_iter().rev() {
+            for edit in edits.into_iter().rev() {
+                s.sel = Selection { anchor: Pos::new(story, path.clone(), edit.start), focus: Pos::new(story, path.clone(), edit.end) };
+                let pending = s.pending.replace(edit.props);
+                let replaces_selection = s.prefs.typing_replaces_selection;
+                s.prefs.typing_replaces_selection = true;
+                let result = s.run("text.insert", &json!({"text":edit.text,"raw":true}));
+                s.prefs.typing_replaces_selection = replaces_selection;
+                s.pending = pending;
+                result?;
             }
-            s.sel = Selection { anchor: Pos::new(story, path.clone(), prefix), focus: Pos::new(story, path, end) };
-            s.run("text.insert", &json!({"text":text,"raw":true}))?;
         }
     }
     Ok(json!({"changes":report,"applied":apply}))
