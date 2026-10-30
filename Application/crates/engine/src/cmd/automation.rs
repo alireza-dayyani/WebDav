@@ -5,6 +5,7 @@ use inkstone_doc::{Path, Pos, StoryRef};
 use serde_json::{Value, json};
 
 mod fields;
+mod normalization;
 mod read;
 #[cfg(test)]
 mod tests;

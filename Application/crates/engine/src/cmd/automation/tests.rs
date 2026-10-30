@@ -88,6 +88,64 @@ fn normalization_preview_is_read_only() {
 }
 
 #[test]
+fn normalization_preserves_mixed_formatting_and_soft_line_breaks() {
+    let mut para = Paragraph::with_text("ي Bold ك  \n", CharProps::default());
+    let start = para.text.find("Bold").unwrap();
+    para.format(start, start + 4, &|c| c.bold = Some(true)).unwrap();
+    let last = para.text.find('ك').unwrap();
+    para.format(last, last + 'ك'.len_utf8(), &|c| c.italic = Some(true)).unwrap();
+    let mut doc = Document::new();
+    doc.body = vec![para_block(para)];
+    let mut s = Session::new(doc);
+    let before = s.doc.clone();
+    s.run("document.batch", &json!({"operations":[{"type":"normalize","rules":["persianLetters","trimTrailingSpaces"]}]})).unwrap();
+    let para = s.doc.body[0].as_para().unwrap();
+    assert_eq!(para.text, "ی Bold ک\n");
+    assert_eq!(para.props_of_char(start).bold, Some(true));
+    assert_eq!(para.props_of_char(last).italic, Some(true));
+    s.run("edit.undo", &json!({})).unwrap();
+    assert_eq!(s.doc, before);
+}
+
+#[test]
+fn normalization_preserves_objects_links_and_typing_preferences() {
+    let props = CharProps { link: Some("https://example.test".into()), ..Default::default() };
+    let mut para = Paragraph::with_text("ي ك", props.clone());
+    para.insert_object(2, inkstone_doc::InlineObject::BookmarkStart { name: "Keep".into() }, &props).unwrap();
+    para.insert_object(5, inkstone_doc::InlineObject::BookmarkEnd { name: "Keep".into() }, &props).unwrap();
+    let objects = para.objects.clone();
+    let mut doc = Document::new();
+    doc.body = vec![para_block(para)];
+    let mut s = Session::new(doc);
+    s.prefs.typing_replaces_selection = false;
+    s.pending = Some(CharProps { bold: Some(true), ..Default::default() });
+    let pending = s.pending.clone();
+    s.run("document.batch", &json!({"operations":[{"type":"normalize","rules":["persianLetters"]}]})).unwrap();
+    let para = s.doc.body[0].as_para().unwrap();
+    assert_eq!(para.text, "ی\u{fffc}\u{fffc} ک");
+    assert_eq!(para.objects, objects);
+    assert_eq!(para.props_of_char(0).link, props.link);
+    assert_eq!(para.props_of_char(0).bold, None);
+    assert_eq!(s.pending, pending);
+    assert!(!s.prefs.typing_replaces_selection);
+}
+
+#[test]
+fn normalization_preview_matches_apply_across_styles_and_rule_order() {
+    let mut para = Paragraph::with_text("مي 12 \t\nنمي ٣ \t", CharProps::default());
+    para.format(0, 'م'.len_utf8(), &|c| c.bold = Some(true)).unwrap();
+    let mut doc = Document::new();
+    doc.body = vec![para_block(para)];
+    let mut s = Session::new(doc);
+    let rules = json!(["persianLetters", "persianDigits", "halfSpace", "trimTrailingSpaces"]);
+    let preview = s.run("document.query", &json!({"action":"normalization","rules":rules})).unwrap();
+    let expected = "می‌۱۲\nنمی‌۳";
+    assert_eq!(preview["changes"][0]["after"], expected);
+    s.run("document.batch", &json!({"operations":[{"type":"normalize","rules":rules}]})).unwrap();
+    assert_eq!(s.doc.body[0].as_para().unwrap().text, expected);
+}
+
+#[test]
 fn document_validation_returns_supported_checks() {
     let mut s = Session::new(Document::from_text("Hello {{Name}}"));
     let result = s.run("document.query", &json!({"action":"validate"})).unwrap();
