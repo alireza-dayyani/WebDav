@@ -1,6 +1,7 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 import { api } from "./api";
+import { useDialogFocus } from "./dialogFocus";
 import { t, errorMessage, language } from "./i18n";
 const props = defineProps({ document: { type: Object, required: true } });
 const emit = defineEmits(["close", "restored"]);
@@ -10,31 +11,9 @@ const items = ref([]),
   busy = ref(false),
   error = ref("");
 const panel = ref(null);
-let previousFocus;
-function keyboard(event) {
-  if (event.key === "Escape" && !busy.value) emit("close");
-  if (event.key !== "Tab") return;
-  const buttons = [...panel.value.querySelectorAll("button:not(:disabled)")];
-  const first = buttons[0],
-    last = buttons.at(-1);
-  if (!first) {
-    event.preventDefault();
-    return;
-  }
-  if (
-    event.shiftKey &&
-    (document.activeElement === first || document.activeElement === panel.value)
-  ) {
-    event.preventDefault();
-    last.focus();
-  } else if (
-    !event.shiftKey &&
-    (document.activeElement === last || document.activeElement === panel.value)
-  ) {
-    event.preventDefault();
-    first.focus();
-  }
-}
+useDialogFocus(panel, () => {
+  if (!busy.value) emit("close");
+});
 const date = (value) =>
   new Intl.DateTimeFormat(language.value.tag, {
     dateStyle: "medium",
@@ -82,19 +61,13 @@ async function act(revision, restore = false) {
     busy.value = false;
   }
 }
-onMounted(() => {
-  previousFocus = document.activeElement;
-  panel.value.focus();
-  load();
-});
-onBeforeUnmount(() => previousFocus?.focus());
+onMounted(load);
 </script>
 <template>
   <div class="dialog-backdrop" @click.self="!busy && emit('close')">
     <section
       ref="panel"
       tabindex="-1"
-      @keydown="keyboard"
       class="dialog history-dialog"
       role="dialog"
       aria-modal="true"

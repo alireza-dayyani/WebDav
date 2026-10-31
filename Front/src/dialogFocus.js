@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted } from "vue";
 export function useDialogFocus(panel, close) {
-  let previous;
+  let previous, previousOverflow;
   const siblings = [];
   const keyboard = (event) => {
     if (event.key === "Escape") {
@@ -37,6 +37,8 @@ export function useDialogFocus(panel, close) {
   };
   onMounted(() => {
     previous = document.activeElement;
+    previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     for (const element of document.querySelector("#app")?.children ?? [])
       if (!element.contains(panel.value)) {
         siblings.push([element, element.inert]);
@@ -48,6 +50,7 @@ export function useDialogFocus(panel, close) {
   onBeforeUnmount(() => {
     panel.value?.removeEventListener("keydown", keyboard);
     for (const [element, inert] of siblings) element.inert = inert;
-    previous?.focus();
+    document.body.style.overflow = previousOverflow;
+    previous?.focus({ preventScroll: true });
   });
 }

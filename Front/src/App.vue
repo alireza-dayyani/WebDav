@@ -8,6 +8,8 @@ import ReviewInbox from "./ReviewInbox.vue";
 import AutomationPanel from "./AutomationPanel.vue";
 import { locale, language, t, errorMessage } from "./i18n";
 import LanguagePicker from "./LanguagePicker.vue";
+import AppIcon from "./AppIcon.vue";
+import ModalFrame from "./ModalFrame.vue";
 import AdminPanel from "./AdminPanel.vue";
 import StudioPanel from "./StudioPanel.vue";
 import LetterEditor from "./LetterEditor.vue";
@@ -25,10 +27,32 @@ function closeLetterEditor(letter) {
   activeLetter.value = null;
   selectedLetterId.value = letter.id;
   showStudio("letters");
+  studioPanel.value?.resumeLetter(letter);
 }
 import { maxUploadBytes, updateFileLimits } from "./fileLimits";
 const adminView = ref(false);
 const studioView = ref("");
+const studioPanel = ref(null),
+  studioStarted = ref(false),
+  studioTab = ref("letters");
+const sectionTitle = computed(() =>
+  adminView.value
+    ? t("administration")
+    : studioView.value
+      ? t("studio." + studioTab.value)
+      : t(trashView.value ? "trash" : "myDocuments"),
+);
+function studioNavigated(tab) {
+  studioTab.value = tab;
+  if (studioView.value) studioView.value = tab;
+}
+function showDocuments(trash = false) {
+  adminView.value = false;
+  studioView.value = "";
+  trashView.value = trash;
+  history.replaceState(null, "", "/");
+  refresh().catch((e) => (error.value = errorMessage(e)));
+}
 const documentTemplates = ref([]),
   chosenTemplate = ref("");
 const historyDocument = ref(null);
@@ -67,6 +91,9 @@ async function recoverDocument(document, purge = false) {
   }
 }
 function showStudio(tab) {
+  adminView.value = false;
+  studioStarted.value = true;
+  studioTab.value = tab;
   studioView.value = tab;
   history.replaceState(null, "", `/#/${tab}`);
 }
@@ -90,6 +117,7 @@ async function syncSession() {
   if (!user.value.isAdmin) closeAdministration();
 }
 function showAdministration() {
+  studioView.value = "";
   adminView.value = true;
   history.replaceState(null, "", "/#/admin");
 }
@@ -98,8 +126,7 @@ function closeAdministration() {
   history.replaceState(null, "", "/");
 }
 
-const documentLanguage = ref(language.value.tag),
-  fileInput = ref(null),
+const fileInput = ref(null),
   uploading = ref(false),
   downloading = ref(false),
   downloadFormat = ref("docx");
@@ -272,7 +299,8 @@ async function authenticate() {
   }
 }
 async function logout() {
-  if (!canLeave()) return;
+  if (!canLeave() || (studioPanel.value && !studioPanel.value.canLeave()))
+    return;
   busy.value = true;
   try {
     await api("/account/logout", { method: "POST" });
@@ -289,6 +317,7 @@ async function logout() {
     active.value = null;
     adminView.value = false;
     studioView.value = "";
+    studioStarted.value = false;
     resetCsrf();
     history.replaceState(null, "", "/");
   } catch (e) {
@@ -328,7 +357,7 @@ async function openFromHash() {
     return;
   }
   if (location.hash === "#/letters" || location.hash === "#/templates") {
-    studioView.value = location.hash.slice(2);
+    showStudio(location.hash.slice(2));
     return;
   }
   if (location.hash === "#/admin" && user.value.isAdmin) {
@@ -357,7 +386,6 @@ async function closeEditor() {
 function showDialog(kind, document = null) {
   dialog.value = { kind, document };
   title.value = document?.title || "";
-  if (kind === "create") documentLanguage.value = language.value.tag;
   chosenTemplate.value = "";
   dialogError.value = "";
 }
@@ -380,7 +408,7 @@ async function submitDialog() {
                 version: template.metadata.version,
                 values: {},
               }
-            : { title: title.value, language: documentLanguage.value },
+            : { title: title.value },
         },
       );
       dialog.value = null;
@@ -624,39 +652,65 @@ onBeforeUnmount(() => {
       {{ editorStatus }} {{ t("recovery") }}
     </div>
   </div>
-  <AdminPanel
-    v-else-if="adminView && user.isAdmin"
-    @close="closeAdministration"
-    @session-changed="syncSession"
-  />
-  <StudioPanel
-    v-else-if="studioView"
-    :initial-tab="studioView"
-    :initial-letter-id="selectedLetterId"
-    @close="closeStudio"
-    @open-document="openStudioDocument"
-    @open-letter-editor="openLetterEditor"
-  />
-  <div v-else class="workspace">
+  <div v-if="user" v-show="!active && !activeLetter" class="workspace">
     <aside class="sidebar">
-      <a class="brand" href="/" dir="ltr"
+      <a class="brand" href="/" dir="ltr" @click.prevent="showDocuments()"
         ><img src="/icon.svg" alt="" />Inkstone<span class="brand-dot"
           >·</span
         ></a
       >
       <div class="sidebar-heading">{{ t("workspace") }}</div>
-      <button class="nav-item active">
-        <span aria-hidden="true">▤</span>{{ t("myDocuments")
-        }}<span class="count">{{
-          new Intl.NumberFormat(language.tag).format(documents.length)
-        }}</span>
-      </button>
-      <div class="sidebar-note">
-        <span class="note-mark">✳</span>
-        <h3>{{ t("sidebarTitle") }}</h3>
-        <p>{{ t("sidebarText") }}</p>
-        <button @click="showDialog('create')">{{ t("startWriting") }} ↗</button>
-      </div>
+      <nav class="workspace-nav" :aria-label="t('workspace')">
+        <button
+          class="nav-item"
+          :class="{ active: !trashView && !studioView && !adminView }"
+          @click="showDocuments()"
+        >
+          <AppIcon name="documents" />{{ t("myDocuments")
+          }}<span class="count">{{
+            new Intl.NumberFormat(language.tag).format(documents.length)
+          }}</span>
+        </button>
+        <button
+          class="nav-item"
+          :class="{ active: studioView === 'templates' }"
+          @click="showStudio('templates')"
+        >
+          <AppIcon name="template" />{{ t("studio.templates") }}
+        </button>
+        <button
+          class="nav-item"
+          :class="{ active: studioView && studioView !== 'templates' }"
+          @click="showStudio('letters')"
+        >
+          <AppIcon name="mail" />{{ t("studio.letters") }}
+        </button>
+        <button class="nav-item" @click="automationPanel = true">
+          <AppIcon name="bolt" />{{ t("ws.automation") }}
+        </button>
+        <button class="nav-item" @click="reviewInbox = true">
+          <AppIcon name="review" />{{ t("ws.reviews") }}
+        </button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" @click="librarySettings = true">
+          <AppIcon name="storage" />{{ t("ws.storage") }}
+        </button>
+        <button
+          class="nav-item"
+          :class="{ active: trashView && !studioView && !adminView }"
+          @click="showDocuments(true)"
+        >
+          <AppIcon name="trash" />{{ t("trash") }}
+        </button>
+        <button
+          v-if="user.isAdmin"
+          class="nav-item"
+          :class="{ active: adminView }"
+          @click="showAdministration"
+        >
+          <AppIcon name="settings" />{{ t("administration") }}
+        </button>
+      </nav>
       <div class="account">
         <span class="avatar">{{ greeting.slice(0, 1).toUpperCase() }}</span>
         <div>
@@ -678,31 +732,36 @@ onBeforeUnmount(() => {
       <header class="workspace-top">
         <span
           >{{ t("workspace") }} <span class="crumb">/</span>
-          <strong>{{ t("myDocuments") }}</strong></span
+          <strong>{{ sectionTitle }}</strong></span
         >
         <div class="header-tools">
-          <button class="secondary" @click="showStudio('letters')">
-            {{ t("studio.letters") }}
-          </button>
-          <button class="secondary" @click="showStudio('templates')">
-            {{ t("studio.templates") }}
-          </button>
-          <button
-            v-if="user.isAdmin"
-            class="secondary admin-entry"
-            @click="showAdministration"
-          >
-            {{ t("administration") }}
-          </button>
           <span class="private-badge">◇ {{ t("private") }}</span
           ><LanguagePicker />
         </div>
       </header>
-      <div class="content-body">
+      <AdminPanel
+        v-if="adminView && user.isAdmin"
+        embedded
+        @close="closeAdministration"
+        @session-changed="syncSession"
+      />
+      <StudioPanel
+        v-if="studioStarted"
+        v-show="studioView && !adminView"
+        ref="studioPanel"
+        embedded
+        :initial-tab="studioTab"
+        :initial-letter-id="selectedLetterId"
+        @tab-change="studioNavigated"
+        @close="closeStudio"
+        @open-document="openStudioDocument"
+        @open-letter-editor="openLetterEditor"
+      />
+      <div v-show="!studioView && !adminView" class="content-body">
         <div class="workspace-greeting">
           <div>
             <div class="eyebrow muted">{{ today }}</div>
-            <h1>{{ t("place") }}</h1>
+            <h1>{{ t(trashView ? "trash" : "myDocuments") }}</h1>
             <p>{{ t("greeting", { name: greeting }) }}</p>
           </div>
           <div class="file-tools">
@@ -726,32 +785,8 @@ onBeforeUnmount(() => {
           @change="upload"
         />
         <p class="upload-help">{{ t("uploadHelp", { limit: uploadLimit }) }}</p>
-        <div class="start-card">
-          <div class="blank-page" aria-hidden="true"><span>＋</span></div>
-          <div>
-            <div class="eyebrow muted">{{ t("fresh") }}</div>
-            <h2>{{ t("page") }}</h2>
-            <p>{{ t("pageText") }}</p>
-            <button class="text-button" @click="showDialog('create')">
-              {{ t("createBlank") }} ↗
-            </button>
-          </div>
-          <span class="card-decoration" aria-hidden="true">{{
-            locale === "en" ? "Aa" : "آ"
-          }}</span>
-        </div>
         <section class="documents-section">
           <div class="section-heading">
-            <button @click="automationPanel = true">
-              {{ t("ws.automation") }}
-            </button>
-            <button @click="reviewInbox = true">{{ t("ws.reviews") }}</button>
-            <button @click="librarySettings = true">
-              {{ t("ws.storage") }}
-            </button>
-            <button @click="toggleTrash">
-              {{ t(trashView ? "documents" : "trash") }}
-            </button>
             <h2>
               {{ t(trashView ? "trash" : "documents") }}
               <span>{{
@@ -759,8 +794,7 @@ onBeforeUnmount(() => {
               }}</span>
             </h2>
             <label class="search"
-              ><span aria-hidden="true">⌕</span
-              ><input
+              ><AppIcon name="search" /><input
                 v-model="search"
                 type="search"
                 maxlength="200"
@@ -770,7 +804,9 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="error" class="error" role="alert">{{ error }}</p>
           <div v-if="!visible.length" class="empty-state">
-            <span aria-hidden="true">▤</span>
+            <span class="empty-symbol" aria-hidden="true"
+              ><AppIcon name="documents"
+            /></span>
             <h3>
               {{ t(search ? "noMatches" : trashView ? "emptyTrash" : "empty") }}
             </h3>
@@ -914,102 +950,78 @@ onBeforeUnmount(() => {
       refresh();
     "
   />
-  <div
+  <ModalFrame
     v-if="dialog"
-    class="dialog-backdrop"
-    @click.self="!dialogBusy && (dialog = null)"
+    :busy="dialogBusy"
+    labelledby="dialog-title"
+    @close="dialog = null"
   >
-    <section
-      class="dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="dialog-title"
-    >
-      <form @submit.prevent="submitDialog">
-        <div class="eyebrow muted">{{ t("workspace") }}</div>
-        <h2 id="dialog-title">
+    <form @submit.prevent="submitDialog">
+      <div class="eyebrow muted">{{ t("workspace") }}</div>
+      <h2 id="dialog-title">
+        {{
+          t(
+            dialog.kind === "create"
+              ? "createTitle"
+              : dialog.kind === "rename"
+                ? "renameTitle"
+                : "deleteTitle",
+          )
+        }}
+      </h2>
+      <p v-if="dialog.kind === 'delete'">
+        {{ t("deleteText", { title: dialog.document.title }) }}
+      </p>
+      <template v-else
+        ><label for="title">{{ t("title") }}</label
+        ><input
+          id="title"
+          v-model="title"
+          dir="auto"
+          :placeholder="t('untitled')"
+          maxlength="160"
+          required
+          autofocus
+      /></template>
+      <template v-if="dialog.kind === 'create'"
+        ><label for="document-template">{{ t("studio.templateSelect") }}</label>
+        <select id="document-template" v-model="chosenTemplate">
+          <option value="">{{ t("createBlank") }}</option>
+          <option
+            v-for="item in documentTemplates"
+            :key="item.metadata.id"
+            :value="item.metadata.id"
+          >
+            {{ item.metadata.title }} · v{{ item.metadata.version }}
+          </option>
+        </select>
+      </template>
+      <p v-if="dialogError" class="error" role="alert">{{ dialogError }}</p>
+      <div class="dialog-actions">
+        <button
+          type="button"
+          class="secondary"
+          :disabled="dialogBusy"
+          @click="dialog = null"
+        >
+          {{ t("cancel") }}</button
+        ><button
+          :class="dialog.kind === 'delete' ? 'danger' : 'primary'"
+          :disabled="dialogBusy || (dialog.kind !== 'delete' && !title.trim())"
+        >
           {{
             t(
-              dialog.kind === "create"
-                ? "createTitle"
-                : dialog.kind === "rename"
-                  ? "renameTitle"
-                  : "deleteTitle",
+              dialogBusy
+                ? "wait"
+                : dialog.kind === "create"
+                  ? "create"
+                  : dialog.kind === "rename"
+                    ? "saveName"
+                    : "deleteDocument",
             )
           }}
-        </h2>
-        <p v-if="dialog.kind === 'delete'">
-          {{ t("deleteText", { title: dialog.document.title }) }}
-        </p>
-        <template v-else
-          ><label for="title">{{ t("title") }}</label
-          ><input
-            id="title"
-            v-model="title"
-            dir="auto"
-            :placeholder="t('untitled')"
-            maxlength="160"
-            required
-            autofocus
-        /></template>
-        <template v-if="dialog.kind === 'create'"
-          ><label for="document-template">{{
-            t("studio.templateSelect")
-          }}</label>
-          <select id="document-template" v-model="chosenTemplate">
-            <option value="">{{ t("createBlank") }}</option>
-            <option
-              v-for="item in documentTemplates"
-              :key="item.metadata.id"
-              :value="item.metadata.id"
-            >
-              {{ item.metadata.title }} · v{{ item.metadata.version }}
-            </option>
-          </select>
-          <label v-if="!chosenTemplate" for="document-language">{{
-            t("documentLanguage")
-          }}</label
-          ><select
-            v-if="!chosenTemplate"
-            id="document-language"
-            v-model="documentLanguage"
-          >
-            <option value="en-US">{{ t("english") }}</option>
-            <option value="fa-IR">{{ t("persian") }}</option>
-            <option value="ar-SA">{{ t("arabic") }}</option>
-            <option value="ur-PK">{{ t("urdu") }}</option>
-          </select>
-          <p class="field-help">{{ t("languageHelp") }}</p></template
-        >
-        <p v-if="dialogError" class="error" role="alert">{{ dialogError }}</p>
-        <div class="dialog-actions">
-          <button
-            type="button"
-            class="secondary"
-            :disabled="dialogBusy"
-            @click="dialog = null"
-          >
-            {{ t("cancel") }}</button
-          ><button
-            :class="dialog.kind === 'delete' ? 'danger' : 'primary'"
-            :disabled="
-              dialogBusy || (dialog.kind !== 'delete' && !title.trim())
-            "
-          >
-            {{
-              t(
-                dialogBusy
-                  ? "wait"
-                  : dialog.kind === "create"
-                    ? "create"
-                    : dialog.kind === "rename"
-                      ? "saveName"
-                      : "deleteDocument",
-              )
-            }}
-          </button>
-        </div>
-      </form>
-    </section>
-  </div>
+        </button>
+      </div>
+    </form>
+  </ModalFrame>
 </template>

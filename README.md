@@ -43,11 +43,17 @@ npm run dev
 
 Open http://127.0.0.1:5173. The Vue development server proxies API calls to port 5080. Create an account to start writing. Vue and the API remain separate projects.
 
+## Interface
+
+The workspace opens in dark mode with blue accents. Use the sun/moon button beside the language picker to switch themes; the browser remembers the choice. Documents, templates, letters, automation, reviews, storage and administration are grouped in the workspace navigation, which remains visible in Templates, Letters and Administration and scrolls horizontally on small screens. Studio drafts stay in memory while switching workspace sections; save them before closing the browser. The editor canvas has its own existing theme setting under View.
+
+Frontend browser checks use Playwright with installed Chrome and mocked API fixtures: run `npm run build` then `npm run test:browser` in Front. Screenshots are written to ignored `Tests/generated/redesign/`. Tests cover English/Persian desktop and mobile layouts, theme persistence, dialog navigation and the RTL search icon regression.
+
 ## Languages and documents
 
-The site supports English and Persian, including mirrored layouts, localized dates and translated account, library and file controls. The language choice is saved in this browser. New documents can use English, Persian, Arabic or Urdu; the latter three start with right-to-left paragraphs and persist their document language. Imported documents retain their source formatting. Persian and Urdu are also available in the editor's document-language dialog.
+The site supports English and Persian, including mirrored layouts, localized dates and translated account, library and file controls. The language choice is saved in this browser. New blank documents leave paragraph direction unset: the editor uses the first strong letters to start Persian, Arabic or Urdu paragraphs right-to-left. There is no language selector in the creation dialog. Explicit document language and direction remain available in the editor and standalone API. Imported documents retain their source formatting. Persian and Urdu are also available in the editor's document-language dialog.
 
-Noto Naskh Arabic is bundled for Persian, Arabic and Urdu, including on systems without installed fonts. The Rust document engine handles contextual shaping and mixed-direction text. Advanced menus inside the Rust editor currently use its existing interface catalogs; the bundled web setup uses English menus there. Language selection in the Vue shell does not translate those canvas menus. Persian, Arabic and Urdu spell-check dictionaries are not bundled.
+The web interface bundles Vazirmatn (the continuation of Vazir) for Persian, Source Sans 3 for English controls and Source Serif 4 for editorial headings. Fonts are served locally with their license notices. Noto Naskh Arabic remains bundled in the document engine for Persian, Arabic and Urdu, including on systems without installed fonts. The Rust document engine handles contextual shaping and mixed-direction text. Advanced menus inside the Rust editor currently use its existing interface catalogs; the bundled web setup uses English menus there. Language selection in the Vue shell does not translate those canvas menus. Persian, Arabic and Urdu spell-check dictionaries are not bundled.
 
 Upload DOCX, ODT, RTF, TXT, Markdown or native JSON through the library. Uploads become private editable documents. Download saved documents as DOCX from the library, or choose DOCX, PDF, TXT, Markdown or native JSON in the editor header. Save edits before downloading a server copy. Native JSON preserves the full document model; conversions to other formats depend on the engine's format support.
 

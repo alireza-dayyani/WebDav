@@ -5,6 +5,7 @@ import { t, language, errorMessage } from "./i18n";
 import { updateFileLimits } from "./fileLimits";
 import LanguagePicker from "./LanguagePicker.vue";
 
+defineProps({ embedded: Boolean });
 const emit = defineEmits(["close", "session-changed"]);
 const settings = ref(null),
   limit = ref(10),
@@ -141,14 +142,17 @@ onMounted(initialize);
 </script>
 
 <template>
-  <main class="admin-page">
+  <section class="admin-page" :class="{ embedded }">
     <header class="admin-header">
       <div>
         <div class="eyebrow muted">Inkstone</div>
         <h1>{{ t("administration") }}</h1>
       </div>
       <div class="header-tools">
-        <LanguagePicker /><button class="secondary" @click="emit('close')">
+        <LanguagePicker v-if="!embedded" /><button
+          class="secondary"
+          @click="emit('close')"
+        >
           {{ t("myDocuments") }}
         </button>
       </div>
@@ -344,5 +348,5 @@ onMounted(initialize);
         <pre dir="auto">{{ preview.text || t("emptyDocument") }}</pre>
       </div>
     </section>
-  </main>
+  </section>
 </template>
