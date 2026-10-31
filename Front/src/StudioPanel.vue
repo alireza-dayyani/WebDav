@@ -5,10 +5,16 @@ import { useUnsavedChanges } from "./unsavedChanges";
 import { language, locale, t, errorMessage } from "./i18n";
 import LanguagePicker from "./LanguagePicker.vue";
 const props = defineProps({
+  embedded: Boolean,
   initialTab: { type: String, default: "letters" },
   initialLetterId: { type: String, default: "" },
 });
-const emit = defineEmits(["close", "open-document", "open-letter-editor"]);
+const emit = defineEmits([
+  "close",
+  "open-document",
+  "open-letter-editor",
+  "tab-change",
+]);
 const st = (key) => t("studio." + key);
 const tab = ref(props.initialTab),
   busy = ref(false),
@@ -96,6 +102,7 @@ watch(
 );
 function navigate(value) {
   tab.value = value;
+  emit("tab-change", value);
   history.replaceState(
     null,
     "",
@@ -495,6 +502,16 @@ async function uploadDocument(event, target) {
     form.bodyText = "";
   }
 }
+function canLeave() {
+  return !busy.value && (!dirty.value || window.confirm(t("leave")));
+}
+function resumeLetter(letter) {
+  return task(async () => {
+    await refresh();
+    await openLetter({ metadata: letter });
+  });
+}
+defineExpose({ canLeave, resumeLetter });
 function close() {
   if (busy.value) return;
   if (!dirty.value || window.confirm(t("leave"))) emit("close");
@@ -517,10 +534,15 @@ onMounted(() =>
 </script>
 
 <template>
-  <main class="studio-page">
+  <section class="studio-page" :class="{ embedded }">
     <header class="studio-header">
       <div>
-        <button class="text-button" :disabled="busy" @click="close">
+        <button
+          v-if="!embedded"
+          class="text-button"
+          :disabled="busy"
+          @click="close"
+        >
           ← {{ st("back") }}
         </button>
         <h1>{{ st(tab) }}</h1>
@@ -528,7 +550,7 @@ onMounted(() =>
       <div class="header-tools">
         <button class="secondary" :disabled="busy" @click="task(refresh)">
           {{ st("refresh") }}</button
-        ><LanguagePicker />
+        ><LanguagePicker v-if="!embedded" />
       </div>
     </header>
     <nav class="studio-tabs" :aria-label="st('letters')">
@@ -1227,5 +1249,5 @@ onMounted(() =>
         </article>
       </div>
     </section>
-  </main>
+  </section>
 </template>
