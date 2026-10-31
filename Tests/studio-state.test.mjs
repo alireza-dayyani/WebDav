@@ -15,6 +15,7 @@ function studio() {
     language: ref({ tag: 'en-US' }), locale: ref('en'), t: key => key,
     errorMessage: error => error.message, api: async (...args) => { calls.push(args); return {}; },
     allPages: async () => [], previewPdf: async () => {},
+    defineExpose() {},
     defineProps: () => ({ initialTab: 'letters', initialLetterId: '' }),
     defineEmits: () => (...args) => emitted.push(args),
     window: { confirm: message => { confirmations.push(message); return false; }, prompt: () => 'Copy' },
