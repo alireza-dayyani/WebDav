@@ -2,9 +2,9 @@
   "schema": 1,
   "repo": "alireza-dayyani/WebDav",
   "branch": "main",
-  "head": "3affedb5fdef76f52f59fb615a3adfa170d73c89",
-  "head_date": "2026-10-31T15:58:27Z",
-  "commits": 9,
+  "head": "6f78df581001fef943e0b5eb00d349706f9170a1",
+  "head_date": "2026-11-04T13:32:15Z",
+  "commits": 12,
   "unattributed_commits": 0,
   "contributors": [
     {
@@ -12,13 +12,13 @@
       "people_entry": true,
       "github_name": null,
       "prs": 0,
-      "commits": 9,
-      "lines_added": 188252,
-      "lines_deleted": 126084,
-      "binary_added": 55,
+      "commits": 12,
+      "lines_added": 561384,
+      "lines_deleted": 189373,
+      "binary_added": 95,
       "binary_deleted": 0,
-      "first_commit": "2026-10-24T10:05:32Z",
-      "last_commit": "2026-10-31T15:58:27Z"
+      "first_commit": "2026-10-24T02:59:53Z",
+      "last_commit": "2026-11-04T13:32:15Z"
     }
   ],
   "models": []
