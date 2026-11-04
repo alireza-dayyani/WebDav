@@ -3,13 +3,97 @@
 Inkstone's Rust workspace derives from [storytold/wordcraft](https://github.com/storytold/wordcraft).
 The engine is kept under `Application/`, with `inkstone` crate, executable and asset names.
 
-## Integration on 2026-10-30
+## Workflow
+
+The `upstream` remote fetches Wordcraft's `main` only, without tags, and cannot be pushed to:
+
+```sh
+git remote add upstream https://github.com/storytold/wordcraft
+git config remote.upstream.fetch '+refs/heads/main:refs/remotes/upstream/main'
+git config remote.upstream.tagOpt --no-tags
+git config remote.upstream.pushurl DISABLED
+```
+
+`Application/upstream.rev` records the integrated upstream commit, followed by upstream commits
+picked individually since then. `Application/scripts/upstream-sync.py` maps upstream paths and
+`wordcraft` identifiers to this workspace, formats mapped Rust files with the workspace rustfmt
+settings, and three-way merges each change into the working copy. Fork edits remain unless
+upstream changed the same lines; those files receive conflict markers and are listed.
+
+```sh
+git fetch upstream
+python Application/scripts/upstream-sync.py list              # pending commits and their size
+python Application/scripts/upstream-sync.py show <sha>        # files one commit changes
+python Application/scripts/upstream-sync.py pick <sha>... --dry-run
+python Application/scripts/upstream-sync.py pick <sha>...     # take individual fixes
+python Application/scripts/upstream-sync.py update --dry-run  # everything up to upstream/main
+```
+
+Upstream CI, agent instructions, roadmaps and release process files are excluded. After applying
+changes, review `git diff`, resolve conflicts, keep the fork adaptations below, and run the Rust
+workspace CI with `CRAFT_I18N_DIR` set to a craft-i18n checkout of `craft-i18n.rev`.
+
+## Integration on 2026-11-04
 
 The current baseline is
-[`3b7f7ed10b2eb0ae3c39b71551d36ed2df1d1d8b`](https://github.com/storytold/wordcraft/commit/3b7f7ed10b2eb0ae3c39b71551d36ed2df1d1d8b),
-fetched from upstream `main`. This integration compares the complete working copy against
-`c4fafc215490a0186ee750454b1ce73a9823daed` and covers 57 additional commits, including the
-0.12.0 release. Later upstream commits require a new comparison.
+[`08afab50b6a1ed19f9af55bb9f74d18f5e17bfa0`](https://github.com/storytold/wordcraft/commit/08afab50b6a1ed19f9af55bb9f74d18f5e17bfa0) (release 0.15.1), fetched
+from upstream `main`. This integration merges the 188 commits after
+`3b7f7ed10b2eb0ae3c39b71551d36ed2df1d1d8b` into the complete working copy; the workspace is
+now version 0.15.1. Later upstream commits require a new comparison.
+
+Included engine and editor changes:
+
+- Proofing moved out of the workspace: `crates/proof` is now craft-libs' `craft-proof`
+  (package alias `inkstone-proof`), and the spelling word lists and hyphenation patterns are
+  craft-i18n's `language-data/`, embedded from `CRAFT_I18N_DIR` at the commit in
+  `craft-i18n.rev`. `assets/spelling` and `assets/hyphenation` are removed. Without the data,
+  English spelling falls back to an installed Hunspell English or the built-in list and
+  pattern hyphenation is off.
+- Downloadable language packs (craft-font-store/craft-font-catalog) on native builds, a
+  proofing pane, and a mirrored editor shell for right-to-left interface languages.
+- Pasting and inserting documents use the document model's `adopt` operations; Inkstone's
+  imported-style renaming and picture fitting are kept on top of them.
+- DOCX `altChunk` content, MHT/MHTML import, bounded ZIP reading, undefined-style handling,
+  shape fill transparency in layout, rendering and PDF, and continuous-view Page Up/Down.
+- Upstream's `language` CI step is part of `cargo xtask ci`.
+
+Fork adaptations: `craft-update` and the upstream updater remain excluded (updates stay
+operator-managed); Discord links and other promotional controls are removed from Backstage,
+options, chrome and keytips; the status bar shows the hosted ten-second cloud save instead of
+the local autosave switch when `Services::cloud_save` is set; letter, template, bookmark and
+automation commands, Persian/Urdu support, Inkstone branding and the web host bridge are
+unchanged. The unused optional egui patches are removed, so the API build no longer reports
+Cargo patch warnings. Attribution and notices record the craft-i18n language data in place of
+the removed in-repo files.
+
+### Validation on 2026-11-04
+
+- `cargo xtask ci` passes all nine stages (formatting, strict Clippy, workspace tests,
+  localization report, language data, doctests, asset attribution, dependency layers and
+  WebAssembly checks) with `CRAFT_I18N_DIR` pointing at a craft-i18n checkout of
+  `craft-i18n.rev` and `CARGO_PROFILE_TEST_DEBUG=0`. Without the language data, three
+  hyphenation layout tests fail, as upstream documents.
+- The .NET API build is clean (no warnings) and all 244 .NET tests pass.
+- WebAssembly editor and Vue production builds pass; all 16 Playwright browser tests pass
+  (English and Persian, desktop and narrow widths).
+- The WebAssembly build reports one upstream warning: `system_arabic` in `theme.rs` is used
+  only on native targets.
+
+### Picked fixes after 0.15.1
+
+Four later upstream fixes are picked onto the 0.15.1 baseline without conflicts: text box hit
+testing over pictures (`6f62716f`), DOCX nil shading and border theme colours (`655b4312`),
+shared border-type and HYPERLINK parsing for DOC, DOCX and RTF (`fd1c5efe`), and AutoFormat
+replacing tracked formatting changes (`e847b2e5`). The font-substitution notice feature
+(`ba58e70c`) is not taken. Formatting, strict Clippy and the doc, docbin, docx, formats, layout
+and engine test suites pass.
+
+## Integration on 2026-10-30
+
+The 2026-10-30 integration moved the baseline to
+[`3b7f7ed10b2eb0ae3c39b71551d36ed2df1d1d8b`](https://github.com/storytold/wordcraft/commit/3b7f7ed10b2eb0ae3c39b71551d36ed2df1d1d8b)
+from `c4fafc215490a0186ee750454b1ce73a9823daed`, covering 57 commits including the 0.12.0
+release.
 
 Included engine and editor changes:
 
