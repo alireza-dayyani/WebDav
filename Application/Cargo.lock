@@ -809,9 +809,9 @@ dependencies = [
 
 [[package]]
 name = "clipboard-win"
-version = "5.4.1"
+version = "5.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bde03770d3df201d4fb868f2c9c59e66a3e4e2bd06692a0fe701e7103c7e84d4"
+checksum = "052af7878466feccda12ba7a6a67d019d712f296809559b47c12c8cc196d3a9a"
 dependencies = [
  "error-code",
 ]
@@ -1012,6 +1012,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-atomic"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=762a06a4c6b48b522b7d4de84a87917ef90265e6#762a06a4c6b48b522b7d4de84a87917ef90265e6"
+dependencies = [
+ "rustix 1.1.5",
+]
+
+[[package]]
+name = "craft-font-catalog"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=762a06a4c6b48b522b7d4de84a87917ef90265e6#762a06a4c6b48b522b7d4de84a87917ef90265e6"
+dependencies = [
+ "fontique",
+ "skrifa 0.47.0",
+ "thiserror 2.0.21",
+ "windows-registry",
+]
+
+[[package]]
+name = "craft-font-store"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=762a06a4c6b48b522b7d4de84a87917ef90265e6#762a06a4c6b48b522b7d4de84a87917ef90265e6"
+dependencies = [
+ "craft-atomic",
+ "craft-font-catalog",
+ "flate2",
+ "log",
+ "ruzstd",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "skrifa 0.47.0",
+ "tar",
+ "thiserror 2.0.21",
+ "toml",
+ "ureq",
+]
+
+[[package]]
 name = "craft-fonts-build"
 version = "0.1.0"
 source = "git+https://github.com/storytold/craft-libs?rev=92d392cff132eaf53e13afff77f38b5c11b73aa0#92d392cff132eaf53e13afff77f38b5c11b73aa0"
@@ -1059,6 +1098,17 @@ dependencies = [
  "tempfile",
  "winprint",
  "winsafe",
+]
+
+[[package]]
+name = "craft-proof"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=01315d9c92b5b0e69082d35ca56099461a1efd45#01315d9c92b5b0e69082d35ca56099461a1efd45"
+dependencies = [
+ "log",
+ "miniz_oxide 0.9.1",
+ "toml",
+ "unicode-normalization",
 ]
 
 [[package]]
@@ -1182,9 +1232,9 @@ dependencies = [
 
 [[package]]
 name = "ctutils"
-version = "0.4.3"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03bb0e1cc970d482d121d9a1744999169b69a07470b3d644a7894e53fcaf4574"
+checksum = "a2376ffd6f96d8a9db59875b4b6b0237d6900b5baf64279714e05493ce64828a"
 dependencies = [
  "cmov",
 ]
@@ -1439,6 +1489,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_extras"
+version = "0.37.0"
+source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+dependencies = [
+ "ahash",
+ "egui",
+ "enum-map",
+ "itertools",
+ "log",
+ "profiling",
+]
+
+[[package]]
 name = "egui_glow"
 version = "0.37.0"
 source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
@@ -1504,6 +1567,26 @@ name = "endi"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66b7e2430c6dff6a955451e2cfc438f09cea1965a9d6f87f7e3b90decc014099"
+
+[[package]]
+name = "enum-map"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4532960034c15ba2f55e9eee631040ecc473c32e6c4b200828c759840f13a06"
+dependencies = [
+ "enum-map-derive",
+]
+
+[[package]]
+name = "enum-map-derive"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7127272f64b3e098f7d81f350d672081b879bff896d219c42370dc858b1af9ff"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.6",
+]
 
 [[package]]
 name = "enumflags2"
@@ -1767,6 +1850,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c92d9081c7ab3bd83ef1eecdfad090f3d966e3ce74106779664114cfe1a6274"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "fontique"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6688bc1294fe7117d788937b6c53480169b29c566954af490830d4c09da9516a"
+dependencies = [
+ "hashbrown 0.17.1",
+ "linebender_resource_handle",
+ "memmap2",
+ "objc2 0.6.5",
+ "objc2-core-foundation",
+ "objc2-core-text",
+ "objc2-foundation 0.3.2",
+ "parlance",
+ "read-fonts 0.41.0",
+ "roxmltree",
+ "smallvec",
+ "windows",
+ "windows-core",
+ "yeslogic-fontconfig-sys",
 ]
 
 [[package]]
@@ -2667,12 +2772,13 @@ dependencies = [
 
 [[package]]
 name = "inkstone"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "arboard",
  "chrono",
  "clipboard-win",
  "craft-print",
+ "craft-proof",
  "dispatch2",
  "eframe",
  "egui",
@@ -2682,7 +2788,6 @@ dependencies = [
  "inkstone-doc",
  "inkstone-engine",
  "inkstone-fonts",
- "inkstone-proof",
  "inkstone-ui-egui",
  "log",
  "objc2 0.6.5",
@@ -2701,7 +2806,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-cli"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "inkstone-doc",
  "inkstone-engine",
@@ -2714,11 +2819,11 @@ dependencies = [
 
 [[package]]
 name = "inkstone-control-key"
-version = "0.12.0"
+version = "0.15.1"
 
 [[package]]
 name = "inkstone-doc"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "base64 0.23.1",
  "inkstone-geom",
@@ -2732,7 +2837,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-docbin"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "cfb",
  "chrono",
@@ -2749,7 +2854,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-docx"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "aes",
  "base64 0.23.1",
@@ -2773,10 +2878,13 @@ dependencies = [
 
 [[package]]
 name = "inkstone-engine"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "cfb",
  "chrono",
+ "craft-font-catalog",
+ "craft-font-store",
+ "craft-proof",
  "encoding_rs",
  "getrandom 0.3.4",
  "image",
@@ -2788,7 +2896,6 @@ dependencies = [
  "inkstone-geom",
  "inkstone-layout",
  "inkstone-pdf",
- "inkstone-proof",
  "inkstone-render",
  "js-sys",
  "libc",
@@ -2804,7 +2911,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-fonts"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "brotli-decompressor",
  "harfrust 0.13.3",
@@ -2818,7 +2925,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-formats"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "cfb",
  "chardetng",
@@ -2837,7 +2944,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-geom"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "image",
  "serde",
@@ -2845,14 +2952,14 @@ dependencies = [
 
 [[package]]
 name = "inkstone-layout"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
+ "craft-proof",
  "image",
  "inkstone-doc",
  "inkstone-fonts",
  "inkstone-geom",
  "inkstone-metafile",
- "inkstone-proof",
  "js-sys",
  "kurbo",
  "log",
@@ -2865,7 +2972,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-mcp"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "inkstone-control-key",
  "inkstone-doc",
@@ -2877,7 +2984,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-metafile"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "kurbo",
  "thiserror 2.0.21",
@@ -2885,7 +2992,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-pdf"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "chrono",
  "craft-pdf",
@@ -2905,18 +3012,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "inkstone-proof"
-version = "0.12.0"
-dependencies = [
- "log",
- "miniz_oxide 0.9.1",
- "proptest",
- "unicode-normalization",
-]
-
-[[package]]
 name = "inkstone-render"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "image",
  "inkstone-doc",
@@ -2930,7 +3027,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-ui-egui"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "cfb",
  "chrono",
@@ -2938,6 +3035,7 @@ dependencies = [
  "craft-ui",
  "craft-window",
  "egui",
+ "egui_extras",
  "egui_kittest",
  "image",
  "inkstone-doc",
@@ -2960,7 +3058,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-web"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "eframe",
  "egui",
@@ -2979,7 +3077,7 @@ dependencies = [
 
 [[package]]
 name = "inkstone-zotero"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "inkstone-doc",
  "inkstone-docx",
@@ -3611,6 +3709,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "objc2-core-text"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cde0dfb48d25d2b4862161a4d5fcc0e3c24367869ad306b0c9ec0073bfed92d"
+dependencies = [
+ "bitflags 2.13.2",
+ "objc2-core-foundation",
+]
+
+[[package]]
 name = "objc2-encode"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3880,6 +3988,12 @@ dependencies = [
  "smallvec",
  "windows-link",
 ]
+
+[[package]]
+name = "parlance"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73072a9470554c8e794778acece2312661218aaabb635600957d952cf01c716e"
 
 [[package]]
 name = "pdf-writer"
@@ -4676,7 +4790,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "aws-lc-rs",
+ "log",
  "once_cell",
+ "ring",
  "rustls-pki-types",
  "rustls-webpki",
  "subtle",
@@ -4761,6 +4877,12 @@ dependencies = [
  "tempfile",
  "wait-timeout",
 ]
+
+[[package]]
+name = "ruzstd"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69e4ce4a039f42bf25920b95667e4d789e98749ab11bbb8d2c2936f788421bb5"
 
 [[package]]
 name = "ryu"
@@ -5915,6 +6037,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
+name = "ureq"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cde93ff05758a36a851a398a772b0b79a82fbe3c186a46f2696baaeaf84c966b"
+dependencies = [
+ "base64 0.23.1",
+ "flate2",
+ "log",
+ "percent-encoding",
+ "rustls",
+ "rustls-pki-types",
+ "ureq-proto",
+ "utf8-zero",
+ "webpki-roots",
+]
+
+[[package]]
+name = "ureq-proto"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "841583fc36089d7d59419568ae157f43a5a03a2e5a81ba87c77d1596ef46e922"
+dependencies = [
+ "base64 0.23.1",
+ "http",
+ "httparse",
+ "log",
+]
+
+[[package]]
 name = "url"
 version = "2.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5931,6 +6082,12 @@ name = "utf16_iter"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8232dd3cdaed5356e0f716d285e4b40b932ac434100fe9b7e0e8e935b9e6246"
+
+[[package]]
+name = "utf8-zero"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e"
 
 [[package]]
 name = "utf8_iter"
@@ -6263,6 +6420,15 @@ name = "webpki-root-certs"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e49d0e65abc00c142e8f9428da991da9f1a250c39be97459901eb12b9b49f62a"
+dependencies = [
+ "rustls-pki-types",
+]
+
+[[package]]
+name = "webpki-roots"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5f280bbb2b287bc8e7de7e3852945a0ff50d1bbcb5ed42b6c7a568c546df171"
 dependencies = [
  "rustls-pki-types",
 ]
@@ -6948,9 +7114,20 @@ checksum = "9440ea3e5aeabb0ac63af70daf835274065238cdd0cec83418f417eae38bacee"
 
 [[package]]
 name = "xtask"
-version = "0.12.0"
+version = "0.15.1"
 dependencies = [
  "serde_json",
+]
+
+[[package]]
+name = "yeslogic-fontconfig-sys"
+version = "6.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d8b8abf912b9a29ff112e1671c97c33636903d13a69712037190e6805af4f76"
+dependencies = [
+ "dlib",
+ "once_cell",
+ "pkg-config",
 ]
 
 [[package]]
@@ -7273,23 +7450,3 @@ dependencies = [
  "syn 3.0.6",
  "winnow",
 ]
-
-[[patch.unused]]
-name = "egui_demo_lib"
-version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
-
-[[patch.unused]]
-name = "egui_extras"
-version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
-
-[[patch.unused]]
-name = "egui_inspection"
-version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
-
-[[patch.unused]]
-name = "egui_system_font_provider"
-version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"

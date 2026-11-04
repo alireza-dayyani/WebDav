@@ -28,10 +28,12 @@ pub(crate) fn show(app: &mut WordApp, ctx: &egui::Context) {
             .collapsible(false)
             .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
-                ui.label(tl!("Updates are managed by the operator of this Inkstone installation."));
-                if ui.button(tl!("Close")).clicked() {
-                    close = true;
-                }
+                crate::rtl::root(ui, |ui| {
+                    ui.label(tl!("Updates are managed by the operator of this Inkstone installation."));
+                    if ui.button(tl!("Close")).clicked() {
+                        close = true;
+                    }
+                });
             });
         if !open || close {
             app.updates_rt.manual_window_open = false;
