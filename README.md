@@ -116,7 +116,7 @@ python Tests/letter_api_smoke.py
 python Tests/letter_editor_api_smoke.py
 python Tests/letter_template_layout_smoke.py
 python Tests/demo_seed_smoke.py
-node --test Tests/editor-host.test.mjs Tests/locales.test.mjs Tests/pdf-preview.test.mjs
+node --test Tests/editor-host.test.mjs Tests/locales.test.mjs Tests/library-api.test.mjs Tests/pdf-preview.test.mjs
 node --test Tests/workspace-ui.test.mjs Tests/automation-ui.test.mjs Tests/studio-state.test.mjs
 python Tests/workspace_sequence_smoke.py
 python Tests/production_readiness_smoke.py

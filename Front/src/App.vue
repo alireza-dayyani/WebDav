@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api, allPages, resetCsrf, previewPdf } from "./api";
+import { libraryPath } from "./libraryApi";
 import DocumentHistory from "./DocumentHistory.vue";
 import LibrarySettings from "./LibrarySettings.vue";
 import CollaborationPanel from "./CollaborationPanel.vue";
@@ -172,7 +173,7 @@ async function loadMoreDocuments() {
   const ticket = refreshTicket;
   try {
     const result = await api(
-      `/library?page=${libraryPage.value + 1}&trash=${trashView.value}&q=${encodeURIComponent(search.value)}`,
+      libraryPath(libraryPage.value + 1, trashView.value, search.value),
     );
     if (ticket !== refreshTicket) return;
     documents.value.push(...result.items);
@@ -255,9 +256,7 @@ async function download(document, format = downloadFormat.value) {
 async function refresh() {
   const ticket = ++refreshTicket;
   const [items, formats, templates] = await Promise.all([
-    api(
-      `/library?page=1&trash=${trashView.value}&q=${encodeURIComponent(search.value)}`,
-    ),
+    api(libraryPath(1, trashView.value, search.value)),
     api("/documents/formats"),
     allPages("/templates/"),
   ]);

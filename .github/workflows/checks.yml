@@ -19,7 +19,7 @@ jobs:
           cache-dependency-path: Front/package-lock.json
       - run: npm ci
         working-directory: Front
-      - run: node --test Tests/editor-host.test.mjs Tests/locales.test.mjs Tests/pdf-preview.test.mjs Tests/workspace-ui.test.mjs Tests/automation-ui.test.mjs Tests/studio-state.test.mjs
+      - run: node --test Tests/editor-host.test.mjs Tests/locales.test.mjs Tests/library-api.test.mjs Tests/pdf-preview.test.mjs Tests/workspace-ui.test.mjs Tests/automation-ui.test.mjs Tests/studio-state.test.mjs
       - run: npm run build
         working-directory: Front
       - run: dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true
