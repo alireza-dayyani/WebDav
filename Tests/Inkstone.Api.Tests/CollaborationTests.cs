@@ -38,6 +38,23 @@ public sealed class CollaborationTests
         await host.WithDatabase(async db => { Assert.Equal(1, (await db.Documents.SingleAsync()).Version); Assert.Equal("read", (await db.DocumentGrants.SingleAsync()).Permission); });
     }
     [Fact]
+    public async Task Shared_reader_sees_document_in_list_and_library_not_owner_delete()
+    {
+        await using var host = await EndpointHost.CreateAsync();
+        await Grant(host, "read");
+        Actor(host, EndpointHost.OtherOwner);
+        var listed = await host.Client.GetFromJsonAsync<JsonElement>("/api/documents");
+        Assert.Equal(1, listed.GetArrayLength());
+        Assert.Equal(host.DocumentId, listed[0].GetProperty("id").GetGuid());
+        var library = await host.Client.GetFromJsonAsync<JsonElement>("/api/library");
+        Assert.Equal(1, library.GetProperty("total").GetInt32());
+        Actor(host, EndpointHost.Owner);
+        Assert.Equal(HttpStatusCode.NoContent, (await host.Client.DeleteAsync($"/api/documents/{host.DocumentId}?version=1")).StatusCode);
+        Actor(host, EndpointHost.OtherOwner);
+        Assert.Equal(0, (await host.Client.GetFromJsonAsync<JsonElement>("/api/documents")).GetArrayLength());
+    }
+
+    [Fact]
     public async Task Reader_cannot_edit_or_access_private_history_but_editor_can_save_and_revocation_is_immediate()
     {
         await using var host = await EndpointHost.CreateAsync(); await Grant(host, "read"); Actor(host, EndpointHost.OtherOwner);
@@ -72,6 +89,8 @@ public sealed class CollaborationTests
         host.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         Assert.Equal(HttpStatusCode.NotFound, (await host.Client.GetAsync($"/api/documents/{host.DocumentId}/structure?version=1")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await host.Client.GetAsync($"/api/documents/{host.DocumentId}/shares?version=1")).StatusCode);
+        var listed = await host.Client.GetFromJsonAsync<JsonElement>("/api/documents");
+        Assert.Equal(0, listed.GetArrayLength());
     }
     [Fact]
     public async Task Approval_requires_assigned_reviewer_current_revision_and_current_request_version()

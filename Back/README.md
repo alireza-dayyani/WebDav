@@ -51,7 +51,7 @@ The separate [Templates and Letters API](STUDIO_API.md) documents template snaps
 | POST | /api/account/login | Sign in |
 | POST | /api/account/logout | Sign out |
 | GET | /api/account/me | Current account |
-| GET | /api/documents/ | List the current account's documents |
+| GET | /api/documents/ | List owned and shared documents visible to the session (no search/pagination; use /api/library) |
 | POST | /api/documents/ | Create a document; JSON title and optional language |
 | GET | /api/documents/formats | Supported upload/download formats, languages and limit |
 | POST | /api/documents/upload | Multipart file and optional title; creates a private document |
@@ -90,7 +90,7 @@ The private bootstrap path accepts the configured initial password; ordinary reg
 
 Admin and SuperAdmin can use /api/admin; only the private bootstrap process creates SuperAdmin. Administrators can grant/revoke Admin, including from other administrators, but cannot demote the bootstrap superadministrator. The policy checks persisted roles on every privileged request rather than trusting old role cookies. GET /api/account/me and sign-in responses include isAdmin and isSuperAdmin. Role mutations require the user's opaque version from the user list; settings mutations require the settings' numeric version. Stale updates return 409. All mutations still require X-CSRF-TOKEN.
 
-User lists are paginated (25 by default, up to 100); per-user file lists return 50 at a time. Administrative previews/downloads require the listed document version and are read-only. Administrative file reads and role/settings changes are logged with actor and target IDs. Existing owner write routes do not permit cross-account edits, even for administrators.
+User lists are paginated (25 by default, up to 100); per-user file lists return 50 at a time. Administrative previews/downloads load any document by ID without owner/grant checks, require the listed document version, and are read-only. Assign the Admin role only to trusted operators; all such reads are logged with actor, document and owner IDs. Administrative role/settings changes are also logged. Existing owner write routes do not permit cross-account edits, even for administrators.
 
 ## Standalone PowerShell client
 

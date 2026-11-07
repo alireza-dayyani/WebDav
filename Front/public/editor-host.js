@@ -1,4 +1,4 @@
-/* Same-origin bridge between the Rust editor and the account API. No document data is kept in browser storage. */
+/* Same-origin bridge between the Rust editor and the account API. No document data is kept in browser storage. Keep CSRF/error handling aligned with Front/src/httpCore.js. */
 (() => {
   const bindings = new Map();
   const conflicts = new Set();

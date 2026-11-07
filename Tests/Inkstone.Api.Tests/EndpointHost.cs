@@ -57,6 +57,7 @@ internal sealed class EndpointHost : IAsyncDisposable
         host.app.UseAuthorization();
         host.app.UseAntiforgery();
         host.app.MapLetterResources();
+        host.app.MapDocumentRoutes();
         host.app.MapDocumentAutomation(); host.app.MapDocumentJobs(); host.app.MapAutomationTokens();
         host.app.MapLibraryRecovery();
         host.app.MapLibrarySearch(); host.app.MapRevisionRetention();
