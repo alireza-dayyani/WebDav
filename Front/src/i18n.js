@@ -1,6 +1,6 @@
 import { computed, ref, watch } from "vue";
-import { languages, translate } from "./locales";
-import { maxUploadBytes, maxDocumentBytes } from "./fileLimits";
+import { languages, translate } from "./locales.js";
+import { maxUploadBytes, maxDocumentBytes } from "./fileLimits.js";
 let preferred;
 try {
   preferred = localStorage.getItem("inkstone.locale");

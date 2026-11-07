@@ -1,0 +1,18 @@
+export const STUDIO_BOOKMARK_ALIASES = {
+  Date: "تاریخ",
+  Number: "شماره_ثبت",
+  Classification: "طبقه_بندی",
+  Priority: "فوریت_و_اهمیت",
+  Body: "متن_نامه",
+  Subject: "موضوع",
+  Recipients: "گیرندگان_اصلی",
+  SenderName: "نام_و_نام_خانوادگی_فرستنده",
+  SenderTitle: "نوع_جایگاه_امضاکننده_اصلی",
+  Signature: "امضای_اصلی",
+  Logo: "تصویر_واحد_سازمانی",
+  Copies: "رونوشت",
+  Attachments: "پیوست",
+  Address: "آدرس",
+  Tracking: "رهگیری",
+  QRCode: "بارکد",
+};
