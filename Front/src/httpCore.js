@@ -1,4 +1,10 @@
-export function createHttpClient({ basePath = "/api" } = {}) {
+export function createHttpClient({
+  basePath = "/api",
+  accountHeader,
+  csrfUnavailableMessage = "Cannot connect to your workspace. Please try again.",
+  unauthorizedMessage = "Please sign in to continue.",
+  genericMessage = "Something went wrong. Please try again.",
+} = {}) {
   let token;
 
   async function ensureCsrf(force = false) {
@@ -6,8 +12,7 @@ export function createHttpClient({ basePath = "/api" } = {}) {
     const response = await fetch(`${basePath}/csrf`, {
       credentials: "same-origin",
     });
-    if (!response.ok)
-      throw new Error("Cannot connect to your workspace. Please try again.");
+    if (!response.ok) throw new Error(csrfUnavailableMessage);
     token = (await response.json()).token;
   }
 
@@ -20,9 +25,7 @@ export function createHttpClient({ basePath = "/api" } = {}) {
       problem.errors
         ? Object.values(problem.errors).flat().join(" ")
         : problem.detail ||
-            (status === 401
-              ? "Please sign in to continue."
-              : "Something went wrong. Please try again."),
+            (status === 401 ? unauthorizedMessage : genericMessage),
     );
     error.status = status;
     error.code = problem.code;
@@ -33,7 +36,9 @@ export function createHttpClient({ basePath = "/api" } = {}) {
 
   async function requestJson(path, options = {}) {
     const method = options.method || "GET";
-    const form = options.body instanceof FormData;
+    const form =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
+    const scope = accountHeader?.();
     const response = await fetch(basePath + path, {
       ...options,
       credentials: "same-origin",
@@ -44,12 +49,15 @@ export function createHttpClient({ basePath = "/api" } = {}) {
         ...(method !== "GET" && method !== "HEAD"
           ? { "X-CSRF-TOKEN": token }
           : {}),
+        ...(scope ? { "X-Inkstone-Account": scope } : {}),
         ...options.headers,
       },
       body:
         form || options.body === undefined
           ? options.body
-          : JSON.stringify(options.body),
+          : typeof options.body === "string"
+            ? options.body
+            : JSON.stringify(options.body),
     });
     if (!response.ok) {
       const problem = await response.json().catch(() => ({}));
@@ -59,5 +67,12 @@ export function createHttpClient({ basePath = "/api" } = {}) {
     return response;
   }
 
-  return { ensureCsrf, resetCsrf, requestJson, buildError };
+  async function requestData(path, options = {}) {
+    const method = options.method || "GET";
+    if (method !== "GET" && method !== "HEAD") await ensureCsrf(false);
+    const response = await requestJson(path, options);
+    return response.status === 204 ? null : response.json();
+  }
+
+  return { ensureCsrf, resetCsrf, requestJson, requestData, buildError };
 }

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { api, allPages, resetCsrf, previewPdf } from "./api";
-import { libraryPath } from "./libraryApi";
+import { api, resetCsrf, previewPdf } from "./api";
+import { useLibrary } from "./composables/useLibrary";
 import DocumentHistory from "./DocumentHistory.vue";
 import LibrarySettings from "./LibrarySettings.vue";
 import CollaborationPanel from "./CollaborationPanel.vue";
@@ -56,18 +56,22 @@ function showDocuments(trash = false) {
 }
 const documentTemplates = ref([]),
   chosenTemplate = ref("");
+const {
+  documents,
+  libraryMore,
+  libraryTotal,
+  loadingMore,
+  refresh: reloadLibrary,
+  loadMore: loadMoreLibrary,
+  clearDocuments,
+} = useLibrary(documentTemplates);
 const historyDocument = ref(null);
-const librarySettings = ref(false),
-  loadingMore = ref(false),
-  libraryPage = ref(1),
-  libraryMore = ref(false),
-  libraryTotal = ref(0);
+const librarySettings = ref(false);
 const shareDocument = ref(null),
   reviewInbox = ref(false);
 const automationPanel = ref(false);
 let searchTimer;
 const trashView = ref(false);
-let refreshTicket = 0;
 async function toggleTrash() {
   trashView.value = !trashView.value;
   try {
@@ -139,8 +143,7 @@ const user = ref(null),
 const mode = ref("login"),
   email = ref(""),
   password = ref(""),
-  search = ref(""),
-  documents = ref([]);
+  search = ref("");
 const active = ref(null),
   editorFrame = ref(null),
   editorStatus = ref(t("openingDocument")),
@@ -168,21 +171,10 @@ watch(search, () => {
   );
 });
 async function loadMoreDocuments() {
-  if (loadingMore.value) return;
-  loadingMore.value = true;
-  const ticket = refreshTicket;
   try {
-    const result = await api(
-      libraryPath(libraryPage.value + 1, trashView.value, search.value),
-    );
-    if (ticket !== refreshTicket) return;
-    documents.value.push(...result.items);
-    libraryPage.value++;
-    libraryMore.value = result.hasMore;
+    await loadMoreLibrary(trashView.value, search.value);
   } catch (e) {
     error.value = errorMessage(e);
-  } finally {
-    loadingMore.value = false;
   }
 }
 const greeting = computed(
@@ -254,19 +246,7 @@ async function download(document, format = downloadFormat.value) {
   }
 }
 async function refresh() {
-  const ticket = ++refreshTicket;
-  const [items, formats, templates] = await Promise.all([
-    api(libraryPath(1, trashView.value, search.value)),
-    api("/documents/formats"),
-    allPages("/templates/"),
-  ]);
-  if (ticket !== refreshTicket) return;
-  documents.value = items.items;
-  libraryPage.value = 1;
-  libraryMore.value = items.hasMore;
-  libraryTotal.value = items.total;
-  documentTemplates.value = templates.filter((x) => x.data.kind === "document");
-  updateFileLimits(formats);
+  await reloadLibrary(trashView.value, search.value);
 }
 async function initialize() {
   try {
@@ -305,8 +285,7 @@ async function logout() {
     await api("/account/logout", { method: "POST" });
     user.value = null;
     search.value = "";
-    refreshTicket++;
-    documents.value = [];
+    clearDocuments();
     trashView.value = false;
     historyDocument.value = null;
     librarySettings.value = false;

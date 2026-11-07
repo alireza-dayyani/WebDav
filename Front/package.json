@@ -4,15 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/copy-notices.mjs",
+    "predev": "node scripts/copy-notices.mjs && npm run editor-host:build",
     "dev": "vite --host 127.0.0.1",
-    "prebuild": "node scripts/copy-notices.mjs",
+    "prebuild": "node scripts/copy-notices.mjs && npm run editor-host:build",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
+    "editor-host:build": "vite build --config vite.editor-host.config.js",
     "editor:build": "node scripts/build-editor.mjs",
     "editor:optimize": "node scripts/build-editor.mjs --optimize",
     "build:all": "npm run editor:build && npm run build",
-    "format": "prettier --write src public/editor-host.js vite.config.js scripts",
+    "format": "prettier --write src public/editor-host.js vite.config.js vite.editor-host.config.js scripts",
     "test:browser": "playwright test"
   },
   "dependencies": {
