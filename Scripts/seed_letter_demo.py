@@ -102,9 +102,9 @@ def seed_resources(api, person, recipients, extras):
         found = next((x for x in rows if x['metadata']['title'] == title), None)
         if found: return found
         item = create(); rows.append(item); return item
-    fa = ensure(templates, '[Demo] نامه رسمی فارسی A5', lambda: api.json('/templates/starter','POST',{'title':'[Demo] نامه رسمی فارسی A5','kind':'letter','language':'fa-IR','paper':'A5'}))
-    fa4 = ensure(templates, '[Demo] نامه رسمی فارسی A4', lambda: api.json('/templates/starter','POST',{'title':'[Demo] نامه رسمی فارسی A4','kind':'letter','language':'fa-IR','paper':'A4'}))
-    en = ensure(templates, '[Demo] English block letter', lambda: api.json('/templates/starter','POST',{'title':'[Demo] English block letter','kind':'letter','language':'en-US','paper':'Letter'}))
+    fa = ensure(templates, '[Demo] نامه رسمی فارسی A5', lambda: api.json('/templates/starter','POST',{'title':'[Demo] نامه رسمی فارسی A5','kind':'letter','paper':'A5'}))
+    fa4 = ensure(templates, '[Demo] نامه رسمی فارسی A4', lambda: api.json('/templates/starter','POST',{'title':'[Demo] نامه رسمی فارسی A4','kind':'letter','paper':'A4'}))
+    en = ensure(templates, '[Demo] English block letter', lambda: api.json('/templates/starter','POST',{'title':'[Demo] English block letter','kind':'letter','paper':'Letter'}))
     sender = ensure(senders,'مدیر پروژه (نمونه)',lambda: api.json('/letters/senders/','POST',{'version':0,'fullName':person[1],'title':'مدیر پروژه (نمونه)','organization':'سازمان آزمایشی اینکستون','address':'نشانی آزمایشی — بدون مقصد واقعی'}))
     ensure(senders,'Project lead (demo)',lambda: api.json('/letters/senders/','POST',{'version':0,'fullName':person[2],'title':'Project lead (demo)','organization':'Inkstone demonstration team','address':'Example address, no delivery'}))
     signature = ensure(images,'[Demo] Synthetic signature 1',lambda: api.upload('/letters/images/','signature-1.png',demo_png(),'[Demo] Synthetic signature 1'))
@@ -118,9 +118,9 @@ def seed_resources(api, person, recipients, extras):
             heading = 'پاسخ به مکاتبهٔ پیشین'
             model['body'].insert(0,{'kind':'para','text':heading,'runs':[{'len':len(heading.encode()),'props':{'bold':True}}],'props':{'bidi':True}})
             source = api.upload('/documents/upload','reply-template.json',json.dumps(model,ensure_ascii=False).encode(),'[Demo] Reply template source')
-            template = api.json('/templates/','POST',{'title':'[Demo] پاسخ رسمی فارسی A4','kind':'letter','language':'fa-IR','source':ref(source),'fields':fa4['data']['fields'],'requiredFields':fa4['data']['requiredFields']})
+            template = api.json('/templates/','POST',{'title':'[Demo] پاسخ رسمی فارسی A4','kind':'letter','source':ref(source),'fields':fa4['data']['fields'],'requiredFields':fa4['data']['requiredFields']})
             templates.append(template)
-        ensure(templates,'[Demo] Meeting notes',lambda: api.json('/templates/starter','POST',{'title':'[Demo] Meeting notes','kind':'document','language':'en-US'}))
+        ensure(templates,'[Demo] Meeting notes',lambda: api.json('/templates/starter','POST',{'title':'[Demo] Meeting notes','kind':'document'}))
         documents = api.json('/documents/')
         for title, text in [('[Demo] Project outline','Original sample project outline.\nMilestones: draft, review, approval.'),('[Demo] پیوست فارسی','این پیوست صرفاً دادهٔ آزمایشی برای بررسی ساخت نامه است.')]:
             document = next((d for d in documents if d['title'] == title), None)
@@ -130,7 +130,7 @@ def seed_resources(api, person, recipients, extras):
     letters = api.all('/letters/')
     letter = next((x for x in letters if x['metadata']['title'] == title), None)
     if letter is None:
-        draft = {'title':title,'subject':'بررسی نمونهٔ گردش مکاتبات','language':'fa-IR','date':datetime.date.today().isoformat(),
+        draft = {'title':title,'subject':'بررسی نمونهٔ گردش مکاتبات','date':datetime.date.today().isoformat(),
                  'template':ref(fa4),'sender':ref(sender),'signature':ref(signature),'logo':ref(logo),'bodyDocument':None,
                  'bodyText':'با سلام،\nاین متن آزمایشی را در ویرایشگر قالب باز کنید و متن نامهٔ خود را بنویسید. گیرنده، نام و سمت فرستنده و تصویر امضا از مشخصات انتخاب‌شده تکمیل می‌شوند.\nبا سپاس',
                  'recipients':[{'userId':recipients[0],'kind':'to','printOnLetter':True},{'userId':recipients[1],'kind':'cc','printOnLetter':True}],
@@ -140,7 +140,7 @@ def seed_resources(api, person, recipients, extras):
     formatted_title = '[Demo] نامه با قالب رسمی جدید'
     formatted = next((x for x in letters if x['metadata']['title'] == formatted_title), None)
     if formatted is None:
-        formatted = api.json('/letters/','POST',{'title':formatted_title,'subject':'درخواست بررسی برنامهٔ پیشنهادی','language':'fa-IR','date':datetime.date.today().isoformat(),
+        formatted = api.json('/letters/','POST',{'title':formatted_title,'subject':'درخواست بررسی برنامهٔ پیشنهادی','date':datetime.date.today().isoformat(),
                  'template':ref(fa),'sender':ref(sender),'signature':ref(signature),'logo':ref(logo),'bodyDocument':None,
                  'bodyText':'خواهشمند است برنامهٔ پیشنهادی را بررسی فرمایید و نتیجه را برای هماهنگی مراحل بعدی اعلام کنید.',
                  'recipients':[{'userId':recipients[0],'kind':'to','printOnLetter':True}],

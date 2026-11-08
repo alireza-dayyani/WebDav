@@ -10,7 +10,7 @@ public static class TemplateEndpoints
     {
         var routes = app.MapGroup("/api/templates").RequireAuthorization().WithTags("Templates").WithMetadata(new BookmarkValuesRequest());
         routes.MapGet("/", (int? page, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) => Studio.List(db, Ownership.Owner(user), "template", page, ct));
-        routes.MapGet("/fields", () => Results.Ok(new { fields = Studio.Fields, required = Studio.Required, languages = DocumentConverter.Languages }));
+        routes.MapGet("/fields", () => Results.Ok(new { fields = Studio.Fields, required = Studio.Required }));
         routes.MapGet("/{id:guid}/bookmarks", async (Guid id, long version, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
         {
             var item = await Studio.Find(db, Ownership.Owner(user), "template", id, ct, false);
@@ -25,11 +25,22 @@ public static class TemplateEndpoints
         }).Produces<ResourceDetail>().Produces(404).ProducesProblem(409);
         routes.MapPost("/starter", async (StarterTemplate input, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
         {
-            if (Studio.Title(input.Title) is not { } title || input.Kind is not ("letter" or "document") || !DocumentConverter.Languages.Contains(input.Language)
+            if (Studio.Title(input.Title) is not { } title || input.Kind is not ("letter" or "document")
                 || (input.Paper is not null && (input.Kind != "letter" || input.Paper is not ("A4" or "A5" or "Letter"))))
-                return Studio.Bad("Choose a title, document/letter kind and supported language.");
-            var model = input.Kind == "letter" ? await converter.LetterTemplateAsync(input.Language, ct, input.Paper) : await converter.CreateAsync(input.Language, ct);
-            var config = new TemplateConfig(input.Kind, input.Language, input.Kind == "letter" ? Studio.Fields.ToDictionary(x => x, x => x) : [], input.Kind == "letter" ? Studio.Required : []);
+                return Studio.Bad("Choose a title and a document or letter template.");
+            byte[] model;
+            string language;
+            if (input.Kind == "letter")
+            {
+                language = DocumentLanguage.FromText(title);
+                model = await converter.LetterTemplateAsync(language, ct, input.Paper);
+            }
+            else
+            {
+                model = await converter.CreateBlankAsync(ct);
+                language = DocumentLanguage.FromModel(model);
+            }
+            var config = new TemplateConfig(input.Kind, language, input.Kind == "letter" ? Studio.Fields.ToDictionary(x => x, x => x) : [], input.Kind == "letter" ? Studio.Required : []);
             var item = new WorkspaceItem { OwnerId = Ownership.Owner(user), Kind = "template", Title = title, Data = Studio.Encode(config), Content = model };
             db.WorkspaceItems.Add(item); await db.SaveChangesAsync(ct);
             return Results.Created($"/api/templates/{item.Id}?version=1", Studio.Detail(item));
@@ -37,14 +48,14 @@ public static class TemplateEndpoints
         routes.MapPost("/", async (CreateTemplate input, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
         {
             var owner = Ownership.Owner(user);
-            if (Studio.Title(input.Title) is not { } title || input.Kind is not ("letter" or "document") || !DocumentConverter.Languages.Contains(input.Language!) || input.Source is null)
-                return Studio.Bad("Choose a title, kind, language and an owned source document revision.");
+            if (Studio.Title(input.Title) is not { } title || input.Kind is not ("letter" or "document") || input.Source is null)
+                return Studio.Bad("Choose a title, kind and an owned source document revision.");
             var source = await db.Documents.AsNoTracking().SingleOrDefaultAsync(x => x.Id == input.Source.Id && x.OwnerId == owner, ct);
             if (source is null) return Results.NotFound();
             if (source.Version != input.Source.Version) return Studio.Conflict();
-            var config = new TemplateConfig(input.Kind, input.Language!, input.Fields ?? [], input.RequiredFields ?? (input.Kind == "letter" ? Studio.Required : []));
+            var content = source.Content.Length == 0 ? await converter.CreateBlankAsync(ct) : source.Content.ToArray();
+            var config = new TemplateConfig(input.Kind, DocumentLanguage.FromModel(content), input.Fields ?? [], input.RequiredFields ?? (input.Kind == "letter" ? Studio.Required : []));
             if (!Studio.ValidConfig(config)) return Studio.Bad("Map required letter fields to distinct bookmark names before saving the template.");
-            var content = source.Content.Length == 0 ? await converter.CreateAsync(input.Language!, ct) : source.Content.ToArray();
             if (input.Kind == "letter")
             {
                 var names = (await converter.ReadBookmarksAsync(content, ct)).Where(x => x.Replaceable).Select(x => x.Name).ToHashSet(StringComparer.Ordinal);

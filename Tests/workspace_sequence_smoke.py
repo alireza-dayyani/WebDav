@@ -55,7 +55,7 @@ with server(5096, 'workspace-sequence') as (base, data):
     done = wait(alice, job); output, _, _ = alice.raw(done['downloadUrl']); assert output.startswith(b'%PDF')
     bob.json(f'/document-jobs/{done["id"]}?version={done["version"]}', expected=404)
     source = alice.upload(template_model(), 'Bulk template source')
-    template = alice.json('/templates/', 'POST', {'title': 'Bulk fixture', 'kind': 'document', 'language': 'en-US', 'source': reference(source)}, expected=201)
+    template = alice.json('/templates/', 'POST', {'title': 'Bulk fixture', 'kind': 'document', 'source': reference(source)}, expected=201)
     job = alice.json('/document-jobs/', 'POST', {'kind': 'renderBatch', 'template': reference(template), 'format': 'pdf', 'records': [{'key': 'a', 'title': 'One', 'values': {'CustomerName': 'Ada'}}, {'key': 'b', 'title': 'Two', 'values': {'CustomerName': 'علی'}}]})
     done = wait(alice, job); output, _, _ = alice.raw(done['downloadUrl'])
     with zipfile.ZipFile(io.BytesIO(output)) as archive:

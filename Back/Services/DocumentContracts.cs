@@ -3,7 +3,7 @@ using Inkstone.Web.Data;
 using Microsoft.AspNetCore.Http;
 
 public sealed record DocumentSnapshot(DocumentMetadata Metadata, JsonElement? Document);
-public sealed record DocumentTitle(string? Title, string? Language = null);
+public sealed record DocumentTitle(string? Title);
 public sealed record DocumentMetadata(Guid Id, string Title, long Version, long CreatedAt, long UpdatedAt, int Size);
 public sealed record RenameDocument(string? Title, long Version);
 public sealed record SaveDocument(long Version, JsonElement Document);

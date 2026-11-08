@@ -17,10 +17,9 @@ public static class DocumentEndpoints
         {
             upload = DocumentConverter.ImportFormats,
             download = DocumentConverter.ExportFormats,
-            languages = DocumentConverter.Languages,
             maxUploadBytes = (long)(await FileLimits.ReadAsync(db, ct)).MaxUploadMiB * FileLimits.MiB,
             maxDocumentBytes = FileLimits.MaxModelBytes
-        })).WithSummary("Supported file formats, document languages, and upload limit");
+        })).WithSummary("Supported file formats and upload limit");
 
         documents.MapGet("/", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
             Results.Ok(await DocumentAccess.Visible(db, user).AsNoTracking()
@@ -31,12 +30,11 @@ public static class DocumentEndpoints
             .WithDescription("Includes owned documents and reader/editor shares for cookie sessions. Scoped automation tokens list owned documents only. Trashed documents are excluded. Prefer /api/library for search and pagination.")
             .Produces<List<DocumentMetadata>>();
 
-        documents.MapPost("/", async (DocumentTitle input, ClaimsPrincipal user, AppDbContext db, DocumentConverter converter, CancellationToken ct) =>
+        documents.MapPost("/", async (DocumentTitle input, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var title = DocumentEndpointHelpers.CleanTitle(input.Title);
             if (title is null) return Results.Problem("A title must contain 1–160 characters.", statusCode: 400);
             var document = new StoredDocument { OwnerId = Ownership.Owner(user), Title = title };
-            if (input.Language is not null) document.Content = await converter.CreateAsync(input.Language, ct);
             db.Documents.Add(document);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/documents/{document.Id}", DocumentEndpointHelpers.Metadata(document));

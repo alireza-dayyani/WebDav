@@ -7,7 +7,7 @@ These workflows use the existing authentication cookie and `X-CSRF-TOKEN` header
 | Method | Route | Purpose |
 | --- | --- | --- |
 | GET | `/api/templates/?page=1` | List private templates and mappings |
-| GET | `/api/templates/fields` | Logical letter fields, required fields and languages |
+| GET | `/api/templates/fields` | Logical letter fields and required fields |
 | POST | `/api/templates/starter` | Create a blank-document or letter starter template |
 | POST | `/api/templates/` | Snapshot an owned source document revision |
 | GET | `/api/templates/{id}?version=1` | Read metadata, configuration and provenance |
@@ -22,14 +22,14 @@ Lists return `{page, hasMore, items}` with 50 records per page. Entries contain 
 Starter request:
 
 ```json
-{"title":"My letterhead","kind":"letter","language":"fa-IR","paper":"A5"}
+{"title":"سربرگ فارسی","kind":"letter","paper":"A5"}
 ```
 
-Use `kind: "document"` for an ordinary blank template. Letter starters provide named fields with English or Persian labels. Optional `paper` accepts `A5`, `A4` or `Letter` for letters only; omitted defaults are Persian A5, English Letter, and other supported RTL languages A4. Persian and English profiles include distinct named typography styles and header/footer stories. See [layout sources and font requirements](../Application/docs/LETTER_TEMPLATES.md). Rich imported bodies retain their own styles; plain text in the new letter profiles treats newlines as paragraphs. To snapshot an existing or uploaded document:
+Use `kind: "document"` for an ordinary blank template. There is no language field. A letter starter's layout follows the script of its title, and a template saved from a document follows the language tags and text in that file. Letter starters provide named fields with English or Persian labels. Optional `paper` accepts `A5`, `A4` or `Letter` for letters only; omitted defaults are Persian A5, Arabic or Urdu A4, and English US Letter. Persian and English profiles include distinct named typography styles and header/footer stories. See [layout sources and font requirements](../Application/docs/LETTER_TEMPLATES.md). Rich imported bodies retain their own styles; plain text in the new letter profiles treats newlines as paragraphs. To snapshot an existing or uploaded document:
 
 ```json
 {
-  "title":"Reusable form", "kind":"document", "language":"en-US",
+  "title":"Reusable form", "kind":"document",
   "source":{"id":"OWNED-DOCUMENT-GUID","version":3},
   "fields":{}, "requiredFields":[]
 }
@@ -84,7 +84,7 @@ Ordinary document lists never contain letters or generated variants. Letter list
 
 ```json
 {
-  "title":"Project letter", "subject":"Project update", "language":"en-US", "date":"2026-10-26",
+  "title":"Project letter", "subject":"Project update", "date":"2026-10-26",
   "template":{"id":"TEMPLATE-GUID","version":1},
   "sender":{"id":"SENDER-GUID","version":1},
   "signature":{"id":"IMAGE-GUID","version":1},

@@ -12,7 +12,7 @@ with server(5097, 'template-api') as (base, _):
     assert 'LetterDraft' in spec['components']['schemas'] and 'GenerateLetter' in spec['components']['schemas']
     alice.raw('/api/templates/starter', 'POST', b'{"title":"' + b'x' * (4 * 1024 * 1024) + b'"}', expected=413)
     source = alice.upload(template_model(), 'Template source')
-    payload = {'title': 'Reusable document', 'kind': 'document', 'language': 'fa-IR', 'source': reference(source)}
+    payload = {'title': 'Reusable document', 'kind': 'document', 'source': reference(source)}
     template = alice.json('/templates/', 'POST', payload, expected=201)
     identifier = template['metadata']['id']
     for client, status in [(bob, 404), (guest, 401)]:
@@ -51,6 +51,6 @@ with server(5097, 'template-api') as (base, _):
     alice.json(f'/templates/{identifier}?version=1', 'DELETE', expected=409)
     alice.json(f'/templates/{identifier}?version=2', 'DELETE', expected=204)
     assert alice.json(f'/documents/{first["id"]}')['version'] == 1
-    starter = alice.json('/templates/starter', 'POST', {'title': 'Blank reusable template', 'kind': 'document', 'language': 'en-US'}, expected=201)
+    starter = alice.json('/templates/starter', 'POST', {'title': 'Blank reusable template', 'kind': 'document'}, expected=201)
     alice.json(f'/templates/{starter["metadata"]["id"]}/render', 'POST', {'title': 'Blank copy', 'version': 1, 'values': {}}, expected=201)
     print('PASS: private template snapshots, independent copies, ordinary document editing/download, source deletion, atomic failure, CSRF, tenant isolation and revision checks.')

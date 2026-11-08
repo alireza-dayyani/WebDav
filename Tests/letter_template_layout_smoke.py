@@ -17,8 +17,9 @@ with server(5088,'letter-layout') as (base,_):
     logo = author.multipart('/letters/images/','logo.png',art.demo_png(logo=True),{'title':'Original geometric logo'})
     for language,paper,filename in [('fa-IR','A5','persian-official-a5'),('fa-IR','A4','persian-official-a4'),('en-US','Letter','english-business-letter')]:
         persian = language == 'fa-IR'
-        request = {'title':filename,'kind':'letter','language':language}
-        if paper == 'A4': request['paper'] = paper
+        request = {'title': 'نامه رسمی فارسی' if persian else 'English business letter', 'kind': 'letter'}
+        if paper == 'A4': request['paper'] = 'A4'
+        elif paper == 'Letter': request['paper'] = 'Letter'
         template = author.json('/templates/starter','POST',request,expected=201)
         route = f'/api/templates/{template["metadata"]["id"]}/download?version=1&format=json'
         model = json.loads(author.raw(route)[0])
@@ -47,7 +48,7 @@ with server(5088,'letter-layout') as (base,_):
                 'Thank you for reviewing our proposed service schedule. We would like to confirm the next steps for the coming quarter.\nPlease review the attached outline and share any changes by Friday. We will incorporate your feedback before the planning meeting.\nWe appreciate your time and look forward to working together.')
         if paper == 'A4':
             text += '\n' + '\n'.join(f'بند {index}: این متنِ نمونه برای بررسی صفحه‌بندی نامهٔ بلند تهیه شده است. خواهشمند است جزئیات برنامه را بررسی و پیشنهادهای خود را اعلام فرمایید.' for index in range(1,21))
-        draft = {'title':filename,'subject':'درخواست بررسی برنامهٔ همکاری' if persian else 'Proposed service schedule', 'language':language,'date':'2026-10-27',
+        draft = {'title':filename,'subject':'درخواست بررسی برنامهٔ همکاری' if persian else 'Proposed service schedule', 'date':'2026-10-27',
             'template':reference(template),'sender':reference(profile),'signature':reference(signature),'logo':reference(logo),'bodyDocument':None,'bodyText':text,
             'recipients':[{'userId':recipient['id'],'kind':'to','printOnLetter':True}], 'attachments':[], 'includeQrCode':True}
         letter = author.json('/letters/','POST',draft,expected=201)
@@ -73,5 +74,5 @@ with server(5088,'letter-layout') as (base,_):
         out = ROOT/'Tests/generated'; out.mkdir(exist_ok=True)
         (out/(filename+'.docx')).write_bytes(docx); (out/(filename+'.pdf')).write_bytes(pdf)
         (out/(filename+'.json')).write_bytes(author.raw(download+'&format=json')[0])
-    author.json('/templates/starter','POST',{'title':'Invalid paper','kind':'letter','language':'fa-IR','paper':'A3'},expected=400)
+    author.json('/templates/starter','POST',{'title':'Invalid paper','kind':'letter','paper':'A3'},expected=400)
     print('PASS: Persian A5/A4 typography and English block-letter geometry, script fonts/sizes, all bookmarks, header/footer composition, signature/branding images, English date and real DOCX/PDF exports.')

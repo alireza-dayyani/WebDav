@@ -58,7 +58,6 @@ pub(super) fn format(s: &mut Session, v: &Value) -> CmdResult {
             "align" => ("para.align", json!({"value":value})),
             "spacing" => ("para.spacing", value.clone()),
             "lineSpacing" => ("para.lineSpacing", value.clone()),
-            "language" => ("review.language", json!({"lang":value})),
             _ => return Err(bad("unsupported formatting property")),
         };
         if matches!(key.as_str(), "bold" | "italic" | "rtl") && !value.is_boolean() {
@@ -87,7 +86,7 @@ fn table_cell(s: &Session, story: StoryRef, path: &Path, row: usize, column: usi
 fn validate_format(key: &str, value: &Value) -> Result<(), CmdError> {
     let valid = match key {
         "bold" | "italic" | "rtl" => value.is_boolean(),
-        "font" | "style" | "language" => value.as_str().is_some_and(|s| !s.trim().is_empty() && s.len() <= 256),
+        "font" | "style" => value.as_str().is_some_and(|s| !s.trim().is_empty() && s.len() <= 256),
         "size" => value.as_f64().is_some_and(|n| (1.0..=400.0).contains(&n)),
         "color" => value.as_str().is_some_and(|s| s == "auto" || (s.len() == 6 && s.chars().all(|c| c.is_ascii_hexdigit()))),
         "align" => value.as_str().is_some_and(|s| matches!(s, "left" | "center" | "right" | "justify" | "distribute" | "start" | "end")),
@@ -200,15 +199,12 @@ pub(super) fn resolve_changes(s: &mut Session, v: &Value) -> CmdResult {
 pub(super) fn properties(s: &mut Session, v: &Value) -> CmdResult {
     let values = v.as_object().ok_or_else(|| bad("properties must be an object"))?;
     for (key, value) in values {
-        if !matches!(key.as_str(), "title" | "subject" | "author" | "keywords" | "comments" | "category" | "custom" | "language") {
+        if !matches!(key.as_str(), "title" | "subject" | "author" | "keywords" | "comments" | "category" | "custom") {
             return Err(bad("unknown document property"));
         }
         if key != "custom" {
             checked_text(&json!({"text":value}), "text")?;
         }
-    }
-    if let Some(language) = v.get("language") {
-        s.run("review.language", &json!({"lang":language,"default":true}))?;
     }
     s.run("file.properties", v)
 }

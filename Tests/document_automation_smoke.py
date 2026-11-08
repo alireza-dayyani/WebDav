@@ -106,10 +106,11 @@ with server(5101, 'document-automation') as (base, data_dir):
     assert 'Customer' in json.dumps(alice.json(path + '/content'))
     current = restored
 
-    result = alice.json(path + '/properties', 'PATCH', {'version': current['version'], 'values': {'subject': 'Invoice', 'language': 'fa-IR', 'custom': {'InvoiceNumber': 'INV-42'}}})
+    result = alice.json(path + '/properties', 'PATCH', {'version': current['version'], 'values': {'subject': 'Invoice', 'custom': {'InvoiceNumber': 'INV-42'}}})
     current = result['metadata']
     properties = alice.json(path + f'/properties?version={current["version"]}')['result']
-    assert properties['core']['subject'] == 'Invoice' and properties['language'] == 'fa-IR'
+    assert properties['core']['subject'] == 'Invoice' and 'INV-42' in json.dumps(properties['custom'])
+    alice.json(path + '/properties', 'PATCH', {'version': current['version'], 'values': {'language': 'fa-IR'}}, expected=400)
     result = alice.json(path + '/comments', 'POST', {'version': current['version'], 'action': 'add', 'target': {'ref': 'b.0', 'start': 0, 'end': 8}, 'text': 'Check this name'})
     current = result['metadata']
     comments = alice.json(path + f'/comments?version={current["version"]}')['result']
@@ -189,7 +190,7 @@ with server(5101, 'document-automation') as (base, data_dir):
     bob.json('/documents/compare', 'POST', {'original': reference(original), 'revised': reference(revised), 'title': 'stolen'}, expected=404)
 
     template_source = alice.upload(template_model(), 'Template')
-    saved_template = alice.json('/templates/', 'POST', {'title': 'Bulk template', 'kind': 'document', 'language': 'en-US', 'source': reference(template_source)}, expected=201)
+    saved_template = alice.json('/templates/', 'POST', {'title': 'Bulk template', 'kind': 'document', 'source': reference(template_source)}, expected=201)
     template_path = '/templates/' + saved_template['metadata']['id']
     render_request = {'version': 1, 'idempotencyKey': 'bulk-1', 'records': [{'key': 'a', 'title': 'Alice letter', 'values': {'CustomerName': 'Alice'}}, {'key': 'b', 'title': 'Bad letter', 'values': {'Unknown': 'x'}}]}
     rendered = alice.json(template_path + '/render-batch', 'POST', render_request)

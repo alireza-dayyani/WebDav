@@ -47,7 +47,7 @@ All document routes below start with `/api/documents/{id}`.
 | GET | `/images?version=1` | Image references, positions, size and alternative text |
 | POST | `/images` | Insert an image at a target |
 | PUT | `/images/{reference}` | Replace an image |
-| GET/PATCH | `/properties` | Read properties with `?version=1`; write core/custom properties and document language |
+| GET/PATCH | `/properties` | Read properties with `?version=1`; write core and custom properties. Document language is read from the file and cannot be set |
 | GET/POST | `/comments` | Read with `?version=1`; add, reply, resolve or delete |
 | GET | `/changes?version=1` | Inspect tracked changes and their anchored ranges |
 | POST | `/changes/resolve` | Accept/reject all changes or changes touching an explicit target |
@@ -116,13 +116,13 @@ Omitting start/end with a paragraph reference selects the paragraph's text. Offs
 | `insertText` | `target`, `text`, optional `paragraphs`; inserts at target start |
 | `replaceRange` | `target`, `text`, optional `paragraphs` |
 | `insertParagraph` | `after` target, `text`, optional `style`; inserts a paragraph at target end |
-| `format` | `target`, `values` supporting `style`, `bold`, `italic`, `font`, `size`, `color`, `rtl`, `align`, `spacing`, `lineSpacing`, `language` |
+| `format` | `target`, `values` supporting `style`, `bold`, `italic`, `font`, `size`, `color`, `rtl`, `align`, `spacing`, `lineSpacing` |
 | `fillBookmarks` | `values` map of exact bookmark names to literal text |
 | `updateTable` | `ref`, optional `cells:[{row,column,text}]`, `appendRows:[["A","B"]]` |
 | `fillControls` | `values` map of unique control tags/titles to typed values |
 | `insertImage` | `target`, base64 `data`, optional `width`, `height`, `alt` |
 | `replaceImage` | image `ref`, base64 `data`, optional size/alt |
-| `properties` | `values` containing `title`, `subject`, `author`, `keywords`, `comments`, `category`, `custom`, `language` |
+| `properties` | `values` containing `title`, `subject`, `author`, `keywords`, `comments`, `category`, `custom` |
 | `normalize` | `rules` array |
 | `addComment` | `target`, `text` |
 | `replyComment` | numeric `id`, `text` |

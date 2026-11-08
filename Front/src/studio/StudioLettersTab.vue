@@ -128,13 +128,6 @@ const remove = (item) => task(() => removeLetter(item));
             >{{ st("subject") }}<input v-model="form.subject" maxlength="200"
           /></label>
           <label
-            >{{ st("language")
-            }}<select v-model="form.language" :aria-label="st('language')">
-              <option value="en-US">English</option>
-              <option value="fa-IR">فارسی</option>
-            </select></label
-          >
-          <label
             >{{ st("date") }}<input v-model="form.date" type="date"
           /></label>
           <label
@@ -143,11 +136,6 @@ const remove = (item) => task(() => removeLetter(item));
               v-model="form.templateId"
               :disabled="current?.metadata.hasEditor"
               :aria-label="st('template')"
-              @change="
-                form.language =
-                  letterTemplates.find((x) => x.metadata.id === form.templateId)
-                    ?.data.language || form.language
-              "
             >
               <option value="">{{ st("choose") }}</option>
               <option

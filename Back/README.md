@@ -52,8 +52,8 @@ The separate [Templates and Letters API](STUDIO_API.md) documents template snaps
 | POST | /api/account/logout | Sign out |
 | GET | /api/account/me | Current account |
 | GET | /api/documents/ | List owned and shared documents visible to the session (no search/pagination; use /api/library) |
-| POST | /api/documents/ | Create a document; JSON title and optional language |
-| GET | /api/documents/formats | Supported upload/download formats, languages and limit |
+| POST | /api/documents/ | Create a document; JSON title |
+| GET | /api/documents/formats | Supported upload/download formats and limit |
 | POST | /api/documents/upload | Multipart file and optional title; creates a private document |
 | GET | /api/documents/{id} | Document metadata |
 | GET | /api/documents/{id}/snapshot | Consistent metadata and native document model |
@@ -80,7 +80,7 @@ Ordinary document routes require authentication and allow the owner or an explic
 
 Content saves are checked by the native document parser before replacing the stored revision. An unsupported model returns 422 and leaves the content and version unchanged; a busy converter can return 429. Valid submissions retain their original JSON, including extension metadata. Browser editor tabs also send the optional `X-Inkstone-Account` header with the email returned by `/api/account/me`; a different authenticated account returns 403 with code `account_changed`. This header only constrains an already authenticated request and never grants access.
 
-Language values for creation: en-US, fa-IR, ar-SA, ur-PK. Omitting language preserves the existing lazy-blank behavior. Upload formats: docx, odt, rtf, txt, md, json. Download formats: docx (default), pdf, txt, md, json. Unknown formats return 415. Failed conversions return 422; an unavailable converter returns 503. Uploads default to 10 MiB and may be configured by administrators from 1 to 128 MiB. Converted native models and exports have an independent 256 MiB processing ceiling. GET /api/documents/formats reports the current upload/model limits. Multipart transport includes an additional 1 MiB allowance; the file itself is still checked against the exact policy. Each conversion uses a temporary directory, a 60-second timeout, and one of two execution slots. Compressed uploads may contain at most 2048 entries, 256 MiB total expanded data, and 128 MiB per entry.
+New documents are blank. Their language comes from the text and language tags saved in the file, not from a request field. Upload formats: docx, odt, rtf, txt, md, json. Download formats: docx (default), pdf, txt, md, json. Unknown formats return 415. Failed conversions return 422; an unavailable converter returns 503. Uploads default to 10 MiB and may be configured by administrators from 1 to 128 MiB. Converted native models and exports have an independent 256 MiB processing ceiling. GET /api/documents/formats reports the current upload/model limits. Multipart transport includes an additional 1 MiB allowance; the file itself is still checked against the exact policy. Each conversion uses a temporary directory, a 60-second timeout, and one of two execution slots. Compressed uploads may contain at most 2048 entries, 256 MiB total expanded data, and 128 MiB per entry.
 
 ## Administrator access and bootstrap
 
@@ -103,7 +103,7 @@ $csrf = Invoke-RestMethod "$apiBase/api/csrf" -WebSession $session
 $credentials = @{ email = 'writer@example.test'; password = 'ChooseYourPassword123' } | ConvertTo-Json
 Invoke-RestMethod "$apiBase/api/account/register" -Method Post -WebSession $session -ContentType 'application/json' -Headers @{ 'X-CSRF-TOKEN' = $csrf.token } -Body $credentials
 $csrf = Invoke-RestMethod "$apiBase/api/csrf" -WebSession $session
-$document = Invoke-RestMethod "$apiBase/api/documents/" -Method Post -WebSession $session -ContentType 'application/json' -Headers @{ 'X-CSRF-TOKEN' = $csrf.token } -Body (@{ title = 'سند من'; language = 'fa-IR' } | ConvertTo-Json)
+$document = Invoke-RestMethod "$apiBase/api/documents/" -Method Post -WebSession $session -ContentType 'application/json' -Headers @{ 'X-CSRF-TOKEN' = $csrf.token } -Body (@{ title = 'سند من' } | ConvertTo-Json)
 Invoke-WebRequest "$apiBase/api/documents/$($document.id)/download?format=docx" -WebSession $session -OutFile './document.docx'
 # PowerShell 7 multipart upload:
 Invoke-RestMethod "$apiBase/api/documents/upload" -Method Post -WebSession $session -Headers @{ 'X-CSRF-TOKEN' = $csrf.token } -Form @{ file = Get-Item './document.docx' }
