@@ -1,6 +1,5 @@
 import { reactive, ref } from "vue";
 import { api } from "../api.js";
-import { language } from "../i18n.js";
 import { STUDIO_BOOKMARK_ALIASES as aliases } from "./studioConstants.js";
 
 export function useStudioTemplates(workspace, emit, { st, fields, required }) {
@@ -12,7 +11,6 @@ export function useStudioTemplates(workspace, emit, { st, fields, required }) {
     version: 0,
     title: "",
     kind: "document",
-    language: language.value.tag,
     sourceId: "",
     paper: "",
   });
@@ -43,7 +41,6 @@ export function useStudioTemplates(workspace, emit, { st, fields, required }) {
       version: item.metadata.version,
       title: item.metadata.title,
       kind: item.data.kind,
-      language: item.data.language,
       sourceId: "",
     });
     bookmarkNames.value = (
@@ -76,7 +73,6 @@ export function useStudioTemplates(workspace, emit, { st, fields, required }) {
         body: {
           title: config.title,
           kind: config.kind,
-          language: config.language,
           paper: config.kind === "letter" ? config.paper || undefined : undefined,
         },
       });

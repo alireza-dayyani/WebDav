@@ -9,13 +9,13 @@ using QRCoder;
 namespace Inkstone.Web.Services;
 
 public sealed record LetterPlan(LetterDraft Draft, WorkspaceItem? Template, WorkspaceItem? Sender, WorkspaceItem? Signature, WorkspaceItem? Logo,
-    StoredDocument? Body, StoredDocument[] Attachments, RecipientSnapshot[] Recipients, ValidationIssue[] Issues);
+    StoredDocument? Body, StoredDocument[] Attachments, RecipientSnapshot[] Recipients, ValidationIssue[] Issues, string Language);
 
 public sealed class LetterComposer(AppDbContext db, DocumentConverter converter)
 {
     public static bool ValidShape(LetterDraft? draft) => draft is not null && Studio.Title(draft.Title) is not null
         && draft.Subject is { Length: <= 200 } && draft.BodyText is { Length: <= 512 * 1024 }
-        && Encoding.UTF8.GetByteCount(draft.BodyText) <= 480 * 1024 && DocumentConverter.Languages.Contains(draft.Language)
+        && Encoding.UTF8.GetByteCount(draft.BodyText) <= 480 * 1024
         && !draft.Subject.Any(c => c == '\uFFFC' || char.IsControl(c))
         && draft.Date is { Length: <= 20 } && draft.Number is { Length: <= 80 } && !draft.Number.Any(c => c == '\uFFFC' || char.IsControl(c))
         && draft.Recipients is { Length: <= 20 } && draft.Recipients.All(x => x is not null && !string.IsNullOrWhiteSpace(x.UserId) && x.UserId.Length <= 128 && x.Kind is "to" or "cc")
@@ -58,9 +58,6 @@ public sealed class LetterComposer(AppDbContext db, DocumentConverter converter)
         }
         var edited = letter.Content.Length > 0;
         if (!forEditor && string.IsNullOrWhiteSpace(draft.Subject)) Issue("required", "subject", "A letter subject is required.");
-        if (!forEditor && (!DateOnly.TryParseExact(draft.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var chosenDate)
-            || (draft.Language == "fa-IR" && chosenDate.ToDateTime(TimeOnly.MinValue) < new PersianCalendar().MinSupportedDateTime)))
-            Issue("date", "date", "Choose a valid ISO date supported by the document's calendar.");
         if (!forEditor && !draft.Recipients.Any(x => x.Kind == "to")) Issue("required", "recipients", "Choose at least one main recipient.");
         if (!edited && draft.BodyDocument is not null && !string.IsNullOrWhiteSpace(draft.BodyText)) Issue("body_conflict", "body", "Use a source document or plain text, not both.");
         if (!forEditor && !edited && draft.BodyDocument is null && string.IsNullOrWhiteSpace(draft.BodyText)) Issue("required", "body", "Letter body text or a source document is required.");
@@ -114,10 +111,14 @@ public sealed class LetterComposer(AppDbContext db, DocumentConverter converter)
             if (body.Content.Length == 0) Issue("required", "body", "The body document is empty.");
             else await Health(body.Content, "body");
         }
+        var language = DocumentLanguage.ForLetter(edited ? letter.Content : null, body?.Content, template?.Content, edited ? null : draft.BodyText, draft.Subject, draft.Title);
+        if (!forEditor && (!DateOnly.TryParseExact(draft.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var chosenDate)
+            || (language == DocumentLanguage.Persian && chosenDate.ToDateTime(TimeOnly.MinValue) < new PersianCalendar().MinSupportedDateTime)))
+            Issue("date", "date", "Choose a valid ISO date supported by the document's calendar.");
         foreach (var attachment in attachments) await Health(attachment.Content, "attachments");
         var modelBytes = (long)(edited ? letter.Content.Length : template?.Content.Length ?? 0) + (body?.Content.Length ?? 0) + attachments.Sum(x => (long)x.Content.Length);
         if (modelBytes > 64 * FileLimits.MiB) Issue("generation_size", "body", "Template, body and attachment models together must fit within 64 MiB.");
-        return new(draft, template, sender, signature, logo, body, attachments.ToArray(), recipients, issues.ToArray());
+        return new(draft, template, sender, signature, logo, body, attachments.ToArray(), recipients, issues.ToArray(), language);
     }
 
     public string Number(WorkspaceItem letter, LetterDraft draft) => string.IsNullOrWhiteSpace(draft.Number) ? "L-" + letter.Id.ToString("N")[..12].ToUpperInvariant() : draft.Number.Trim();
@@ -128,14 +129,15 @@ public sealed class LetterComposer(AppDbContext db, DocumentConverter converter)
         var config = Studio.Read<TemplateConfig>(plan.Template!);
         var sender = plan.Sender is null ? new SenderProfile("", "", "", "") : Studio.Read<SenderProfile>(plan.Sender);
         var validDate = DateOnly.TryParseExact(draft.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date);
-        var persian = draft.Language == "fa-IR";
-        var displayDate = validDate ? date.ToString(draft.Language == "en-US" ? "MMMM d, yyyy" : "yyyy/MM/dd", CultureInfo.GetCultureInfo("en-US")) : "";
+        var language = plan.Language;
+        var persian = language == DocumentLanguage.Persian;
+        var displayDate = validDate ? date.ToString(language == DocumentLanguage.English ? "MMMM d, yyyy" : "yyyy/MM/dd", CultureInfo.GetCultureInfo("en-US")) : "";
         if (persian && validDate)
         {
             var pc = new PersianCalendar(); var dt = date.ToDateTime(TimeOnly.MinValue);
             displayDate = dt < pc.MinSupportedDateTime ? "" : $"{pc.GetYear(dt):0000}/{pc.GetMonth(dt):00}/{pc.GetDayOfMonth(dt):00}";
         }
-        string Latin(string text) => draft.Language is "fa-IR" or "ar-SA" or "ur-PK" ? "\u2066" + text + "\u2069" : text;
+        string Latin(string text) => language is DocumentLanguage.Persian or DocumentLanguage.Arabic or DocumentLanguage.Urdu ? "\u2066" + text + "\u2069" : text;
         string Names(IEnumerable<RecipientSnapshot> list) => string.Join("\n", list.Select(x => Latin(x.Email)));
         var copyNames = Names(copies);
         var logical = new Dictionary<string, string> {

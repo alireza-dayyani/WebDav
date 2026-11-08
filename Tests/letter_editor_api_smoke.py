@@ -15,10 +15,10 @@ def paragraph(text, objects=None):
 with server(5094, 'letter-editor-api') as (base, _):
     alice, bob, guest = Client(base), Client(base), Client(base)
     alice.register('editor-alice'); recipient = bob.register('editor-bob')
-    template = alice.json('/templates/starter', 'POST', {'title': 'Editable Persian letter', 'kind': 'letter', 'language': 'fa-IR'}, expected=201)
+    template = alice.json('/templates/starter', 'POST', {'title': 'نامه قابل ویرایش', 'kind': 'letter'}, expected=201)
     template_id = template['metadata']['id']
     template_before = alice.raw(f'/api/templates/{template_id}/download?version=1&format=json')[0]
-    draft = {'title': 'Letter written in template', 'subject': '', 'language': 'fa-IR', 'date': '2026-10-26',
+    draft = {'title': 'Letter written in template', 'subject': '', 'date': '2026-10-26',
              'template': reference(template), 'sender': None, 'signature': None, 'logo': None, 'bodyDocument': None,
              'bodyText': '', 'recipients': [], 'attachments': [], 'includeQrCode': False}
     letter = alice.json('/letters/', 'POST', draft, expected=201)

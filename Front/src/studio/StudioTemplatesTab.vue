@@ -44,17 +44,6 @@ const remove = (item) => task(() => removeTemplate(item, studio.confirmDelete));
           </select></label
         >
         <label
-          >{{ st("language")
-          }}<select
-            v-model="templateForm.language"
-            :aria-label="st('language')"
-            :disabled="!!templateForm.id"
-          >
-            <option value="en-US">English</option>
-            <option value="fa-IR">فارسی</option>
-          </select></label
-        >
-        <label
           v-if="
             templateForm.kind === 'letter' &&
             !templateForm.id &&

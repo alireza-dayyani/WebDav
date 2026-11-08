@@ -16,7 +16,7 @@ public static class LetterEndpoints
         routes.MapGet("/", (int? page, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) => Studio.List(db, Ownership.Owner(user), "letter", page, ct));
         routes.MapPost("/", async (LetterDraft input, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!LetterComposer.ValidShape(input)) return Studio.Bad("Invalid draft. Choose a title and language, at most 20 distinct recipients (10 copies), five attachments and 480 KiB of body text.");
+            if (!LetterComposer.ValidShape(input)) return Studio.Bad("Invalid draft. Choose a title, at most 20 distinct recipients (10 copies), five attachments and 480 KiB of body text.");
             var item = new WorkspaceItem { OwnerId = Ownership.Owner(user), Kind = "letter", Title = input.Title.Trim(), Data = Studio.Encode(input) };
             db.WorkspaceItems.Add(item); await db.SaveChangesAsync(ct);
             return Results.Created($"/api/letters/{item.Id}?version=1", Studio.Detail(item));
@@ -110,7 +110,7 @@ public static class LetterEndpoints
                     await Add("copy-" + (i + 1), item.Title + " — " + copies[i].Name, await composer.Compose(item, plan, [copies[i]], ct));
             }
             foreach (var attachment in plan.Attachments)
-                await Add("attachment-" + attachment.Id, attachment.Title, attachment.Content.Length == 0 ? await converter.CreateAsync(plan.Draft.Language, ct) : attachment.Content);
+                await Add("attachment-" + attachment.Id, attachment.Title, attachment.Content.Length == 0 ? await converter.CreateBlankAsync(ct) : attachment.Content);
             item.Snapshot = Studio.Encode(new {
                 requestVersion = input.Version, idempotencyKey = key, generatedAt = DateTimeOffset.UtcNow,
                 number = composer.Number(item, plan.Draft), draft = plan.Draft,

@@ -10,7 +10,7 @@ with server(5097, 'readiness-privacy') as (base, _):
     assert alice.json('/letters/directory?search=readiness')['items'] == []
     assert alice.json('/letters/directory?page=2')['items'] == []
     assert [u['email'] for u in alice.json('/letters/directory?search=READINESS-BOB%40EXAMPLE.TEST')['items']] == ['readiness-bob@example.test']
-    document = alice.json('/documents/', 'POST', {'title': 'Isolated capacity', 'language': 'en-US'}, expected=201)
+    document = alice.json('/documents/', 'POST', {'title': 'Isolated capacity'}, expected=201)
     alice.json(f'/documents/{document["id"]}/content', 'PUT', {'version': document['version'], 'document': {'body': [{'kind': 'para', 'text': 'Validated save', 'runs': []}]}})
     bob.json(f'/documents/{document["id"]}/content', expected=404)
 

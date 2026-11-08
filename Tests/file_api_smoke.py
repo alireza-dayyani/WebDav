@@ -1,4 +1,4 @@
-"""Exercise real file conversion, RTL defaults, private downloads and OpenAPI without Vue."""
+"""Exercise real file conversion, private downloads and OpenAPI without Vue."""
 import http.cookiejar
 import io
 import json
@@ -67,7 +67,7 @@ with tempfile.TemporaryDirectory(prefix='inkstone-files-test-') as data, open(RO
         assert '/api/documents/upload' in spec['paths']
         assert '/api/documents/{id}/download' in spec['paths']
         assert 'multipart/form-data' in spec['paths']['/api/documents/upload']['post']['requestBody']['content']
-        assert 'language' in spec['components']['schemas']['DocumentTitle']['properties']
+        assert 'language' not in spec['components']['schemas']['DocumentTitle']['properties']
         swagger, _ = guest.request('/swagger/index.html')
         assert b'Inkstone API' in swagger
         swagger_script, _ = guest.request('/swagger/index.js')
@@ -105,7 +105,7 @@ with tempfile.TemporaryDirectory(prefix='inkstone-files-test-') as data, open(RO
             archive.writestr('oversized.xml', b'0' * (129 * 1024 * 1024))
         alice.upload('oversized.docx', archive_buffer.getvalue(), expected=413)
         formats = alice.json('/documents/formats')
-        assert 'fa-IR' in formats['languages'] and 'ur-PK' in formats['languages']
+        assert 'languages' not in formats
         # A 4 MiB Persian model must not exceed the limit because of Unicode re-escaping.
         large = alice.json('/documents/', 'POST', {'title': 'Large Persian draft'}, expected=201)
         large_model = {'body': [], 'testText': 'ی' * 2_000_000}
@@ -113,13 +113,10 @@ with tempfile.TemporaryDirectory(prefix='inkstone-files-test-') as data, open(RO
         assert saved['size'] < 5 * 1024 * 1024
         assert alice.json(f'/documents/{large["id"]}/content') == large_model
         alice.json(f'/documents/{large["id"]}?version=2', 'DELETE', expected=204)
-        for tag in ['fa-IR', 'ar-SA', 'ur-PK']:
-            document = alice.json('/documents/', 'POST', {'title': 'سند ' + tag, 'language': tag}, expected=201)
-            snapshot = alice.json(f'/documents/{document["id"]}/snapshot')
-            model = snapshot['document']
-            assert tag in json.dumps(model), (tag, 'language was not persisted')
-            assert model['body'][0]['props']['bidi'] is True, model['body'][0]
-        alice.json('/documents/', 'POST', {'title': 'Invalid language', 'language': 'invalid'}, expected=400)
+        ignored = alice.json('/documents/', 'POST', {'title': 'Ignored language', 'language': 'fa-IR'}, expected=201)
+        alice.request(f'/api/documents/{ignored["id"]}/content', expected=204)
+        assert alice.json(f'/documents/{ignored["id"]}/snapshot')['document'] is None
+        alice.json('/documents/', 'POST', {'title': 'Invalid language', 'language': 'invalid'}, expected=201)
         text = 'سلام دنیا — Persian پچژگ and English 123\nمرحبا بالعالم\nاردو زبان'
         uploaded = alice.upload('Persian mixed text.txt', text.encode())
         named = alice.upload('سند فارسی.txt', 'سلام'.encode())
@@ -149,7 +146,7 @@ with tempfile.TemporaryDirectory(prefix='inkstone-files-test-') as data, open(RO
         alice.request(f'/api/documents/{identifier}/download?version=999', expected=409)
         alice.json(f'/documents/{identifier}?version=1', 'DELETE', expected=204)
         alice.request(f'/api/documents/{identifier}/download', expected=404)
-        print('PASS: standalone OpenAPI/Swagger, multipart CSRF, format validation, archive limits, Persian/Arabic/Urdu defaults, Unicode upload/download, DOCX roundtrip, PDF export and owner isolation.')
+        print('PASS: standalone OpenAPI/Swagger, multipart CSRF, format validation, archive limits, blank documents ignore a language field, Unicode upload/download, DOCX roundtrip, PDF export and owner isolation.')
     finally:
         process.terminate()
         process.wait(timeout=20)

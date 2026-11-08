@@ -36,6 +36,8 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
         return RunAsync(null, "json", "json", language, ct);
     }
 
+    public Task<byte[]> CreateBlankAsync(CancellationToken ct) => RunAsync(null, "json", "json", null, ct);
+
     public async Task<byte[]> ExportAsync(byte[] content, string format, CancellationToken ct)
     {
         if (!ExportFormats.Contains(format)) throw new ConversionException("Unsupported download format.", 415);
@@ -186,10 +188,14 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
             }
             else
             {
-                foreach (var arg in new[] { "run", "--template", "blank", "--cmd", "review.language=" + JsonSerializer.Serialize(new { lang = language, @default = true }) }) start.ArgumentList.Add(arg);
-                if (language is "fa-IR" or "ar-SA" or "ur-PK")
+                foreach (var arg in new[] { "run", "--template", "blank" }) start.ArgumentList.Add(arg);
+                if (language is not null)
                 {
-                    start.ArgumentList.Add("--cmd"); start.ArgumentList.Add("para.rtl={\"value\":true}");
+                    start.ArgumentList.Add("--cmd"); start.ArgumentList.Add("review.language=" + JsonSerializer.Serialize(new { lang = language, @default = true }));
+                    if (language is "fa-IR" or "ar-SA" or "ur-PK")
+                    {
+                        start.ArgumentList.Add("--cmd"); start.ArgumentList.Add("para.rtl={\"value\":true}");
+                    }
                 }
                 start.ArgumentList.Add("--save"); start.ArgumentList.Add(destination);
             }

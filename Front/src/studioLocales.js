@@ -22,7 +22,6 @@ const catalogs = {
     savedLetters: "Your letters",
     title: "File title",
     subject: "Subject",
-    language: "Document language",
     date: "Letter date",
     number: "Letter number (optional)",
     automatic: "Generated automatically",
@@ -84,7 +83,7 @@ const catalogs = {
     uploadImage: "Save image",
     templateName: "Template name",
     paper: "Paper size",
-    paperAuto: "Automatic: Persian A5 / English Letter",
+    paperAuto: "Automatic from the letter text",
     paperHelp:
       "Use A5 for short Persian letters and A4 for longer text. English uses a block layout with 12 pt Times New Roman.",
     kind: "Template type",
@@ -168,7 +167,6 @@ const catalogs = {
     savedLetters: "نامه‌های شما",
     title: "عنوان فایل",
     subject: "موضوع",
-    language: "زبان سند",
     date: "تاریخ نامه",
     number: "شماره نامه (اختیاری)",
     automatic: "تولید خودکار",
@@ -230,7 +228,7 @@ const catalogs = {
     uploadImage: "ذخیره تصویر",
     templateName: "نام قالب",
     paper: "اندازهٔ کاغذ",
-    paperAuto: "خودکار: فارسی A5 / انگلیسی Letter",
+    paperAuto: "خودکار بر اساس متن نامه",
     paperHelp:
       "برای نامهٔ کوتاه فارسی A5 و برای متن بلندتر A4 را انتخاب کنید. قالب انگلیسی با چیدمان بلوکی و فونت Times New Roman با اندازهٔ ۱۲ ساخته می‌شود.",
     kind: "نوع قالب",

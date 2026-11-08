@@ -9,7 +9,7 @@ from studio_test_support import Client, ROOT, docx_text, png, reference, server
 
 
 def draft(template=None, sender=None, signature=None, **changes):
-    value = {'title': 'نامه آزمایشی', 'subject': 'موضوع نامه', 'language': 'fa-IR', 'date': '2026-10-26',
+    value = {'title': 'نامه آزمایشی', 'subject': 'موضوع نامه', 'date': '2026-10-26',
              'template': reference(template) if template else None, 'sender': reference(sender) if sender else None,
              'signature': reference(signature) if signature else None, 'logo': None, 'bodyDocument': None, 'bodyText': '',
              'recipients': [], 'attachments': [], 'number': '', 'priority': 'urgent', 'classification': 'confidential',
@@ -43,7 +43,7 @@ with server(5098, 'letter-api') as (base, _):
     alice.multipart('/letters/images/', 'bad.png', b'\x89PNG\r\n\x1a\ninvalid', {'title': 'bad'}, expected=422)
     alice.multipart('/letters/images/', 'large.png', b'x' * (512 * 1024 + 1), {'title': 'too large'}, expected=413)
     alice.multipart('/letters/images/', 'csrf.png', png(), {'title': 'csrf'}, expected=400, csrf=False)
-    template = alice.json('/templates/starter', 'POST', {'title': 'قالب نامه', 'kind': 'letter', 'language': 'fa-IR'}, expected=201)
+    template = alice.json('/templates/starter', 'POST', {'title': 'قالب نامه فارسی', 'kind': 'letter'}, expected=201)
     template_id = template['metadata']['id']
     alice.json(f'/templates/{template_id}/render', 'POST', {'title': 'not ordinary', 'version': 1, 'values': {}}, expected=422)
     unfinished = alice.json('/letters/', 'POST', draft(), expected=201)

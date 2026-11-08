@@ -1,6 +1,6 @@
 import { computed, reactive, ref, watch } from "vue";
 import { api, previewPdf } from "../api.js";
-import { language, t } from "../i18n.js";
+import { t } from "../i18n.js";
 import { STUDIO_BOOKMARK_ALIASES as aliases } from "./studioConstants.js";
 
 export function useStudioLetters(workspace, emit, { st, navigate, fields, required }) {
@@ -17,7 +17,6 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
   const form = reactive({
     title: "",
     subject: "",
-    language: language.value.tag,
     date: "",
     templateId: "",
     senderId: "",
@@ -59,14 +58,10 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
     if (dirty.value && !window.confirm(t("leave"))) return;
     resetLetterEditor();
     const now = new Date();
-    const chosen =
-      letterTemplates.value.find((x) => x.metadata.id === templateId) ||
-      letterTemplates.value[0];
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     Object.assign(form, {
       title: "",
       subject: "",
-      language: chosen?.data.language || language.value.tag,
       date: now.toISOString().slice(0, 10),
       templateId: templateId || letterTemplates.value[0]?.metadata.id || "",
       senderId: workspace.senders.value[0]?.metadata.id || "",
@@ -90,7 +85,6 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
     return {
       title: form.title,
       subject: form.subject,
-      language: form.language,
       date: form.date,
       template: workspace.reference(workspace.templates.value, form.templateId),
       sender: workspace.reference(workspace.senders.value, form.senderId),
@@ -144,7 +138,6 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
     Object.assign(form, {
       title: d.title,
       subject: d.subject,
-      language: d.language,
       date: d.date,
       templateId: d.template?.id || "",
       senderId: d.sender?.id || "",

@@ -159,6 +159,10 @@ for (const locale of ["en", "fa"])
         await expect(
           page.locator(name === "admin" ? ".admin-page" : ".studio-page"),
         ).toBeVisible();
+        if (name !== "admin") {
+          await expect(page.getByRole("combobox", { name: "Document language" })).toHaveCount(0);
+          await expect(page.getByRole("combobox", { name: "زبان سند" })).toHaveCount(0);
+        }
         await shot(page, `${locale}-${width}-${name}`);
         if (name === "templates")
           for (const sub of ["senders", "images"]) {

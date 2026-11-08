@@ -6,8 +6,8 @@ namespace Inkstone.Web.Services;
 
 public sealed record ResourceRef(Guid Id, long Version);
 public sealed record TemplateConfig(string Kind, string Language, Dictionary<string, string> Fields, string[] RequiredFields);
-public sealed record CreateTemplate(string? Title, string? Kind, string? Language, ResourceRef Source, Dictionary<string, string>? Fields = null, string[]? RequiredFields = null);
-public sealed record StarterTemplate(string? Title, string Kind = "letter", string Language = "en-US", string? Paper = null);
+public sealed record CreateTemplate(string? Title, string? Kind, ResourceRef Source, Dictionary<string, string>? Fields = null, string[]? RequiredFields = null);
+public sealed record StarterTemplate(string? Title, string Kind = "letter", string? Paper = null);
 public sealed record UpdateTemplate(long Version, string? Title, Dictionary<string, string>? Fields, string[]? RequiredFields);
 public sealed record RenderTemplate(long Version, string? Title, Dictionary<string, string>? Values);
 public sealed record SenderProfile(string FullName, string Title, string Organization, string Address);
@@ -15,7 +15,7 @@ public sealed record SaveSender(long Version, string? FullName, string? Title, s
 public sealed record ImageDescriptor(string Mime, int Width, int Height);
 public sealed record LetterRecipient(string UserId, string Kind = "to", bool PrintOnLetter = true);
 public sealed record LetterDraft(
-    string Title, string Subject, string Language, string Date,
+    string Title, string Subject, string Date,
     ResourceRef? Template, ResourceRef? Sender, ResourceRef? Signature, ResourceRef? Logo,
     ResourceRef? BodyDocument, string BodyText, LetterRecipient[] Recipients,
     ResourceRef[] Attachments, string Number = "", string Priority = "normal", string Classification = "normal",

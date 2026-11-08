@@ -154,7 +154,7 @@ public static class OperationValidation
             switch (key)
             {
                 case "bold": case "italic": case "rtl": Boolean(value, name); break;
-                case "style": case "font": case "language": ShortText(value, name, 256); break;
+                case "style": case "font": ShortText(value, name, 256); break;
                 case "size": Number(value, name, 1, 400); break;
                 case "color":
                     var color = value.ValueKind == JsonValueKind.String ? value.GetString() : null;
@@ -174,7 +174,7 @@ public static class OperationValidation
 
     private static void Properties(JsonElement values, string field)
     {
-        RequestValidation.Object(values, field, 422); Only(values, ["title", "subject", "author", "keywords", "comments", "category", "custom", "language"], field);
+        RequestValidation.Object(values, field, 422); Only(values, ["title", "subject", "author", "keywords", "comments", "category", "custom"], field);
         if (!values.EnumerateObject().Any()) RequestValidation.Fail(field, "Supply document properties.", 422);
         foreach (var property in values.EnumerateObject())
         {
