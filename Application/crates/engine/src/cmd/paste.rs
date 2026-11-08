@@ -461,7 +461,7 @@ pub(crate) fn adopt(s: &mut Session, mut src: Document) -> Fragment {
             *id = Some(new.clone());
         }
     };
-    for st in &mut src.styles.styles {
+    for st in &mut std::sync::Arc::make_mut(&mut src.styles).styles {
         if let Some(id) = styles.get(&st.id) {
             st.id = id.clone();
         }

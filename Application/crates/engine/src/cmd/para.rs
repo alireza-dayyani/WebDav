@@ -6,6 +6,7 @@ use inkstone_doc::props::{Align, Border, BorderStyle, Borders, LineSpacing, NumR
 use inkstone_doc::styles::{Style, StyleKind};
 use inkstone_doc::{Block, CharProps, Pos};
 use serde_json::{Value, json};
+use std::sync::Arc;
 
 use super::sel_result;
 use crate::{CmdError, CmdResult, CommandSpec, Session, p};
@@ -17,7 +18,7 @@ mod styles;
 mod tabs_borders;
 
 use format::{align, asian_typography, cur, direction, line_spacing, ls, set_align, set_props, tog};
-pub use format::{fmt, indent, outdent};
+pub use format::{cur as selection_para, fmt, indent, outdent};
 pub use lists::{ListButtons, list_buttons, manage_list, touch_all};
 use lists::{list, restart_numbering};
 pub(crate) use outline::{ensure_heading_style, set_heading};
@@ -256,7 +257,7 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("styles.addToGallery", "Add to Style Gallery", "Home › Styles", |s, v| {
             let id = style_id(s, p::req_str(v, "style")?)?;
             let on = p::bool(v, "value").unwrap_or(true);
-            if let Some(st) = s.doc.styles.get_mut(&id) {
+            if let Some(st) = Arc::make_mut(&mut s.doc.styles).get_mut(&id) {
                 st.quick = on;
             }
             sel_result(s)

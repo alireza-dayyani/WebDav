@@ -33,9 +33,37 @@ Upstream CI, agent instructions, roadmaps and release process files are excluded
 changes, review `git diff`, resolve conflicts, keep the fork adaptations below, and run the Rust
 workspace CI with `CRAFT_I18N_DIR` set to a craft-i18n checkout of `craft-i18n.rev`.
 
-## Integration on 2026-11-04
+## Integration on 2026-11-07
 
 The current baseline is
+[`729cd0a5fc953bbedbfdec4f6af18ad6d1780b3b`](https://github.com/storytold/wordcraft/commit/729cd0a5fc953bbedbfdec4f6af18ad6d1780b3b)
+on upstream `main`, merged with `upstream-sync.py update` from the 2026-11-04 baseline. This
+brings in about ninety commits through 2026-11-06, including shared `Arc` style sheets and list
+definitions for undo memory, N-up/booklet printing, fresh field results in PDF export, picture
+brightness/contrast/transparency, RTF clipboard, speech on Linux, status-bar word/character
+counts, modal dialogs, metafile hardening, ODT simplifications, craft-pdf/krilla at craft-libs
+`c5a1cbf`, and craft-i18n pin `1e515422` (watermark and Arabic rows).
+
+Fork adaptations kept: no `craft-update` or release updater; no Discord or ArtCraft promotional
+README in `Application/README.md`; the Vue/.NET authenticated `cloud` bridge instead of
+`?host=parent` / `craft-web-host`; Inkstone letter templates updated for `Arc<StyleSheet>`;
+Persian/Urdu letters, cloud save, bookmarks, automation and branding unchanged.
+
+Thirteen three-way conflicts were resolved by hand (lockfile regenerated with `cargo check`,
+hosted web docs, fork `gaps.md`, and merge markers in engine/UI paths). `Arc<StyleSheet>`
+letter and paste paths were adjusted; the control-server idle-connection test waits for the
+first-request deadline under parallel Windows runs.
+
+### Validation on 2026-11-08
+
+- `cargo xtask ci`: all nine stages pass with `CRAFT_I18N_DIR` at craft-i18n `1e515422` and
+  `CARGO_PROFILE_TEST_DEBUG=0`.
+- `dotnet test` on `Inkstone.Api.Tests`: 245 passed.
+- `npm run editor:build`, `npm run build`, and 16 Playwright browser tests pass.
+
+## Integration on 2026-11-04
+
+The previous baseline was
 [`08afab50b6a1ed19f9af55bb9f74d18f5e17bfa0`](https://github.com/storytold/wordcraft/commit/08afab50b6a1ed19f9af55bb9f74d18f5e17bfa0) (release 0.15.1), fetched
 from upstream `main`. This integration merges the 188 commits after
 `3b7f7ed10b2eb0ae3c39b71551d36ed2df1d1d8b` into the complete working copy; the workspace is
