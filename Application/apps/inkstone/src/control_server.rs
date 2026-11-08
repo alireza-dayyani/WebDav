@@ -385,9 +385,14 @@ mod tests {
 
     #[test]
     fn a_silent_connection_is_closed() {
-        let (port, rx) = boot_with(Duration::from_millis(300));
+        let idle = Duration::from_millis(300);
+        let (port, rx) = boot_with(idle);
         let mut quiet = Conn::open(port);
         let t0 = Instant::now();
+        // The accept-side deadline is wall-clock based; under parallel tests on Windows the
+        // thread may start slightly late, so wait longer than `idle` before probing the socket.
+        std::thread::sleep(idle + Duration::from_millis(500));
+        quiet.0.get_mut().set_read_timeout(Some(Duration::from_millis(500))).unwrap();
         assert!(quiet.closed());
         assert!(t0.elapsed() < Duration::from_secs(3));
         // After an authorised request the connection may stay idle.

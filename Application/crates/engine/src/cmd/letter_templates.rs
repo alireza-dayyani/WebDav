@@ -149,12 +149,13 @@ fn define_styles(doc: &mut Document, language: &str, fa: bool, rtl: bool) {
     let mut base = body.clone();
     base.bold = Some(false);
     base.bold_cs = Some(false);
-    doc.styles.default_chr = base.clone();
-    doc.styles.default_para = body_para.clone();
-    if let Some(mut normal) = doc.styles.get("Normal").cloned() {
+    let styles = std::sync::Arc::make_mut(&mut doc.styles);
+    styles.default_chr = base.clone();
+    styles.default_para = body_para.clone();
+    if let Some(mut normal) = styles.get("Normal").cloned() {
         normal.chr = base;
         normal.para = body_para.clone();
-        doc.styles.upsert(normal);
+        styles.upsert(normal);
     }
     let definitions = [
         ("Body", body.clone(), body_para.clone()),
@@ -191,7 +192,7 @@ fn define_styles(doc: &mut Document, language: &str, fa: bool, rtl: bool) {
         ),
     ];
     for (name, chr, para) in definitions {
-        doc.styles.upsert(Style {
+        styles.upsert(Style {
             id: format!("InkstoneLetter{name}"),
             name: format!("Letter {name}"),
             based_on: Some("Normal".into()),

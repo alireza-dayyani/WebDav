@@ -10,7 +10,7 @@ use inkstone_ui_egui::{Inbox, Services, WordApp};
 use wasm_bindgen::JsCast as _;
 
 const DOC_EXTS: &[&str] =
-    &["docx", "docm", "dotx", "dotm", "doc", "dot", "odt", "rtf", "txt", "md", "html", "htm", "mht", "mhtml", "tex", "json", "xml"];
+    &["docx", "docm", "dotx", "dotm", "doc", "dot", "odt", "ott", "fodt", "rtf", "txt", "md", "html", "htm", "mht", "mhtml", "tex", "json", "xml"];
 const IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "bmp", "wmf", "emf"];
 const RECIPIENT_EXTS: &[&str] = inkstone_engine::cmd::mailings::RECIPIENT_EXTENSIONS;
 mod font_store;
@@ -662,6 +662,8 @@ fn mime_for(name: &str) -> &'static str {
         Some("pdf") => "application/pdf",
         Some("docx") => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         Some("odt") => "application/vnd.oasis.opendocument.text",
+        Some("ott") => "application/vnd.oasis.opendocument.text-template",
+        Some("fodt") => "application/vnd.oasis.opendocument.text-flat-xml",
         Some("rtf") => "application/rtf",
         Some("html") => "text/html",
         Some("md" | "txt") => "text/plain",

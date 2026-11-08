@@ -10,5 +10,5 @@ Template automation uses the same command registry as editor operations. `docume
 
 The workspace licenses and original attribution records remain in LICENSE-MIT, LICENSE-APACHE, NOTICE, ATTRIBUTION.md, and legal.
 
-Upstream engine changes are integrated through Wordcraft `3b7f7ed1` (workspace version 0.12.0).
+Upstream engine changes are integrated through Wordcraft `729cd0a5` (workspace version 0.15.1).
 See [upstream integration](docs/UPSTREAM_SYNC.md) for the source revision, included changes and fork-specific adaptations.

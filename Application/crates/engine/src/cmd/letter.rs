@@ -181,15 +181,15 @@ mod tests {
             let mut child = normal.clone();
             child.id = "SharedChild".into();
             child.based_on = Some("Normal".into());
-            target.styles.upsert(child);
+            std::sync::Arc::make_mut(&mut target.styles).upsert(child);
             let mut source = target.clone();
             if reserved {
                 let mut named = normal.clone();
                 named.id = "Imported_Normal".into();
-                source.styles.upsert(named);
+                std::sync::Arc::make_mut(&mut source.styles).upsert(named);
             }
             normal.chr.bold = Some(true);
-            source.styles.upsert(normal);
+            std::sync::Arc::make_mut(&mut source.styles).upsert(normal);
             let mut para = Paragraph::with_text("Source child style", CharProps::default());
             para.props.style = Some("SharedChild".into());
             source.body = vec![para_block(para)];
