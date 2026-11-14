@@ -10,6 +10,13 @@ impl WordApp {
     /// Updates are supplied by the operator of this Inkstone installation.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_startup_update_check(&mut self, _on: bool) {}
+
+    /// No self-update in hosted Inkstone builds; inherited AppImage env is ignored like upstream (#5653).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn disable_self_update(&mut self) {}
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn start_pending_update(&mut self) {}
 }
 
 pub(crate) fn check(app: &mut WordApp) {

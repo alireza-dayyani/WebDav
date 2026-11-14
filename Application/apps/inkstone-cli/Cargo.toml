@@ -21,3 +21,8 @@ inkstone-mcp = { workspace = true }
 inkstone-zotero = { workspace = true }
 serde_json = { workspace = true }
 sys-locale = "0.3"
+
+[dev-dependencies]
+inkstone-fonts = { workspace = true }
+image = { workspace = true }
+zip = { workspace = true }
