@@ -35,9 +35,9 @@ use inkstone_doc::{Document, Path as DocPath, Rgb, StoryRef};
 use inkstone_fonts::FaceRef;
 use inkstone_geom::Rect;
 use inkstone_layout::display::Paint;
-use inkstone_layout::display::{DisplayOptions, Draw, ItemDisplay, Stroke as LineStyle};
+use inkstone_layout::display::{Draw, ItemDisplay, Stroke as LineStyle};
 use inkstone_layout::para::{ClKind, LineEnd};
-use inkstone_layout::{DocLayout, LayoutCache, LayoutOptions, NumeralMode, Page, Placed, layout};
+use inkstone_layout::{DocLayout, LayoutCache, NumeralMode, Page, Placed, layout};
 use inkstone_metafile::{Picture, PlacedItem};
 use krilla::annotation::{Annotation, LinkAnnotation, Target};
 use krilla::color::rgb;
@@ -72,7 +72,7 @@ use exporter::Exporter;
 use glyphs::{baseline, cluster_ends, left_to_right, split_clusters, visual_order};
 #[cfg(test)]
 use metadata::{civil, parse_iso};
-pub use options::{PdfError, PdfOptions};
+pub use options::{PdfError, PdfOptions, WATERMARK_MAX_CHARS};
 #[cfg(test)]
 use paint::shape_path;
 #[cfg(test)]

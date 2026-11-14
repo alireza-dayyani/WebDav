@@ -130,7 +130,7 @@ fn unmodelled_settings_survive_a_save_and_owned_ones_follow_the_model() {
 fn settings_written_by_inkstone_keep_no_original() {
     let doc = inkstone_doc::Document::new();
     let back = inkstone_docx::read(&inkstone_docx::write(&doc).unwrap()).unwrap();
-    assert!(!back.passthrough.contains_key("inkstone:settings.orig"), "{:?}", back.passthrough.keys());
+    assert!(!back.passthrough.contains_key("wordcraft:settings.orig"), "{:?}", back.passthrough.keys());
     assert_eq!(text(&save(&back), "word/settings.xml"), text(&save(&doc), "word/settings.xml"));
 }
 

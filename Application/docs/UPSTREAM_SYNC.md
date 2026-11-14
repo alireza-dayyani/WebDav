@@ -33,9 +33,32 @@ Upstream CI, agent instructions, roadmaps and release process files are excluded
 changes, review `git diff`, resolve conflicts, keep the fork adaptations below, and run the Rust
 workspace CI with `CRAFT_I18N_DIR` set to a craft-i18n checkout of `craft-i18n.rev`.
 
-## Integration on 2026-11-07
+## Integration on 2026-11-14
 
 The current baseline is
+[`0db15a1d5ebaa125662e20ac6516109bc6403803`](https://github.com/storytold/wordcraft/commit/0db15a1d5ebaa125662e20ac6516109bc6403803)
+on upstream `main`, merged with `upstream-sync.py update` from the 2026-11-07 baseline. Workspace
+version is **0.18.1**. This brings the **craft-libs cutover** (`craft-wordmodel`, `craft-docx`,
+`craft-rtf`, `craft-doc-binary` at rev `9dcbd90`), Fit One Page, missing-glyph handling, ODT object
+modules, strict export, and bundled **Noto Naskh Arabic**.
+
+Fork adaptations kept: no `craft-update`; no Discord backstage links; Vue/.NET cloud save in
+`inkstone-web`; operator-managed updates UI stub; hosted-save regression tests in `ui-egui`.
+Passthrough manifest keys stay **`wordcraft:`** so craft-docx embeds custom XML (fit state, VBA).
+Bundled Noto Naskh is wired into interface fonts when craft-fonts has no Arabic face.
+
+Seventeen three-way conflicts were resolved; post-merge fixes: `wordcraft:` passthrough keys for fit
+state, `wordcraft:odf-object` marker for DOCX export, test expectations for craft-docx metadata and
+canvas extension URIs, bundled-font and PDF golden updates, and Arabic UI fonts in `theme.rs`.
+
+### Validation on 2026-11-14
+
+- `cargo xtask ci`: all nine stages with `CRAFT_I18N_DIR` at craft-i18n `1e515422` and
+  `CARGO_PROFILE_TEST_DEBUG=0`.
+
+## Integration on 2026-11-07
+
+The previous baseline was
 [`729cd0a5fc953bbedbfdec4f6af18ad6d1780b3b`](https://github.com/storytold/wordcraft/commit/729cd0a5fc953bbedbfdec4f6af18ad6d1780b3b)
 on upstream `main`, merged with `upstream-sync.py update` from the 2026-11-04 baseline. This
 brings in about ninety commits through 2026-11-06, including shared `Arc` style sheets and list
