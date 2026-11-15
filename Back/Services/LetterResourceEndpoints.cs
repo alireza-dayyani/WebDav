@@ -66,16 +66,25 @@ public static class LetterResourceEndpoints
 
         app.MapGet("/api/letters/directory", async (string? search, int? page, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
+            const int pageSize = 50;
+            const int minPartial = 3;
             var index = page ?? 1;
             if (index is < 1 or > 100000 || search?.Length > 100) return Studio.Bad("Invalid directory search or page.");
             var term = search?.Trim().ToUpperInvariant();
-            var query = db.Users.AsNoTracking();
-            query = string.IsNullOrEmpty(term) ? query.Where(u => u.Id == Ownership.Owner(user)) : query.Where(u => u.NormalizedEmail == term);
-            var users = await query.OrderBy(u => u.NormalizedEmail).ThenBy(u => u.Id).Skip((index - 1) * 50).Take(51)
+            var query = db.Users.AsNoTracking().Where(u => u.Email != null);
+            if (string.IsNullOrEmpty(term))
+                query = query.Where(u => u.Id == Ownership.Owner(user));
+            else if (term.Contains('@'))
+                query = query.Where(u => u.NormalizedEmail == term || (term.Length >= minPartial && u.NormalizedEmail!.Contains(term)));
+            else if (term.Length < minPartial)
+                return Studio.Bad($"Enter at least {minPartial} characters, or search with a full email address.");
+            else
+                query = query.Where(u => u.NormalizedEmail!.Contains(term) || (u.NormalizedUserName != null && u.NormalizedUserName.Contains(term)));
+            var users = await query.OrderBy(u => u.NormalizedEmail).ThenBy(u => u.Id).Skip((index - 1) * pageSize).Take(pageSize + 1)
                 .Select(u => new { u.Id, u.Email }).ToListAsync(ct);
-            return Results.Ok(new { page = index, hasMore = users.Count > 50, items = users.Take(50).Select(u => new { u.Id, u.Email, name = u.Email!.Split('@')[0] }) });
+            return Results.Ok(new { page = index, hasMore = users.Count > pageSize, items = users.Take(pageSize).Select(u => new { u.Id, u.Email, name = u.Email!.Split('@')[0] }) });
         }).RequireAuthorization().WithTags("Letters").WithSummary("Search registered users for letter recipients")
-          .WithDescription("Blank search returns only the signed-in account. Other recipients require an exact email address; partial search and directory browsing are unavailable. Lookup never grants file access or verifies email ownership.");
+          .WithDescription("Blank search returns only the signed-in account (for adding yourself). Partial search needs at least three characters and matches registered email addresses or account names. Lookup never grants file access.");
     }
 
     private static SenderProfile? Clean(SaveSender input)

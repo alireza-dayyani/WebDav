@@ -17,7 +17,8 @@ public static class LetterEndpoints
         routes.MapPost("/", async (LetterDraft input, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!LetterComposer.ValidShape(input)) return Studio.Bad("Invalid draft. Choose a title, at most 20 distinct recipients (10 copies), five attachments and 480 KiB of body text.");
-            var item = new WorkspaceItem { OwnerId = Ownership.Owner(user), Kind = "letter", Title = input.Title.Trim(), Data = Studio.Encode(input) };
+            var draft = await LetterComposer.WithResolvedEmails(input, db, ct);
+            var item = new WorkspaceItem { OwnerId = Ownership.Owner(user), Kind = "letter", Title = draft.Title.Trim(), Data = Studio.Encode(draft) };
             db.WorkspaceItems.Add(item); await db.SaveChangesAsync(ct);
             return Results.Created($"/api/letters/{item.Id}?version=1", Studio.Detail(item));
         }).WithMetadata(new BookmarkValuesRequest()).WithSummary("Create a private letter draft, separate from ordinary documents").Produces<ResourceDetail>(201).ProducesProblem(400);
@@ -35,7 +36,8 @@ public static class LetterEndpoints
             var previous = Studio.Read<LetterDraft>(item);
             if (item.Content.Length > 0 && (previous.Template?.Id != input.Draft.Template?.Id || previous.BodyDocument != input.Draft.BodyDocument || previous.BodyText != input.Draft.BodyText))
                 return Studio.Bad("This letter has an editable template copy. Edit its body in the letter editor; create another letter to change its template.", 409);
-            item.Title = input.Draft.Title.Trim(); item.Data = Studio.Encode(input.Draft); Studio.Touch(item);
+            var draft = await LetterComposer.WithResolvedEmails(input.Draft, db, ct);
+            item.Title = draft.Title.Trim(); item.Data = Studio.Encode(draft); Studio.Touch(item);
             return await Studio.Save(db, ct) ? Results.Ok(Studio.Detail(item)) : Studio.Conflict();
         }).WithMetadata(new BookmarkValuesRequest()).WithSummary("Update an owned draft revision; generated letters are immutable").Produces<ResourceDetail>();
         routes.MapDelete("/{id:guid}", (Guid id, long version, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) => Studio.Delete(db, Ownership.Owner(user), "letter", id, version, ct));

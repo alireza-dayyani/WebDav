@@ -13,7 +13,7 @@ public sealed record RenderTemplate(long Version, string? Title, Dictionary<stri
 public sealed record SenderProfile(string FullName, string Title, string Organization, string Address);
 public sealed record SaveSender(long Version, string? FullName, string? Title, string? Organization, string? Address);
 public sealed record ImageDescriptor(string Mime, int Width, int Height);
-public sealed record LetterRecipient(string UserId, string Kind = "to", bool PrintOnLetter = true);
+public sealed record LetterRecipient(string UserId, string Kind = "to", bool PrintOnLetter = true, string? DisplayName = null, string? ResolvedEmail = null);
 public sealed record LetterDraft(
     string Title, string Subject, string Date,
     ResourceRef? Template, ResourceRef? Sender, ResourceRef? Signature, ResourceRef? Logo,

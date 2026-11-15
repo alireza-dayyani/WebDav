@@ -23,7 +23,11 @@ with server(5098, 'letter-api') as (base, _):
     directory = alice.json('/letters/directory')['items']
     assert all(set(user) == {'id', 'email', 'name'} for user in directory)
     assert {u['id'] for u in directory} == {alice_user['id']}
-    assert alice.json('/letters/directory?search=letter')['items'] == []
+    assert {u['email'] for u in alice.json('/letters/directory?search=letter')['items']} == {
+        'letter-alice@example.test',
+        'letter-bob@example.test',
+        'letter-carol@example.test',
+    }
     for recipient in (bob_user, carol_user):
         found = alice.json('/letters/directory?search=' + recipient['email'])['items']
         assert [u['id'] for u in found] == [recipient['id']]
