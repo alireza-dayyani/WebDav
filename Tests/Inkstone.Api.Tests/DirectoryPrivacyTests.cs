@@ -7,11 +7,11 @@ public sealed class DirectoryPrivacyTests
 {
     [Theory]
     [InlineData("", 1, "owner@example.test")]
-    [InlineData("?search=other", 0, null)]
-    [InlineData("?search=example.test", 0, null)]
+    [InlineData("?search=other", 1, "other@example.test")]
+    [InlineData("?search=example.test", 2, null)]
     [InlineData("?search=OTHER%40EXAMPLE.TEST", 1, "other@example.test")]
     [InlineData("?page=2", 0, null)]
-    public async Task Directory_requires_exact_email_and_never_lists_other_accounts(string suffix, int count, string? email)
+    public async Task Directory_supports_self_lookup_and_bounded_partial_search(string suffix, int count, string? email)
     {
         await using var host = await EndpointHost.CreateAsync();
         await host.WithDatabase(async db =>
@@ -23,9 +23,20 @@ public sealed class DirectoryPrivacyTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
         Assert.Equal(count, result.GetProperty("items").GetArrayLength());
-        Assert.False(result.GetProperty("hasMore").GetBoolean());
-        if (email is not null) Assert.Equal(email, result.GetProperty("items")[0].GetProperty("email").GetString());
+        if (count == 1 && email is not null)
+        {
+            Assert.False(result.GetProperty("hasMore").GetBoolean());
+            Assert.Equal(email, result.GetProperty("items")[0].GetProperty("email").GetString());
+        }
         host.Client.DefaultRequestHeaders.Remove("X-Test-Owner");
         Assert.Equal(HttpStatusCode.Unauthorized, (await host.Client.GetAsync("/api/letters/directory")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Directory_rejects_overly_short_partial_search()
+    {
+        await using var host = await EndpointHost.CreateAsync();
+        var response = await host.Client.GetAsync("/api/letters/directory?search=ab");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

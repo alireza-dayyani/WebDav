@@ -13,6 +13,8 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
   const directoryPage = ref(1);
   const directoryMore = ref(false);
   const directorySearch = ref("");
+  const directorySearched = ref(false);
+  const attachmentSearch = ref("");
 
   const form = reactive({
     title: "",
@@ -37,6 +39,24 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
     workspace.templates.value.filter((x) => x.data.kind === "letter"),
   );
   const generated = computed(() => current.value?.metadata.state === "generated");
+  const attachmentChoices = computed(() => {
+    const term = attachmentSearch.value.trim().toLowerCase();
+    if (term.length < 2) return [];
+    const picked = new Set(form.attachmentIds);
+    return workspace.documents.value
+      .filter((doc) => !picked.has(doc.id))
+      .filter(
+        (doc) =>
+          doc.title.toLowerCase().includes(term) ||
+          String(doc.version).includes(term),
+      )
+      .slice(0, 40);
+  });
+  const selectedAttachments = computed(() =>
+    form.attachmentIds
+      .map((id) => workspace.documents.value.find((d) => d.id === id))
+      .filter(Boolean),
+  );
 
   watch(
     form,
@@ -98,11 +118,15 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
         : form.bodyId
           ? ""
           : form.bodyText,
-      recipients: form.recipients.map(({ userId, kind, printOnLetter }) => ({
-        userId,
-        kind,
-        printOnLetter,
-      })),
+      recipients: form.recipients.map(
+        ({ userId, kind, printOnLetter, displayName, email }) => ({
+          userId,
+          kind,
+          printOnLetter,
+          displayName: displayName?.trim() || undefined,
+          resolvedEmail: email?.trim() || undefined,
+        }),
+      ),
       attachments: form.attachmentIds
         .map((id) => workspace.reference(workspace.documents.value, id))
         .filter(Boolean),
@@ -150,13 +174,19 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
       classification: d.classification,
       includeQrCode: d.includeQrCode,
       copyVariants: d.copyVariants,
-      recipients: d.recipients.map((x) => ({
-        ...x,
-        label:
-          full.snapshot?.recipients?.find((r) => r.userId === x.userId)?.email ||
-          directory.value.find((r) => r.id === x.userId)?.email ||
-          x.userId,
-      })),
+      recipients: d.recipients.map((x) => {
+        const snap = full.snapshot?.recipients?.find((r) => r.userId === x.userId);
+        const email = x.resolvedEmail ?? snap?.email ?? "";
+        const fallback =
+          x.displayName ||
+          snap?.name ||
+          (email ? email.split("@")[0] : "");
+        return {
+          ...x,
+          email,
+          displayName: fallback,
+        };
+      }),
       attachmentIds: d.attachments.map((x) => x.id),
     });
     dirty.value = false;
@@ -181,56 +211,115 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
     emit("open-letter-editor", current.value.metadata);
   }
 
+  function defaultDisplayName(user) {
+    const name = user.name?.trim();
+    if (name && !name.includes("@")) return name;
+    return user.email?.split("@")[0] || "";
+  }
+
   function addRecipient(user) {
     if (!form.recipients.some((x) => x.userId === user.id))
       form.recipients.push({
         userId: user.id,
+        email: user.email,
         kind: "to",
         printOnLetter: true,
-        label: user.email,
+        displayName: defaultDisplayName(user),
       });
   }
 
+  function addAttachment(id) {
+    if (form.attachmentIds.length >= 5 || form.attachmentIds.includes(id))
+      return;
+    form.attachmentIds.push(id);
+    attachmentSearch.value = "";
+  }
+
+  function removeAttachment(id) {
+    form.attachmentIds = form.attachmentIds.filter((x) => x !== id);
+  }
+
   async function findUsers(more = false) {
+    if (!more && !directorySearch.value.trim()) {
+      workspace.error.value = st("searchUsersRequired");
+      return;
+    }
     const page = more ? directoryPage.value + 1 : 1;
     const result = await api(
-      `/letters/directory?search=${encodeURIComponent(directorySearch.value)}&page=${page}`,
+      `/letters/directory?search=${encodeURIComponent(directorySearch.value.trim())}&page=${page}`,
     );
     directory.value = more ? [...directory.value, ...result.items] : result.items;
     directoryPage.value = page;
     directoryMore.value = result.hasMore;
+    directorySearched.value = true;
   }
 
-  async function operation(action) {
-    if (!current.value || dirty.value) {
-      workspace.error.value = st("needsSave");
-      return;
-    }
+  async function addSelf() {
+    const result = await api("/letters/directory");
+    const self = result.items[0];
+    if (self) addRecipient(self);
+  }
+
+  async function letterPreview(targetWindow) {
     const base = `/letters/${current.value.metadata.id}`;
     const body = { version: current.value.metadata.version };
-    if (action === "validate") {
-      const report = await api(base + "/validate", { method: "POST", body });
-      issues.value = report.issues;
-      validated.value = report.valid;
-    } else if (action === "preview")
-      await previewPdf(base + "/preview", { method: "POST", body });
-    else {
-      const key = `inkstone.generation.${current.value.metadata.id}.${body.version}`;
-      let nonce = sessionStorage.getItem(key);
-      if (!nonce) {
-        nonce = crypto.randomUUID();
-        sessionStorage.setItem(key, nonce);
+    await previewPdf(base + "/preview", {
+      method: "POST",
+      body,
+      targetWindow,
+    });
+  }
+
+  function startPreview() {
+    if (workspace.busy.value || !current.value) return;
+    const targetWindow = window.open("about:blank", "_blank", "noopener,noreferrer");
+    if (!targetWindow) {
+      workspace.error.value = t("previewBlocked");
+      return;
+    }
+    workspace.task(() => operation("preview", targetWindow));
+  }
+
+  async function operation(action, previewWindow = null) {
+    try {
+      if (!current.value) return;
+      if (dirty.value) {
+        if (action === "preview" || action === "validate" || action === "generate")
+          await saveDraft();
+        else {
+          workspace.error.value = st("needsSave");
+          return;
+        }
       }
-      const result = await api(base + "/generate", {
-        method: "POST",
-        body: { ...body, idempotencyKey: nonce },
-      });
-      current.value = await api(
-        `/letters/${result.metadata.id}?version=${result.metadata.version}`,
-      );
-      artifacts.value = result.artifacts;
-      dirty.value = false;
-      await workspace.refresh();
+      const base = `/letters/${current.value.metadata.id}`;
+      const body = { version: current.value.metadata.version };
+      if (action === "validate") {
+        const report = await api(base + "/validate", { method: "POST", body });
+        issues.value = report.issues;
+        validated.value = report.valid;
+      } else if (action === "preview")
+        await letterPreview(previewWindow);
+      else {
+        const key = `inkstone.generation.${current.value.metadata.id}.${body.version}`;
+        let nonce = sessionStorage.getItem(key);
+        if (!nonce) {
+          nonce = crypto.randomUUID();
+          sessionStorage.setItem(key, nonce);
+        }
+        const result = await api(base + "/generate", {
+          method: "POST",
+          body: { ...body, idempotencyKey: nonce },
+        });
+        current.value = await api(
+          `/letters/${result.metadata.id}?version=${result.metadata.version}`,
+        );
+        artifacts.value = result.artifacts;
+        dirty.value = false;
+        await workspace.refresh();
+      }
+    } catch (error) {
+      previewWindow?.close();
+      throw error;
     }
   }
 
@@ -277,6 +366,22 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
     form.bodyText = "";
   }
 
+  async function uploadAttachment(event) {
+    if (form.attachmentIds.length >= 5) {
+      workspace.error.value = st("attachmentLimit");
+      return;
+    }
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    const body = new FormData();
+    body.append("file", file);
+    const document = await api("/documents/upload", { method: "POST", body });
+    await workspace.refresh();
+    if (!form.attachmentIds.includes(document.id))
+      form.attachmentIds.push(document.id);
+  }
+
   return {
     aliases,
     form,
@@ -288,6 +393,10 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
     directory,
     directoryMore,
     directorySearch,
+    directorySearched,
+    attachmentSearch,
+    attachmentChoices,
+    selectedAttachments,
     letterTemplates,
     generated,
     fields,
@@ -298,10 +407,15 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
     writeLetter,
     addRecipient,
     findUsers,
+    addSelf,
+    addAttachment,
+    removeAttachment,
+    startPreview,
     operation,
     download,
     duplicate,
     removeLetter,
     uploadBodyDocument,
+    uploadAttachment,
   };
 }

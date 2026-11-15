@@ -96,7 +96,6 @@ export function useStudioPanel(props, emit) {
       const info = await api("/templates/fields");
       fields.value = info.fields;
       required.value = info.required;
-      await letters.findUsers();
       const chosen = workspace.letters.value.find(
         (x) => x.metadata.id === props.initialLetterId,
       );

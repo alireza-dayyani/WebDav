@@ -48,25 +48,49 @@ export async function api(path, options = {}) {
   return response.status === 204 ? null : response.json();
 }
 
+function pdfBlob(blob) {
+  if (blob.type === "application/pdf" || blob.type === "application/octet-stream")
+    return blob;
+  if (!blob.type) return blob;
+  const error = new Error("The PDF preview could not be loaded.");
+  error.status = 422;
+  throw error;
+}
+
 export async function previewPdf(path, options = {}) {
-  const preview = window.open("about:blank", "_blank");
+  const preview =
+    options.targetWindow ??
+    (typeof window !== "undefined"
+      ? window.open("about:blank", "_blank", "noopener,noreferrer")
+      : null);
   if (!preview) {
     const error = new Error("Allow pop-ups for this site to preview PDFs.");
     error.code = "preview_blocked";
     throw error;
   }
-  preview.opener = null;
+  try {
+    preview.opener = null;
+    preview.document.title = "Loading…";
+    preview.document.body.textContent = "Loading preview…";
+  } catch {
+    /* Cross-origin or restricted preview documents are filled in after fetch. */
+  }
   let url;
   try {
-    const blob = await api(path, { ...options, download: false, blob: true });
-    if (blob.type !== "application/pdf") {
-      const error = new Error("The PDF preview could not be loaded.");
-      error.status = 422;
-      throw error;
-    }
-    if (preview.closed) return;
+    const blob = pdfBlob(
+      await api(path, { ...options, download: false, blob: true }),
+    );
     url = URL.createObjectURL(blob);
-    preview.location.replace(url);
+    if (preview.closed) {
+      const fallback = window.open(url, "_blank", "noopener,noreferrer");
+      if (!fallback) {
+        const error = new Error("Allow pop-ups for this site to preview PDFs.");
+        error.code = "preview_blocked";
+        throw error;
+      }
+    } else {
+      preview.location.replace(url);
+    }
     const timer = setInterval(() => {
       if (preview.closed) {
         clearInterval(timer);
@@ -75,7 +99,7 @@ export async function previewPdf(path, options = {}) {
     }, 1000);
   } catch (error) {
     if (url) URL.revokeObjectURL(url);
-    preview.close();
+    if (!preview.closed) preview.close();
     throw error;
   }
 }

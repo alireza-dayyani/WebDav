@@ -7,7 +7,10 @@ with server(5097, 'readiness-privacy') as (base, _):
     alice, bob = Client(base), Client(base)
     alice.register('readiness-alice'); bob.register('readiness-bob')
     assert [u['email'] for u in alice.json('/letters/directory')['items']] == ['readiness-alice@example.test']
-    assert alice.json('/letters/directory?search=readiness')['items'] == []
+    assert {u['email'] for u in alice.json('/letters/directory?search=readiness')['items']} == {
+        'readiness-alice@example.test',
+        'readiness-bob@example.test',
+    }
     assert alice.json('/letters/directory?page=2')['items'] == []
     assert [u['email'] for u in alice.json('/letters/directory?search=READINESS-BOB%40EXAMPLE.TEST')['items']] == ['readiness-bob@example.test']
     document = alice.json('/documents/', 'POST', {'title': 'Isolated capacity'}, expected=201)

@@ -13,12 +13,27 @@ public sealed record LetterPlan(LetterDraft Draft, WorkspaceItem? Template, Work
 
 public sealed class LetterComposer(AppDbContext db, DocumentConverter converter)
 {
+    public static async Task<LetterDraft> WithResolvedEmails(LetterDraft draft, AppDbContext db, CancellationToken ct)
+    {
+        if (draft.Recipients.Length == 0) return draft;
+        var ids = draft.Recipients.Select(x => x.UserId).Distinct(StringComparer.Ordinal).ToArray();
+        var emails = await db.Users.AsNoTracking().Where(u => ids.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Email!, ct);
+        return draft with
+        {
+            Recipients = draft.Recipients
+                .Select(x => x with { ResolvedEmail = emails.GetValueOrDefault(x.UserId) ?? x.ResolvedEmail })
+                .ToArray(),
+        };
+    }
+
     public static bool ValidShape(LetterDraft? draft) => draft is not null && Studio.Title(draft.Title) is not null
         && draft.Subject is { Length: <= 200 } && draft.BodyText is { Length: <= 512 * 1024 }
         && Encoding.UTF8.GetByteCount(draft.BodyText) <= 480 * 1024
         && !draft.Subject.Any(c => c == '\uFFFC' || char.IsControl(c))
         && draft.Date is { Length: <= 20 } && draft.Number is { Length: <= 80 } && !draft.Number.Any(c => c == '\uFFFC' || char.IsControl(c))
-        && draft.Recipients is { Length: <= 20 } && draft.Recipients.All(x => x is not null && !string.IsNullOrWhiteSpace(x.UserId) && x.UserId.Length <= 128 && x.Kind is "to" or "cc")
+        && draft.Recipients is { Length: <= 20 } && draft.Recipients.All(x => x is not null && !string.IsNullOrWhiteSpace(x.UserId) && x.UserId.Length <= 128 && x.Kind is "to" or "cc"
+            && (string.IsNullOrWhiteSpace(x.DisplayName) || Studio.Title(x.DisplayName, 160) is not null))
         && draft.Recipients.Select(x => x.UserId).Distinct(StringComparer.Ordinal).Count() == draft.Recipients.Length
         && draft.Recipients.Count(x => x.Kind == "cc") <= 10 && draft.Attachments is { Length: <= 5 }
         && draft.Attachments.All(x => x is not null && x.Version > 0) && draft.Attachments.Select(x => x.Id).Distinct().Count() == draft.Attachments.Length
@@ -77,7 +92,9 @@ public sealed class LetterComposer(AppDbContext db, DocumentConverter converter)
         var users = await db.Users.AsNoTracking().Where(x => ids.Contains(x.Id)).Select(x => new { x.Id, x.Email }).ToListAsync(ct);
         var recipients = draft.Recipients.Where(x => users.Any(u => u.Id == x.UserId)).Select(x => {
             var user = users.Single(u => u.Id == x.UserId);
-            return new RecipientSnapshot(user.Id, user.Email!.Split('@')[0], user.Email!, x.Kind, x.PrintOnLetter);
+            var fallback = user.Email!.Split('@')[0];
+            var name = string.IsNullOrWhiteSpace(x.DisplayName) ? fallback : x.DisplayName.Trim();
+            return new RecipientSnapshot(user.Id, name, user.Email!, x.Kind, x.PrintOnLetter);
         }).ToArray();
         if (recipients.Length != draft.Recipients.Length) Issue("recipient", "recipients", "One or more registered recipients no longer exist.");
         if (recipients.Any(x => x.Email.Contains('\uFFFC')) || attachments.Any(x => x.Title.Contains('\uFFFC')))
@@ -138,7 +155,7 @@ public sealed class LetterComposer(AppDbContext db, DocumentConverter converter)
             displayDate = dt < pc.MinSupportedDateTime ? "" : $"{pc.GetYear(dt):0000}/{pc.GetMonth(dt):00}/{pc.GetDayOfMonth(dt):00}";
         }
         string Latin(string text) => language is DocumentLanguage.Persian or DocumentLanguage.Arabic or DocumentLanguage.Urdu ? "\u2066" + text + "\u2069" : text;
-        string Names(IEnumerable<RecipientSnapshot> list) => string.Join("\n", list.Select(x => Latin(x.Email)));
+        string Names(IEnumerable<RecipientSnapshot> list) => string.Join("\n", list.Select(x => Latin(x.Name)));
         var copyNames = Names(copies);
         var logical = new Dictionary<string, string> {
             ["Organization"] = sender.Organization, ["Date"] = Latin(displayDate), ["Number"] = Latin(Number(letter, draft)),

@@ -23,6 +23,10 @@ const {
   directory,
   directoryMore,
   directorySearch,
+  directorySearched,
+  attachmentSearch,
+  attachmentChoices,
+  selectedAttachments,
   aliases,
   newLetter,
   saveDraft,
@@ -30,10 +34,15 @@ const {
   writeLetter,
   addRecipient,
   findUsers,
+  addSelf,
+  addAttachment,
+  removeAttachment,
+  startPreview,
   operation,
   download,
   removeLetter,
   uploadBodyDocument,
+  uploadAttachment,
 } = L;
 const st = studio.st;
 const fields = studio.fields;
@@ -112,8 +121,8 @@ const remove = (item) => task(() => removeLetter(item));
         </ul>
         <button
           class="secondary"
-          :disabled="busy"
-          @click="task(() => operation('preview'))"
+          :disabled="busy || !current"
+          @click="startPreview"
         >
           {{ st("preview") }}
         </button>
@@ -270,10 +279,13 @@ const remove = (item) => task(() => removeLetter(item));
           </div>
           <div class="studio-wide">
             <h3>{{ st("recipients") }}</h3>
+            <p class="muted">{{ st("directoryHint") }}</p>
             <div class="studio-search">
               <input
                 v-model="directorySearch"
                 type="search"
+                minlength="3"
+                autocomplete="off"
                 :placeholder="st('searchUsers')"
                 :aria-label="st('searchUsers')"
                 @keydown.enter.prevent="task(() => findUsers())"
@@ -283,33 +295,61 @@ const remove = (item) => task(() => removeLetter(item));
                 @click="task(() => findUsers())"
               >
                 {{ st("search") }}
+              </button
+              ><button type="button" class="secondary" @click="task(addSelf)">
+                {{ st("addSelf") }}
               </button>
             </div>
-            <div class="studio-directory">
-              <button
-                v-for="person in directory"
-                :key="person.id"
-                type="button"
-                :disabled="form.recipients.some((x) => x.userId === person.id)"
-                :aria-label="st('selectRecipient') + ': ' + person.email"
-                @click="addRecipient(person)"
-              >
-                <span dir="ltr">{{ person.email }}</span> ＋</button
-              ><button
-                v-if="directoryMore"
-                type="button"
-                @click="task(() => findUsers(true))"
-              >
-                {{ st("more") }}
-              </button>
-            </div>
-            <div
+            <ul
+              v-if="directory.length"
+              class="studio-directory-results"
+              role="list"
+            >
+              <li v-for="person in directory" :key="person.id">
+                <span class="studio-directory-person"
+                  ><strong v-if="person.name">{{ person.name }}</strong>
+                  <span dir="ltr">{{ person.email }}</span></span
+                ><button
+                  type="button"
+                  :disabled="form.recipients.some((x) => x.userId === person.id)"
+                  :aria-label="st('selectRecipient') + ': ' + person.email"
+                  @click="addRecipient(person)"
+                >
+                  ＋
+                </button>
+              </li>
+            </ul>
+            <p
+              v-else-if="directorySearched"
+              class="muted"
+              role="status"
+            >
+              {{ st("noDirectoryResults") }}
+            </p>
+            <button
+              v-if="directoryMore"
+              type="button"
+              class="secondary"
+              @click="task(() => findUsers(true))"
+            >
+              {{ st("more") }}
+            </button>
+            <article
               v-for="person in form.recipients"
               :key="person.userId"
               class="studio-recipient"
             >
-              <span dir="ltr">{{ person.label }}</span
-              ><select v-model="person.kind" :aria-label="st('recipients')">
+              <label
+                >{{ st("recipientName")
+                }}<input
+                  v-model="person.displayName"
+                  maxlength="160"
+                  :aria-label="st('recipientName')"
+              /></label>
+              <p v-if="person.email" class="muted" dir="ltr">
+                {{ st("recipientAccount") }}: {{ person.email }}
+              </p>
+              <select v-model="person.kind" :aria-label="st('recipients')">
                 <option value="to">{{ st("to") }}</option>
                 <option value="cc">{{ st("cc") }}</option></select
               ><label v-if="person.kind === 'cc'" class="studio-check"
@@ -326,23 +366,67 @@ const remove = (item) => task(() => removeLetter(item));
               >
                 {{ st("remove") }}
               </button>
-            </div>
+            </article>
           </div>
           <div class="studio-wide">
             <h3>{{ st("attachments") }}</h3>
             <p class="muted">{{ st("attachmentHelp") }}</p>
-            <div class="studio-directory">
-              <label
-                v-for="item in documents"
-                :key="item.id"
-                class="studio-check"
-                ><input
-                  v-model="form.attachmentIds"
-                  type="checkbox"
-                  :value="item.id"
-                />{{ item.title }}</label
+            <h4>{{ st("attachmentFromDocs") }}</h4>
+            <ul
+              v-if="selectedAttachments.length"
+              class="studio-picked-attachments"
+              role="list"
+            >
+              <li v-for="item in selectedAttachments" :key="item.id">
+                <span>{{ item.title }} · v{{ item.version }}</span
+                ><button type="button" @click="removeAttachment(item.id)">
+                  {{ st("remove") }}
+                </button>
+              </li>
+            </ul>
+            <p v-else class="muted">{{ st("noAttachmentsSelected") }}</p>
+            <div v-if="documents.length" class="studio-attachment-picker">
+              <input
+                v-model="attachmentSearch"
+                type="search"
+                :placeholder="st('attachmentSearch')"
+                :aria-label="st('attachmentSearch')"
+                :disabled="form.attachmentIds.length >= 5"
+              />
+              <p
+                v-if="!attachmentSearch.trim() && form.attachmentIds.length < 5"
+                class="muted"
               >
+                {{ st("attachmentTypeHint") }}
+              </p>
+              <ul
+                v-if="attachmentChoices.length && form.attachmentIds.length < 5"
+                class="studio-directory-results"
+                role="list"
+              >
+                <li v-for="item in attachmentChoices" :key="item.id">
+                  <span>{{ item.title }} · v{{ item.version }}</span
+                  ><button type="button" @click="addAttachment(item.id)">
+                    ＋
+                  </button>
+                </li>
+              </ul>
+              <p
+                v-else-if="attachmentSearch.trim() && form.attachmentIds.length < 5"
+                class="muted"
+              >
+                {{ st("noDirectoryResults") }}
+              </p>
             </div>
+            <p v-else class="muted">{{ st("empty") }}</p>
+            <label class="studio-upload"
+              >{{ st("uploadAttachment")
+              }}<input
+                type="file"
+                accept=".docx,.odt,.rtf,.txt,.md,.json,.pdf"
+                :disabled="form.attachmentIds.length >= 5"
+                @change="(event) => task(() => uploadAttachment(event))"
+            /></label>
           </div>
           <label class="studio-check studio-wide"
             ><input v-model="form.includeQrCode" type="checkbox" />{{
@@ -365,22 +449,22 @@ const remove = (item) => task(() => removeLetter(item));
           ><button
             v-if="!generated"
             class="secondary"
-            :disabled="busy || !current || dirty"
+            :disabled="busy || !current"
             type="button"
             @click="task(() => operation('validate'))"
           >
             {{ st("validate") }}</button
           ><button
             class="secondary"
-            :disabled="busy || !current || dirty"
+            :disabled="busy || !current"
             type="button"
-            @click="task(() => operation('preview'))"
+            @click="startPreview"
           >
             {{ st("preview") }}</button
           ><button
             v-if="!generated"
             class="primary"
-            :disabled="busy || !current || dirty"
+            :disabled="busy || !current"
             type="button"
             @click="task(() => operation('generate'))"
           >
