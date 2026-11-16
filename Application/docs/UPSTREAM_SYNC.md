@@ -33,9 +33,25 @@ Upstream CI, agent instructions, roadmaps and release process files are excluded
 changes, review `git diff`, resolve conflicts, keep the fork adaptations below, and run the Rust
 workspace CI with `CRAFT_I18N_DIR` set to a craft-i18n checkout of `craft-i18n.rev`.
 
-## Integration on 2026-11-14
+## Integration on 2026-11-15
 
 The current baseline is
+[`bc0e51ee4db1f23940ac30fc626da02c09541adc`](https://github.com/storytold/wordcraft/commit/bc0e51ee4db1f23940ac30fc626da02c09541adc)
+on upstream `main`, merged with `upstream-sync.py update` from the 2026-11-14 baseline. Workspace
+version is **0.18.1**. This brings craft-libs image codecs and zip cutover, Format Painter (#1455),
+feature-catalog naming fixes, Bosnian UI, TOC layout, interface Auto-size cap (#5203), and craft-i18n
+pin `e56d262`.
+
+Fork adaptations kept: no `craft-update`; Inkstone README without promotional ArtCraft blocks;
+`inkstone-fit` custom XML and `wordcraft:` passthrough keys; hosted web packaging via Vue; local
+`formats/latex/export.rs` retained; `crates/metafile` removed in favour of `craft-metafile`.
+
+Four merge conflicts were resolved in `Cargo.toml`, `Cargo.lock`, `README.md`, and
+`packaging/web/README.md`.
+
+## Integration on 2026-11-14
+
+The previous baseline was
 [`0db15a1d5ebaa125662e20ac6516109bc6403803`](https://github.com/storytold/wordcraft/commit/0db15a1d5ebaa125662e20ac6516109bc6403803)
 on upstream `main`, merged with `upstream-sync.py update` from the 2026-11-07 baseline. Workspace
 version is **0.18.1**. This brings the **craft-libs cutover** (`craft-wordmodel`, `craft-docx`,

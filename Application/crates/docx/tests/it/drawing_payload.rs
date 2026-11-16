@@ -2,7 +2,7 @@
 use inkstone_doc::para::{Anchor, CanvasStyle, Float, GroupChild, ShapeKind, Wrap};
 use inkstone_doc::props::Rgb;
 use inkstone_doc::{Document, InlineObject, Paragraph, PartKind, Pos, StoryRef, TextBody, para_block};
-use std::{io::Write, sync::Arc};
+use std::sync::Arc;
 
 // Original solid RGB(0,72,192), generated in code for these controls.
 const BLUE_PNG: &[u8] = &[
@@ -71,7 +71,7 @@ fn check_box(doc: &Document) {
     assert_eq!(doc.media[media].as_slice(), BLUE_PNG);
 }
 fn package(xml: &str) -> Vec<u8> {
-    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let mut zip = craft_zip::Writer::new();
     let rels = br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#;
     let docrels = br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdIsolationRect" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/isolation-blue.png"/></Relationships>"#;
     let types = br#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#;
@@ -82,10 +82,9 @@ fn package(xml: &str) -> Vec<u8> {
         ("word/_rels/document.xml.rels", docrels.as_slice()),
         ("word/media/isolation-blue.png", BLUE_PNG),
     ] {
-        zip.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
-        zip.write_all(bytes).unwrap();
+        zip.add(name, bytes, craft_zip::Compression::Deflated).unwrap();
     }
-    zip.finish().unwrap().into_inner()
+    zip.finish().unwrap()
 }
 #[test]
 fn model_nested_picture_roundtrip() {

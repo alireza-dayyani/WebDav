@@ -12,16 +12,16 @@ workspace = true
 craft-docx = { workspace = true }
 craft-wordmodel = { workspace = true }
 inkstone-doc = { workspace = true }
-quick-xml = { workspace = true }
+craft-xml = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
 inkstone-doc = { workspace = true, features = ["test-support"] }
-inkstone-geom = { workspace = true }
+inkstone-geom = { workspace = true, features = ["image"] }
 base64 = { workspace = true }
 cfb = { workspace = true }
 log = { workspace = true }
 proptest = { workspace = true }
 image = { workspace = true }
-zip = { workspace = true }
+craft-zip = { workspace = true }
