@@ -13,7 +13,7 @@ inkstone-geom = { workspace = true, features = ["image"] }
 inkstone-doc = { workspace = true }
 inkstone-fonts = { workspace = true }
 inkstone-layout = { workspace = true }
-inkstone-metafile = { workspace = true }
+craft-metafile = { workspace = true }
 vello_cpu = { workspace = true }
 image = { workspace = true }
 log = { workspace = true }

@@ -13,7 +13,7 @@ inkstone-doc = { workspace = true }
 inkstone-geom = { workspace = true, features = ["image"] }
 inkstone-fonts = { workspace = true }
 inkstone-layout = { workspace = true }
-inkstone-metafile = { workspace = true }
+craft-metafile = { workspace = true }
 craft-pdf = { workspace = true }
 kurbo = { workspace = true }
 image = { workspace = true }

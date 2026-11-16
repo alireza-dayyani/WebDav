@@ -3,7 +3,6 @@
 
 use inkstone_doc::props::Ligatures;
 use inkstone_doc::{Document, Paragraph};
-use std::io::Write;
 
 fn package(defaults: &str, style: &str, run: &str) -> Vec<u8> {
     let ns = r#"xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="w14""#;
@@ -15,17 +14,16 @@ fn package(defaults: &str, style: &str, run: &str) -> Vec<u8> {
     let styles = format!(
         r#"<w:styles {ns}><w:docDefaults><w:rPrDefault><w:rPr>{defaults}</w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="character" w:styleId="Fancy"><w:name w:val="Fancy"/><w:rPr>{style}</w:rPr></w:style></w:styles>"#
     );
-    let mut z = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let mut z = craft_zip::Writer::new();
     for (name, data) in [
         ("_rels/.rels", root),
         ("word/_rels/document.xml.rels", rels),
         ("word/document.xml", document.as_str()),
         ("word/styles.xml", styles.as_str()),
     ] {
-        z.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
-        z.write_all(data.as_bytes()).unwrap();
+        z.add(name, data.as_bytes(), craft_zip::Compression::Deflated).unwrap();
     }
-    z.finish().unwrap().into_inner()
+    z.finish().unwrap()
 }
 
 fn paragraph(d: &Document) -> &Paragraph {
@@ -68,10 +66,9 @@ fn unknown_ligature_values_are_ignored() {
 fn no_ligatures_element_without_a_value() {
     let d = inkstone_docx::read(&package("", "", "")).unwrap();
     let out = inkstone_docx::write(&d).unwrap();
-    let mut z = zip::ZipArchive::new(std::io::Cursor::new(out)).unwrap();
+    let mut z = craft_zip::Archive::open(&out, craft_zip::Limits { max_entries: 10_000, max_total_bytes: 64 << 20 }).unwrap();
     for name in ["word/document.xml", "word/styles.xml"] {
-        let mut xml = String::new();
-        std::io::Read::read_to_string(&mut z.by_name(name).unwrap(), &mut xml).unwrap();
+        let xml = String::from_utf8(z.read(name, 16 << 20).unwrap().unwrap()).unwrap();
         assert!(!xml.contains("ligatures"), "{name}");
     }
 }

@@ -28,6 +28,7 @@ use std::collections::{HashMap, HashSet};
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
+use craft_metafile::{Picture, PlacedItem};
 use craft_pdf::write::{self, Metadata, WriteError, Writer, backend as krilla};
 use inkstone_doc::graphic::GraphicKind;
 use inkstone_doc::para::{InlineObject, ShapeKind};
@@ -38,7 +39,6 @@ use inkstone_layout::display::Paint;
 use inkstone_layout::display::{Draw, ItemDisplay, Stroke as LineStyle};
 use inkstone_layout::para::{ClKind, LineEnd};
 use inkstone_layout::{DocLayout, LayoutCache, NumeralMode, Page, Placed, layout};
-use inkstone_metafile::{Picture, PlacedItem};
 use krilla::annotation::{Annotation, LinkAnnotation, Target};
 use krilla::color::rgb;
 use krilla::destination::XyzDestination;
