@@ -15,7 +15,7 @@ Docker work, see the [production roadmap](docs/PRODUCTION_ROADMAP.md).
 | Tests | API, file-conversion, localization and editor-bridge integration checks |
 | docs | `BASELINE_AUDIT.md`, `ARCHITECTURE_QUALITY.md`, `IMPROVEMENT_ROADMAP.md`, `REBRANDING.md`, `SECURITY_REVIEW.md` |
 
-See [SECURITY.md](SECURITY.md) to report vulnerabilities.
+See [SECURITY.md](SECURITY.md) to report vulnerabilities and [docs/TESTING.md](docs/TESTING.md) for the test matrix.
 
 ## Run locally
 

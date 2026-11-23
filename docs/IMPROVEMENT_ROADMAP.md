@@ -1,6 +1,6 @@
 # Improvement roadmap
 
-Prioritized backlog for the **Papyrus** program. Each item should be delivered in **small, verifiable milestones** with tests and docs updated together. Status: **Phase 3 in progress** (2026-11-23).
+Prioritized backlog for the **Papyrus** program. Each item should be delivered in **small, verifiable milestones** with tests and docs updated together. Status: **Phase 4 in progress** (2026-11-23).
 
 Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/docs · **P3** product · **P4** long-term
 
@@ -35,11 +35,11 @@ Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/doc
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| P2-1 | Playwright in CI (or nightly) with mocked API | Local tests exist; not in GHA |
+| P2-1 | Playwright in CI (or nightly) with mocked API | **Done** (Phase 4 `browser` job) |
 | P2-2 | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md` | OSS Phase 7 |
 | P2-3 | `docs/REBRANDING.md` after Phase 1 | **Done** |
 | P2-4 | `docs/SECURITY_REVIEW.md` (Phase 3 assessment) | **Done** (Phase 3) |
-| P2-5 | Quality report artifact from CI (test counts, no fabrication) | |
+| P2-5 | Quality report artifact from CI (test counts, no fabrication) | **Done** (`Scripts/quality_report.py`, `docs/QUALITY_REPORT.md`) |
 | P2-6 | i18n fixture documents (fa/ar/ur/en) under `Tests/fixtures` | Phase 6 |
 
 ---
@@ -67,12 +67,12 @@ Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/doc
 
 ---
 
-## Recommended next milestone (Phase 3 → Phase 4)
+## Recommended next milestone (Phase 4 → Phase 5)
 
-1. **Phase 3b** — CodeQL (SR-1) if opening to external contributors.  
-2. **Phase 4** — Playwright smoke in CI; quality report artifact (P2-5).  
-3. **P0-2** — document or wire `cargo xtask ci` gate with `CRAFT_I18N_DIR`.  
-4. **Phase 2b** — `App.vue` decomposition (AQ-F1) when convenient.
+1. **Phase 4b** — `file_api_smoke.py` in CI; regenerate `QUALITY_REPORT` on schedule.  
+2. **Phase 5** — converter latency benchmarks; document baselines.  
+3. **P0-2** — `cargo xtask ci` gate with `CRAFT_I18N_DIR`.  
+4. **Phase 7** — `CONTRIBUTING.md`, CodeQL (SR-1).
 
 ---
 

@@ -3,7 +3,11 @@ export default defineConfig({
   testDir: "./tests",
   timeout: 30000,
   workers: 1,
-  use: { baseURL: "http://127.0.0.1:4175", channel: "chrome", headless: true },
+  use: {
+    baseURL: "http://127.0.0.1:4175",
+    headless: true,
+    ...(process.env.CI ? {} : { channel: "chrome" }),
+  },
   outputDir: "../Tests/generated/browser-results",
   webServer: {
     command:
