@@ -1,7 +1,26 @@
 # Agent progress log
 
 Program: **Papyrus** (Phases 0–11 per project brief)  
-**Current phase:** 5 — Performance and reliability (**complete** milestone 5.1)
+**Current phase:** 6 — International document support (**complete** milestone 6.1)
+
+---
+
+## 2026-11-23 — Phase 6
+
+### Completed
+
+- Committed **`Tests/fixtures/i18n/`** (en/fa/ar/ur models, mixed bidi, text import sample).
+- **`Tests/Papyrus.Api.Tests/I18nFixtureTests.cs`** — language detection from fixtures.
+- **`Tests/i18n_document_smoke.py`** — CLI preflight, DOCX/PDF export, roundtrip via API build output.
+- **[`docs/I18N_SUPPORT.md`](I18N_SUPPORT.md)** — supported languages, UI vs document scope, limits.
+- CI: `i18n_document_smoke.py` in **`api-and-web`** job.
+
+### Verification
+
+```powershell
+dotnet test Tests/Papyrus.Api.Tests/Papyrus.Api.Tests.csproj --filter I18nFixtureTests -p:SkipRustBuild=true
+python Tests/i18n_document_smoke.py
+```
 
 ---
 

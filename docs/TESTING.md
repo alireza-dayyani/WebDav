@@ -8,7 +8,7 @@
 | Front units | `node --test Tests/*.test.mjs Tests/*.test.mjs` (see CI list) | `Tests/` |
 | Editor bridge | `Tests/editor-host.test.mjs` | mocked HTTP |
 | Browser (mocked API) | `npm run test:browser` | `Front/tests/` |
-| Python smokes | `python Tests/papyrus_cli_protocol_smoke.py`, `converter_hostile_smoke.py`, `backup_test.py` | subprocess / HTTP |
+| Python smokes | `python Tests/papyrus_cli_protocol_smoke.py`, `converter_hostile_smoke.py`, `backup_test.py`, `i18n_document_smoke.py` | subprocess / HTTP |
 | Rust workspace | `cargo check --workspace --locked` in `Application/` | engine |
 
 ## Quality report
@@ -28,6 +28,15 @@ python Scripts/performance_baseline.py
 ```
 
 Writes `docs/PERFORMANCE_BASELINE.md`. See also `docs/PERFORMANCE_RELIABILITY.md`.
+
+## International documents (Phase 6)
+
+```powershell
+dotnet test Tests/Papyrus.Api.Tests/Papyrus.Api.Tests.csproj --filter I18nFixtureTests -p:SkipRustBuild=true
+python Tests/i18n_document_smoke.py
+```
+
+Fixtures: `Tests/fixtures/i18n/`. See `docs/I18N_SUPPORT.md`.
 
 ## CI
 

@@ -29,6 +29,7 @@ jobs:
       - run: python3 Tests/papyrus_cli_protocol_smoke.py
       - run: python3 Tests/converter_hostile_smoke.py
       - run: python3 Tests/backup_test.py
+      - run: python3 Tests/i18n_document_smoke.py
   rust-engine:
     runs-on: ubuntu-latest
     steps:

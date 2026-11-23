@@ -9,5 +9,6 @@
 - `demo_seed_smoke.py` verifies all eight sample accounts/resources and repeat provisioning against an isolated database; persistent local examples are created separately by `Scripts/seed_letter_demo.py`.
 - `letter_template_layout_smoke.py` checks the sourced Persian A5/A4 and English Letter profiles, script font properties, bookmark safety, images, dates and DOCX/PDF output. It creates `persian-official-a5`, `persian-official-a4` and `english-business-letter` samples under ignored `Tests/generated/` for visual inspection.
 - `hostile_fixtures.py` builds synthetic ZIP/DOCX payloads in memory for `converter_hostile_smoke.py` and `papyrus_cli_protocol_smoke.py` (archive limits, traversal paths, declared-size metadata). Nothing is committed under `Tests/fixtures/hostile/`.
+- **`fixtures/i18n/`** — committed native JSON and `mixed-scripts.txt` for Phase 6 (`I18nFixtureTests`, `i18n_document_smoke.py`). See `fixtures/i18n/README.md` and `docs/I18N_SUPPORT.md`.
 
 Running the two studio tests writes two ordinary DOCX examples and letter `primary`, `without-copies`, individual `copy-*`, and attachment DOCX/PDF files to `Tests/generated/`. Those generated outputs are ignored by Git. Re-running tests may add another identified attachment fixture.

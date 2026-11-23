@@ -1,0 +1,22 @@
+{
+  "body": [
+    {
+      "kind": "para",
+      "text": "متن فارسی برای آزمون جهانی — اعداد ۱۲۳.",
+      "runs": [{ "len": 71 }]
+    },
+    { "kind": "para", "text": "", "runs": [] }
+  ],
+  "styles": {
+    "defaultChr": { "lang": "fa-IR", "font": "Aptos", "size": 12.0 }
+  },
+  "lastSection": {
+    "pageW": 612.0,
+    "pageH": 792.0,
+    "marginTop": 72.0,
+    "marginBottom": 72.0,
+    "marginLeft": 72.0,
+    "marginRight": 72.0,
+    "rtl": true
+  }
+}

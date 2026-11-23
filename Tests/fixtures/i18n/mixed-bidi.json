@@ -1,0 +1,26 @@
+{
+  "body": [
+    {
+      "kind": "para",
+      "text": "English lead — سپس فارسی — then English 123.",
+      "runs": [
+        { "len": 17 },
+        { "len": 22, "rtl": true },
+        { "len": 17 }
+      ]
+    },
+    { "kind": "para", "text": "", "runs": [] }
+  ],
+  "styles": {
+    "defaultChr": { "lang": "en-US", "font": "Aptos", "size": 12.0 }
+  },
+  "lastSection": {
+    "pageW": 612.0,
+    "pageH": 792.0,
+    "marginTop": 72.0,
+    "marginBottom": 72.0,
+    "marginLeft": 72.0,
+    "marginRight": 72.0,
+    "rtl": false
+  }
+}
