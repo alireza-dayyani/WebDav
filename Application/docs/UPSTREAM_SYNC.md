@@ -33,9 +33,37 @@ Upstream CI, agent instructions, roadmaps and release process files are excluded
 changes, review `git diff`, resolve conflicts, keep the fork adaptations below, and run the Rust
 workspace CI with `CRAFT_I18N_DIR` set to a craft-i18n checkout of `craft-i18n.rev`.
 
-## Integration on 2026-11-15
+## Integration on 2026-11-23
 
 The current baseline is
+[`c369c3a20befef8742f8913128cacd79002435d6`](https://github.com/storytold/wordcraft/commit/c369c3a20befef8742f8913128cacd79002435d6)
+on upstream `main` (merged with `upstream-sync.py update` from the 2026-11-16 baseline). This is a large
+step: craft-libs pins move to `750a9bd`, the UI ports onto the shared **craft** framework (#7101), and dozens
+of layout, proofing, field, font, and CI fixes land between the prior baseline and tip.
+
+Fork adaptations kept: Inkstone README/attribution, operator-managed **updates** UI stub (`updates_ui.rs`),
+LaTeX export still strips the `craft-latex` WordCraft banner, Vue **cloud** save via `inkstoneHost` (re-wired
+in `inkstone-web` on top of the new `Host`/`BrowserFiles` shell), and `dialogs/dispatch.rs` retained where
+upstream removed it.
+
+After resolving merge conflicts, run `cargo check --workspace` (or `cargo xtask ci`) in `Application/` with
+`CRAFT_I18N_DIR` set per `craft-i18n.rev`.
+
+## Integration on 2026-11-16
+
+The current baseline is
+[`9088ed777d4a6f0daae87d5f254f1893d584adcb`](https://github.com/storytold/wordcraft/commit/9088ed777d4a6f0daae87d5f254f1893d584adcb)
+on upstream `main`, merged with `upstream-sync.py update` from the 2026-11-15 baseline. Three commits:
+shared engine `craft-mime` base64 encode (#6818), `geom` clippy pedantic cleanup (#5073), and a small
+ui-egui test patch (#6817).
+
+Fork adaptations unchanged; LaTeX export still strips the `craft-latex` WordCraft banner for Inkstone.
+One `Cargo.lock` merge conflict was resolved, then `cargo check --workspace` refreshed the lockfile
+(`craft-mime` on `inkstone-engine`).
+
+## Integration on 2026-11-15
+
+The previous baseline was
 [`bc0e51ee4db1f23940ac30fc626da02c09541adc`](https://github.com/storytold/wordcraft/commit/bc0e51ee4db1f23940ac30fc626da02c09541adc)
 on upstream `main`, merged with `upstream-sync.py update` from the 2026-11-14 baseline. Workspace
 version is **0.18.1**. This brings craft-libs image codecs and zip cutover, Format Painter (#1455),

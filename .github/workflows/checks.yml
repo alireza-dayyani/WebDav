@@ -24,5 +24,8 @@ jobs:
       - run: node --test Tests/editor-host.test.mjs Tests/http-core.test.mjs Tests/locales.test.mjs Tests/library-api.test.mjs Tests/use-studio-workspace.test.mjs Tests/pdf-preview.test.mjs Tests/workspace-ui.test.mjs Tests/automation-ui.test.mjs Tests/studio-state.test.mjs
       - run: npm run build
         working-directory: Front
+      - run: dotnet build Back/Inkstone.Api.csproj
       - run: dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true
+      - run: python3 Tests/inkstone_cli_protocol_smoke.py
+      - run: python3 Tests/converter_hostile_smoke.py
       - run: python3 Tests/backup_test.py

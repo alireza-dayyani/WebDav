@@ -29,7 +29,9 @@ internal sealed class EndpointHost : IAsyncDisposable
     public Guid DocumentId { get; } = Guid.NewGuid();
     public Guid TemplateId { get; } = Guid.NewGuid();
 
-    public static async Task<EndpointHost> CreateAsync()
+    public static Task<EndpointHost> CreateAsync() => CreateAsync(hostJobWorker: false);
+
+    public static async Task<EndpointHost> CreateAsync(bool hostJobWorker)
     {
         var host = new EndpointHost();
         await host.connection.OpenAsync();
@@ -41,7 +43,8 @@ internal sealed class EndpointHost : IAsyncDisposable
         builder.Services.AddOptions<ConverterCapacityOptions>();
         builder.Services.AddSingleton<ConverterCapacity>();
         builder.Services.AddSingleton<DocumentConverter>();
-        builder.Services.AddSingleton<DocumentJobRunner>(); // Cancellation only; the worker is deliberately not hosted.
+        builder.Services.AddSingleton<DocumentJobRunner>();
+        if (hostJobWorker) builder.Services.AddHostedService(sp => sp.GetRequiredService<DocumentJobRunner>());
         builder.Services.AddAuthentication(TestAuthentication.Scheme).AddScheme<AuthenticationSchemeOptions, TestAuthentication>(TestAuthentication.Scheme, _ => { });
         builder.Services.AddAuthorization();
         builder.Services.AddAntiforgery();

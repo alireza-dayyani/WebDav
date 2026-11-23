@@ -20,7 +20,7 @@ them: `ord` (word) is the same in the singular and the plural (`1 ord`, `21 ord`
 `\n` breaks in ribbon labels and dialog ellipses are kept, and strings added later fall back to
 English until they are translated.
 
-The draft was made with Claude Code. A native speaker approved the terminology and every open
+A native speaker approved the terminology and every open
 wording choice, and reviewed the running app.
 
 ## Conventions

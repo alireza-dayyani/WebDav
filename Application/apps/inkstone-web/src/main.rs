@@ -5,16 +5,18 @@
 //! directory (output in `dist/web`).
 //!
 //! Differences from the desktop app: no TCP control channel; Open and Insert › Pictures use the
-//! browser file picker (bytes arrive through `Services::inbox`); Save and Export download.
-//! Preferences (theme, interface size, editing options…) are kept in `localStorage` (`prefs`).
+//! browser file picker (bytes arrive through the host's `Files`); Save and Export download.
+//! Preferences (theme, interface size, editing options…) are kept by the settings store in
+//! `localStorage` (`prefs`).
 //! URL flags: `?webgl` forces WebGL2; `?sample` opens the sample document.
 //! Inkstone uses its authenticated parent bridge (`cloud`) for owner-scoped, versioned storage.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 #[cfg(any(target_arch = "wasm32", test))]
 mod prefs;
-#[cfg(any(target_arch = "wasm32", test))]
-mod save_fallback;
+
+#[cfg(target_arch = "wasm32")]
+mod host;
 
 #[cfg(target_arch = "wasm32")]
 mod web;

@@ -20,15 +20,18 @@ function client({ blocked = false, status = 200, type = 'application/pdf', close
         blob: async () => { if (closeDuringRender) tab.closed = true; return new Blob(['%PDF-1.7'], { type }) } }
     },
   }
-  const source = readFileSync(new URL('../Front/src/api.js', import.meta.url), 'utf8').replace(/^export /gm, '')
-  vm.runInNewContext(source + '\nthis.previewPdf = previewPdf;', context)
+  const stripExports = source => source.replace(/^export /gm, '')
+  const core = stripExports(readFileSync(new URL('../Front/src/httpCore.js', import.meta.url), 'utf8'))
+  const api = stripExports(readFileSync(new URL('../Front/src/api.js', import.meta.url), 'utf8'))
+    .replace(/^import .+$/m, '')
+  vm.runInNewContext(`${core}\n${api}\nthis.previewPdf = previewPdf;`, context)
   return { preview: () => context.previewPdf('/letters/test/preview', { method: 'POST', body: { version: 3 } }), events, tab, intervals }
 }
 
 test('reserves a tab before awaiting CSRF/rendering, displays PDF without download, retains it until tab closes', async () => {
   const c = client()
   const pending = c.preview()
-  assert.deepEqual(c.events[0], ['open', 'about:blank', '_blank'])
+  assert.deepEqual(c.events[0], ['open', 'about:blank', '_blank', 'noopener,noreferrer'])
   await pending
   assert.equal(c.tab.opener, null)
   const request = c.events.find(e => e[1] === '/api/letters/test/preview')[2]

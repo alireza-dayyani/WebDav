@@ -14,6 +14,7 @@ import ModalFrame from "./ModalFrame.vue";
 import AdminPanel from "./AdminPanel.vue";
 import StudioPanel from "./StudioPanel.vue";
 import LetterEditor from "./LetterEditor.vue";
+import { EDITOR_IFRAME_SANDBOX } from "./editorEmbed.js";
 const activeLetter = ref(null),
   selectedLetterId = ref("");
 function openLetterEditor(letter) {
@@ -622,6 +623,7 @@ onBeforeUnmount(() => {
     <iframe
       ref="editorFrame"
       :src="editorSource"
+      :sandbox="EDITOR_IFRAME_SANDBOX"
       :title="t('editor')"
       allow="clipboard-read; clipboard-write; fullscreen"
       class="editor-frame"

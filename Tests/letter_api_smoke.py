@@ -146,7 +146,7 @@ with server(5098, 'letter-api') as (base, _):
         frozen = json.loads(alice.raw(route + '&format=json')[0])
         if artifact['key'] == 'primary':
             assert body_text.strip() in text and 'جدول متن' in text and 'علی آزمایشی' in text and 'مدیر' in text
-            assert bob_user['email'] in text and alice_user['email'] in text and carol_user['email'] not in text
+            assert bob_user['name'] in text and alice_user['name'] in text and carol_user['name'] not in text
             story_blocks = frozen['body'] + [block for part in frozen.get('parts', {}).values() for block in part.get('blocks', [])]
             image_refs = [obj['media'] for block in story_blocks for obj in block.get('objects', []) if obj['type'] == 'image']
             assert len(image_refs) >= 4 and all(key in frozen['media'] for key in image_refs), 'rich-body images must be adopted'
@@ -155,10 +155,10 @@ with server(5098, 'letter-api') as (base, _):
             with zipfile.ZipFile(io.BytesIO(content)) as archive:
                 assert len([name for name in archive.namelist() if name.startswith('word/media/')]) >= 2
         elif artifact['key'] == 'without-copies':
-            assert carol_user['email'] not in text and alice_user['email'] not in text
+            assert carol_user['name'] not in text and alice_user['name'] not in text
             assert 'رونوشت:' not in text, 'a no-copy variant must not retain an empty copies heading'
         elif artifact['key'] == 'copy-1':
-            assert carol_user['email'] in text and alice_user['email'] not in text
+            assert carol_user['name'] in text and alice_user['name'] not in text
         elif artifact['key'].startswith('attachment-'):
             assert 'Original attachment snapshot' in text
         for client, status in [(bob, 404), (carol, 404), (guest, 401)]:

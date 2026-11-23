@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api } from "./api";
 import { locale, t, errorMessage } from "./i18n";
 import LanguagePicker from "./LanguagePicker.vue";
+import { EDITOR_IFRAME_SANDBOX } from "./editorEmbed.js";
 const props = defineProps({ letter: { type: Object, required: true } });
 const emit = defineEmits(["close"]);
 const item = ref({ ...props.letter }),
@@ -163,6 +164,7 @@ onBeforeUnmount(() => {
     <iframe
       ref="frame"
       :src="source"
+      :sandbox="EDITOR_IFRAME_SANDBOX"
       :inert="busy"
       :title="st('writeLetter')"
       allow="clipboard-read; clipboard-write; fullscreen"

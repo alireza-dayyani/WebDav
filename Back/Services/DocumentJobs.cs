@@ -50,6 +50,7 @@ public sealed class DocumentJobRunner(IServiceScopeFactory scopes, ILogger<Docum
             if (claimed == 0) return;
             var converter = scope.ServiceProvider.GetRequiredService<IDocumentProcessor>();
             var work = JsonSerializer.Deserialize<JobWork>(job.Work, Studio.Json)!;
+            await Automation.EnsureJobSourcesAsync(db, job.OwnerId, job.Kind, work, stoppingToken);
             byte[] result; JsonElement report;
             if (job.Kind == "export") { result = await converter.ExportAsync(work.Input, job.Format, cancellation.Token); report = Automation.Json(new { exported = job.Format }); }
             else if (job.Kind == "renderBatch") { (result, report) = await RenderArchive(converter, work, cancellation.Token); }
@@ -149,6 +150,8 @@ public static class DocumentJobEndpoints
         if (await db.DocumentJobs.CountAsync(j => j.OwnerId == owner && (j.Status == "queued" || j.Status == "running"), ct) >= 10) return Studio.Bad("At most ten queued/running jobs per account.", 429);
         if (await db.DocumentJobs.CountAsync(j => j.OwnerId == owner, ct) >= 100) return Studio.Bad("At most 100 retained jobs/previews per account; results expire after 24 hours.", 429);
         byte[][] sources;
+        ResourceRef[]? documentRefs = null;
+        ResourceRef? templateRef = null;
         if (input.Kind == "renderBatch")
         {
             if (input.Template is null || input.Records is not { Length: > 0 and <= 100 } || input.Records.Any(r => r is null || Studio.Title(r.Key, 128) is null || Studio.Title(r.Title) is null || r.Values is null) || input.Records.Select(r => r.Key).Distinct(StringComparer.Ordinal).Count() != input.Records.Length) return Studio.Bad("Supply an owned template revision and 1–100 records with distinct keys, titles and values.");
@@ -158,17 +161,19 @@ public static class DocumentJobEndpoints
             if (Studio.Read<TemplateConfig>(template).Kind != "document") return Studio.Bad("Bulk jobs use document templates.", 422);
             foreach (var record in input.Records) if (record.Values.Count > 0) Automation.ValidateOperations([Automation.Json(new { type = "fillBookmarks", record.Values })]);
             sources = [template.Content];
+            templateRef = input.Template;
         }
         else
         {
-            var refs = input.Kind == "compose" ? input.Sources : input.Source is null ? null : new[] { input.Source };
+            var refs = input.Kind == "compose" ? input.Sources : input.Source is null ? null : new[] { input.Source! };
+            documentRefs = refs;
             sources = await Automation.ReadSources(db, owner, refs, ct);
         }
         if (input.Kind == "batch") Automation.ValidateOperations(input.Operations);
         if (input.Kind == "compose" && sources.Length < 2) return Studio.Bad("Composition jobs require at least two source documents.");
         var model = sources[0].Length == 0 ? await converter.CreateAsync("en-US", ct) : sources[0];
         var parameters = input.Kind switch { "batch" => Automation.Json(new { input.Operations }), "renderBatch" => Automation.Json(new { input.Records, input.Format }), _ => Automation.Json(new { input.Separator, stylePolicy = "preserveSource" }) };
-        var work = new JobWork(model, input.Kind == "compose" ? sources.Skip(1).ToArray() : [], parameters);
+        var work = new JobWork(model, input.Kind == "compose" ? sources.Skip(1).ToArray() : [], parameters, documentRefs, templateRef);
         var encoded = Studio.Encode(work);
         if (encoded.Length > 350 * FileLimits.MiB) return Studio.Bad("Job input exceeds the processing limit.", 413);
         var job = new DocumentJob { OwnerId = owner, Kind = input.Kind, Format = input.Kind == "renderBatch" ? "zip" : input.Format, Work = encoded }; db.DocumentJobs.Add(job);

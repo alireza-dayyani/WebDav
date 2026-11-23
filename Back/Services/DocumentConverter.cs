@@ -12,7 +12,7 @@ public sealed class ConversionException(string message, int status = 422, string
 }
 
 /// <summary>Runs the existing Rust engine in a bounded, isolated job directory.</summary>
-public sealed class DocumentConverter(IConfiguration configuration, ILogger<DocumentConverter> logger, ConverterCapacity capacity) : IDocumentProcessor
+public sealed class DocumentConverter(IConfiguration configuration, ILogger<DocumentConverter> logger, ConverterCapacity capacity, Microsoft.Extensions.Options.IOptions<ConverterCapacityOptions> conversionOptions) : IDocumentProcessor
 {
     public const int MaxDocumentBytes = FileLimits.MaxModelBytes;
     public static readonly string[] ImportFormats = ["docx", "odt", "rtf", "txt", "md", "json"];
@@ -123,6 +123,12 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
         try
         {
             using var archive = new ZipArchive(new MemoryStream(content), ZipArchiveMode.Read);
+            foreach (var entry in archive.Entries)
+            {
+                var name = entry.FullName.Replace('\\', '/');
+                if (name.Contains("../", StringComparison.Ordinal) || name.Contains("/..", StringComparison.Ordinal) || name.StartsWith("/", StringComparison.Ordinal))
+                    throw new ConversionException("The document archive is invalid.", 422);
+            }
             if (archive.Entries.Count > 2048 || archive.Entries.Any(e => e.Length > FileLimits.MaxArchiveEntryBytes) || archive.Entries.Sum(e => e.Length) > FileLimits.MaxArchiveBytes)
                 throw new ConversionException("The expanded archive exceeds the processing limits (256 MiB total, 128 MiB per entry, 2048 entries).", 413, "archive_too_large", FileLimits.MaxArchiveBytes);
         }
@@ -136,7 +142,9 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
 
     private async Task<JobResult> RunJobAsync(byte[]? input, string inputFormat, string? outputFormat, string? language, CancellationToken ct, string? command = null, object? parameters = null, byte[]? body = null, byte[][]? sources = null)
     {
-        using var permit = await capacity.EnterAsync(command == "document.preflight", ct);
+        var preflight = command == "document.preflight";
+        using var permit = await capacity.EnterAsync(preflight, ct);
+        var timeoutSeconds = conversionOptions.Value.TimeoutFor(preflight);
         string? directory = null;
         try
         {
@@ -201,9 +209,13 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
             }
             using var process = new Process { StartInfo = start };
             try { process.Start(); }
-            catch (System.ComponentModel.Win32Exception) { throw new ConversionException("The document converter could not start.", 503); }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                ConversionTelemetry.RecordFailure(preflight, reason: "start_failed");
+                throw new ConversionException("The document converter could not start.", 503);
+            }
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(60));
+            timeout.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
             // Drain output without retaining arbitrary converter output in memory or HTTP responses.
             var stdout = ReadOutputAsync(process.StandardOutput.BaseStream, command is not null, timeout.Token);
             var stderr = process.StandardError.BaseStream.CopyToAsync(Stream.Null, timeout.Token);
@@ -212,11 +224,16 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
             {
                 if (!process.HasExited) process.Kill(entireProcessTree: true);
                 await process.WaitForExitAsync(CancellationToken.None);
-                ct.ThrowIfCancellationRequested();
+                if (ct.IsCancellationRequested)
+                    throw;
+                ConversionTelemetry.RecordTimeout(preflight);
                 throw new ConversionException("Document conversion timed out.");
             }
             if (process.ExitCode != 0 || (outputFormat is not null && !File.Exists(destination)))
+            {
+                ConversionTelemetry.RecordFailure(preflight, process.HasExited ? process.ExitCode : null, outputFormat is not null && !File.Exists(destination) ? "missing_output" : null);
                 throw new ConversionException(command is null ? "This file could not be converted. Check the format and try again." : "The document operation failed. Check targets, expected matches, value types and supported ranges; the document or selected controls may be protected. No changes were saved.");
+            }
             JsonElement report = default;
             if (command is not null)
             {

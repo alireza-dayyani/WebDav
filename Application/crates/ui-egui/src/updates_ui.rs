@@ -23,7 +23,11 @@ pub(crate) fn check(app: &mut WordApp) {
     app.updates_rt.manual_window_open = true;
 }
 
-pub(crate) fn tick(_app: &mut WordApp, _ctx: &egui::Context) {}
+pub(crate) fn run(_app: &mut WordApp) {}
+
+pub(crate) fn tick(app: &mut WordApp, ctx: &egui::Context) {
+    show(app, ctx);
+}
 
 pub(crate) fn show(app: &mut WordApp, ctx: &egui::Context) {
     if app.updates_rt.manual_window_open {

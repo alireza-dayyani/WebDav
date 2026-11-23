@@ -69,7 +69,9 @@ builder.Services.AddRateLimiter(o =>
 });
 builder.Services.AddProblemDetails();
 builder.Services.AddOptions<ConverterCapacityOptions>().BindConfiguration("Conversion")
-    .Validate(o => o.ValidationSlots is >= 1 and <= 16 && o.ConversionSlots is >= 1 and <= 16, "Converter slot counts must be 1–16.").ValidateOnStart();
+    .Validate(o => o.ValidationSlots is >= 1 and <= 16 && o.ConversionSlots is >= 1 and <= 16
+        && o.TimeoutSeconds is >= 1 and <= 600 && o.PreflightTimeoutSeconds is >= 1 and <= 600,
+        "Converter slot counts must be 1–16 and timeouts must be 1–600 seconds.").ValidateOnStart();
 builder.Services.AddSingleton<ConverterCapacity>();
 builder.Services.AddSingleton<DocumentConverter>();
 builder.Services.AddSingleton<IDocumentProcessor>(sp => sp.GetRequiredService<DocumentConverter>());
@@ -141,7 +143,7 @@ app.Use(async (context, next) =>
     context.Response.Headers.XContentTypeOptions = "nosniff";
     context.Response.Headers.XFrameOptions = "SAMEORIGIN";
     context.Response.Headers["Referrer-Policy"] = "same-origin";
-    context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'";
+    context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
     if (app.Environment.IsDevelopment() && context.Request.Path.StartsWithSegments("/swagger"))
         context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'";
     if (context.Request.Path.StartsWithSegments("/api")) context.Response.Headers.CacheControl = "no-store";

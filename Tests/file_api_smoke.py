@@ -93,7 +93,10 @@ with tempfile.TemporaryDirectory(prefix='inkstone-files-test-') as data, open(RO
         check = subprocess.run(['node', '-e', javascript], input=swagger_script, capture_output=True, timeout=15)
         assert check.returncode == 0, check.stderr.decode()
         assert "'unsafe-eval'" in guest.request('/swagger/index.js')[1]['Content-Security-Policy']
-        assert "'unsafe-eval'" not in guest.request('/api/health')[1]['Content-Security-Policy']
+        api_csp = guest.request('/api/health')[1]['Content-Security-Policy']
+        assert "'unsafe-eval'" not in api_csp
+        assert "worker-src 'self'" in api_csp
+        assert "form-action 'self'" in api_csp
         alice.upload('blocked.txt', b'csrf required', expected=400, csrf=False)
         guest.upload('private.txt', b'authentication required', expected=401)
         alice.upload('bad.exe', b'unsupported', expected=415)

@@ -46,7 +46,10 @@ public sealed class JobAndTokenEndpointTests
         await host.WithDatabase(async db =>
         {
             var job = Assert.Single(await db.DocumentJobs.ToArrayAsync()); Assert.Equal("queued", job.Status);
-            var work = JsonSerializer.Deserialize<JobWork>(job.Work, Studio.Json)!; Assert.Equal(FakeProcessor.Original, work.Input); Assert.Empty(work.Sources);
+            var work = JsonSerializer.Deserialize<JobWork>(job.Work, Studio.Json)!;
+            Assert.Equal(FakeProcessor.Original, work.Input);
+            Assert.Empty(work.Sources);
+            Assert.Equal(new ResourceRef(host.DocumentId, 1), work.DocumentRefs!.Single());
         });
         Assert.Equal(0, host.Processor.Calls);
     }
@@ -138,6 +141,44 @@ public sealed class JobAndTokenEndpointTests
         });
         var response = await host.Client.PostAsJsonAsync("/api/document-jobs/", new { kind = "export", source = new ResourceRef(host.DocumentId, 1) });
         Assert.Equal(sameOwner ? HttpStatusCode.TooManyRequests : HttpStatusCode.OK, response.StatusCode); Assert.Equal(0, host.Processor.Calls);
+    }
+
+    [Fact]
+    public async Task Worker_fails_when_queued_source_revision_changes_before_execution()
+    {
+        await using var host = await EndpointHost.CreateAsync(hostJobWorker: true);
+        var created = await host.Client.PostAsJsonAsync("/api/document-jobs/", new { kind = "export", source = new ResourceRef(host.DocumentId, 1), format = "pdf" });
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        var jobId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await host.WithDatabase(async db =>
+        {
+            var document = await db.Documents.SingleAsync();
+            document.Version = 2;
+            await db.SaveChangesAsync();
+        });
+        string status = "queued";
+        for (var attempt = 0; attempt < 120 && status is "queued" or "running"; attempt++)
+        {
+            await Task.Delay(100);
+            var state = await host.Client.GetFromJsonAsync<JsonElement>($"/api/document-jobs/{jobId}?version=1");
+            status = state.GetProperty("status").GetString()!;
+        }
+        Assert.Equal("failed", status);
+        var failed = await host.Client.GetFromJsonAsync<JsonElement>($"/api/document-jobs/{jobId}?version=1");
+        Assert.Contains("source document", failed.GetProperty("error").GetString()!, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, host.Processor.Calls);
+    }
+
+    [Fact]
+    public async Task EnsureJobSources_rejects_missing_template_before_worker_processing()
+    {
+        await using var host = await EndpointHost.CreateAsync();
+        var work = new JobWork(FakeProcessor.Original, [], Automation.Json(new object()), null, new ResourceRef(host.TemplateId, 99));
+        await host.WithDatabase(async db =>
+        {
+            var error = await Assert.ThrowsAsync<ConversionException>(() => Automation.EnsureJobSourcesAsync(db, EndpointHost.Owner, "renderBatch", work, CancellationToken.None));
+            Assert.Contains("Template", error.Message, StringComparison.Ordinal);
+        });
     }
 
     [Fact]

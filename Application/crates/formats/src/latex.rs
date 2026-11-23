@@ -18,9 +18,18 @@ pub fn parse(text: &str) -> craft_flow::Flow {
     craft_latex::parse(text)
 }
 
+const CRAFT_LATEX_BANNER: &str = "% Written by WordCraft (https://getartcraft.com/apps/wordcraft).\n";
+const INKSTONE_LATEX_BANNER: &str = "% Written by Inkstone (/).\n";
+
 pub fn export(doc: &Document) -> String {
     match inkstone_docx::to_shared_model(doc) {
-        Ok(shared) => craft_latex::export(&shared),
+        Ok(shared) => {
+            let mut out = craft_latex::export(&shared);
+            if out.starts_with(CRAFT_LATEX_BANNER) {
+                out.replace_range(..CRAFT_LATEX_BANNER.len(), INKSTONE_LATEX_BANNER);
+            }
+            out
+        }
         Err(_) => String::new(),
     }
 }

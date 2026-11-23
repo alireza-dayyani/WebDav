@@ -53,7 +53,7 @@ native-speaker review (human).
 ## The twelve key languages
 
 Status: `full` = every user-visible string translated and the script renders and edits correctly;
-`partial`; `menus only`; `none`. Hours are to `full`, Opus 5.5 agent wall-clock, excluding the
+`partial`; `menus only`; `none`. Hours are to `full` wall-clock, excluding the
 shared items below.
 
 | Language | Code | UI strings translated | Dialogs / tooltips / help | Script support | Native review | Status | Hours to full |

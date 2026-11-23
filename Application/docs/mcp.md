@@ -1,21 +1,28 @@
 # MCP server
 
-> **Last updated:** 2026-10-31 · Delivery review fixes for #2596: unknown outcomes are not replayed, including image exports to a path; invalid UTF-8 returns a parse error without stopping later requests.
+> **Last updated:** 2026-11-20 · `inkstone-cli mcp` starts only with both `--automation-read-root` and `--automation-write-root`, and `--connect` is refused until the desktop app confines its control channel (#7124, shared rule 18). Earlier: The bridge authenticates once per connection with the control token (`INKSTONE_CONTROL_TOKEN` or the app's token file). Earlier: The protocol core is the shared `craft-mcp-server` crate (#778); `click` and `key` list every argument they accept. Earlier: Keep the complete `type_text` description in one tool-table row; behavior wording unchanged. Delivery review fixes for #2596: unknown outcomes are not replayed, including image exports to a path; invalid UTF-8 returns a parse error without stopping later requests.
 
 Inkstone speaks the [Model Context Protocol](https://modelcontextprotocol.io) over stdio, so
-Claude and other agents can write and edit documents.
+MCP clients can write and edit documents.
 
 ```sh
-inkstone-cli mcp                          # headless session (no window)
-inkstone --control 7981 &                 # or: drive the running app…
-inkstone-cli mcp --connect 127.0.0.1:7981 # …including clicks, keys and screenshots
+inkstone-cli mcp --automation-read-root /work/project --automation-write-root /work/project/out
 ```
 
-Claude Code: `claude mcp add inkstone -- inkstone-cli mcp`.
+The server runs a headless session (no window) and starts only with both roots: see
+[Confining file access](#confining-file-access). Without them it stops with an error naming the
+two flags (shared rule 18, #7124).
 
-With `--connect`, the bridge sends the app's control key, which it reads from
-`INKSTONE_CONTROL_KEY` or from the key file the app writes at start. It sends the key only to
-loopback addresses; see [Keys](control-protocol.md#keys). The bridge serves even when the app
+**`--connect` is refused for now.** `inkstone-cli mcp --connect HOST:PORT` bridged an MCP client to the
+running app (`inkstone --control 7981`), with clicks, keys and screenshots. The app doesn't
+confine its control channel to automation roots yet, so the bridge would expose every file
+the user can reach; it stops with an error pointing to #3695 and #5819. Once the app confines the
+channel, connected mode will be allowed when the app has both roots set. The rest of this page
+describes the connected mode as it will work then.
+
+With `--connect`, the bridge authenticates once per connection with the app's control token, which
+it reads from `INKSTONE_CONTROL_TOKEN` or from the token file the app writes at start. It sends
+the token only to 127.0.0.1 and `localhost`; see [Token](control-protocol.md#token). The bridge serves even when the app
 isn't open yet: tool calls return "not reachable … will retry on each call" and succeed once the
 app's port opens (#4078), so a client that starts before Inkstone doesn't lose the server for
 its whole session.
@@ -35,6 +42,17 @@ unknown outcome. Unreadable replies are reported as errors without replaying the
 On stdio, an invalid UTF-8 request line returns JSON-RPC parse error `-32700`. It never reaches
 the backend, and the server continues with the next line instead of substituting characters
 in text or paths.
+
+The protocol core (framing, lifecycle, `tools/*`, `resources/*`) is the shared `craft-mcp-server`
+crate; Inkstone supplies the tools, resources and instructions. What that means for a client:
+
+- A request line over 1 MiB gets `-32600` "request too large" and the server keeps serving.
+- A JSON-RPC batch holds at most 1000 messages; a larger one gets `-32600` "batch too large".
+- A `tools/call` whose arguments do not match the tool's schema (a missing required argument, an
+  argument the tool does not list, or one of the wrong type) or that names an unknown tool returns
+  a tool result with `isError: true` naming the problem, not a JSON-RPC error.
+- `resources/read` with no `uri` is `-32002` (unknown resource), like any unknown `uri`.
+- `initialize` reports `listChanged: false` for tools and resources; `prompts/list` is empty.
 
 ## Scripts from the command line
 
@@ -60,12 +78,12 @@ open another one and make it active; later commands and the saves work on the ac
 `view.switchWindows={"id": n}` makes one active. A failing command stops the run with `command N (id): …` and exit
 status 1, and nothing is saved. Every output is checked (known extension, folder exists) before the first is written. Paths inside command params (a picture to insert, say) are relative to the working folder, not the script's. Scripts are capped at 4 MiB.
 
-## Tracked changes by an agent
+## Tracked changes by automation
 
 Tracked changes and comments are recorded under the session's user name ("Inkstone User" by
-default). Name the agent so reviewers can tell its edits from people's: start the headless server
-with `inkstone-cli mcp --author "Claude (copyedit)"`, or run
-`file.setAuthor {"name": "Claude (copyedit)"}`. Turn tracking on explicitly with
+default). Set an author name so reviewers can tell automated edits from people's: start the headless server
+with `inkstone-cli mcp --automation-read-root DIR --automation-write-root DIR --author "Inkstone Automation"`, or run
+`file.setAuthor {"name": "Inkstone Automation"}`. Turn tracking on explicitly with
 `review.trackChanges {"value": true}`; without `value` it toggles, which turns tracking *off* in
 a document that was saved with it on. `inkstone-cli run` takes `--author` too.
 
@@ -81,7 +99,7 @@ inkstone-cli mcp --automation-read-root /work/project --automation-write-root /w
 ```
 
 The two flags (VectorCraft, PhotoCraft and the other Craft apps take the same ones, so one client
-config works across the suite) keep the agent to the folders you give it:
+config works across the suite) keep automation to the folders you give it:
 
 - Every file a command reads must lie inside the **read root**: `open_document` and `file.open`,
   `file.newFromTemplate`, `insert.textFromFile` and `insert.object`, `insert.picture` and
@@ -100,8 +118,8 @@ config works across the suite) keep the agent to the folders you give it:
   the name it is given, so that name must be inside the write root as well as what it leads to:
   a link outside the root pointing in is refused (#3735).
 - Read and write access are separate. Give the same folder twice for both; a root left out grants
-  none of its access (with only `--automation-read-root`, nothing can be written to disk). Without
-  either flag nothing changes.
+  none of its access at the engine level. `inkstone-cli mcp` needs both flags and refuses to start
+  with one or neither.
 - A path is made absolute against the server's working directory, then its links are followed: a
   file (or folder) link that leads out of a root is outside it. For a file that doesn't exist yet,
   its nearest existing folder's links are followed and the rest must be plain names, so `..` below a
@@ -109,15 +127,15 @@ config works across the suite) keep the agent to the folders you give it:
   create its target). The result is compared with the root by whole folder names: `/work2/x` is not
   inside `/work`. On Windows case is ignored, UNC paths (`\\server\share\...`) are resolved like
   drive-letter ones, and device names (`CON`, `NUL`, `COM1`...) are refused.
-- A refused path is an ordinary tool error the agent can read and correct, for example
+- A refused path is an ordinary tool error the client can read and correct, for example
   `automation path rejected: outside the write root /work/project/out: /etc/x.docx` or
   `automation filesystem access is not granted: write authority is absent: /work/project/out/x.docx`.
 - The roots must be existing folders; a missing one stops the server with an error. Each flag is
   given once (`--flag <dir>` or `--flag=<dir>`).
 
-The flags confine the headless server; `--connect` with them is an error, since the server would
-otherwise talk to an app that isn't confined. Inkstone's desktop app has no equivalent flags yet,
-so a running app (`inkstone --control`) is not confined.
+The flags confine the headless server. Inkstone's desktop app has no equivalent flags yet, so a
+running app (`inkstone --control`) is not confined, and `--connect` is refused, with the flags or
+without (#3695, #5819).
 
 What the roots do not cover: commands that take no path (`text.insert`, `execute` of anything that
 works on the open document) can still read and change that document, and `get_text` and
@@ -127,7 +145,7 @@ Anything that reads or writes a path goes through one place in the engine (`io::
 touching the file system on their own.
 
 The checks hold for every thread of the server process. A path is checked, then opened: another
-program that swaps a link in between can still win that race, so the roots keep an agent to the
+program that swaps a link in between can still win that race, so the roots keep automation to the
 files it was given rather than guarding against other software on the computer.
 
 ## Language packs
@@ -141,7 +159,7 @@ the suite's font store (see [installing languages](spelling-dictionaries.md#lang
 | `proof.installPack` | `{"locale": "nl"}` | `{"locale", "name", "licence", "installed": true}` (`"already": true` when it was); with `--connect`, `{"locale", "started": true}` |
 | `proof.removePack` | `{"locale": "nl"}` | `{"locale", "installed": false}` |
 
-None opens anything. Downloading is the font store's single consent setting: an agent can install
+None opens anything. Downloading is the font store's single consent setting: automation can install
 only while the person has turned it on in the app (File › Options › Language: Install or Add a
 language…), and can never turn it on itself; otherwise `proof.installPack` fails with
 *downloading is turned off*. `refresh` likewise needs it on. Every archive is checked against the
@@ -173,12 +191,9 @@ test source in File › Options › Language and on the bar's Install.
 | `new_document` | blank, sample, letter, resume, report; opens beside the open documents |
 | `open_document` / `save_document` | docx, doc (open only), odt, rtf, html, md, tex, txt, json; save also pdf, png |
 | `list_documents` | the open documents: `id`, `title`, `path`, `dirty`, `active` |
-| `type_text` | type at the caret (`paragraphs: true` splits lines into paragraphs: one undo
-  step; each break is the Enter it stands for, so AutoFormat and AutoCorrect run and a
-  one-line control refuses; at most 10,000 lines — the cap is `text.insert`'s own, so a
-  control-channel or CLI call is held to it too) |
+| `type_text` | type at the caret (`paragraphs: true` splits lines into paragraphs: one undo step; each break is the Enter it stands for, so AutoFormat and AutoCorrect run and a one-line control refuses; at most 10,000 lines — the cap is `text.insert`'s own, so a control-channel or CLI call is held to it too) |
 | `select_text` | select the n-th occurrence of some text |
-| `get_text` / `inspect_document` | read the document back (verify without screenshots) |
+| `get_text` / `inspect_document` | read the document back (verify without screenshots); a header or footer's `fields` mark those with `perPage` (PAGE, NUMPAGES, STYLEREF…), whose stored result isn't what every page shows (`render_page` shows that); `fieldsTruncated` means a part has more than the 200 listed; a field kept as a range (a TOC, a bibliography) gives at most 2000 characters of its result, with `resultTruncated` when it has more |
 | `render_page` | a page as PNG |
 | `parity` | feature coverage |
 | `screenshot`, `click`, `key`, `ui_inspect` | app only (`--connect`) |

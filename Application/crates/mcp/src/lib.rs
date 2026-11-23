@@ -9,7 +9,9 @@ pub mod backend;
 pub mod server;
 pub mod tools;
 
-pub use backend::{Backend, Remote};
+pub use backend::Backend;
+#[cfg(not(target_arch = "wasm32"))]
+pub use backend::Remote;
 pub use server::Server;
 
 use std::sync::Arc;
@@ -19,7 +21,8 @@ use inkstone_engine::file_access::{self, AutomationRoots};
 use serde_json::{Value, json};
 
 /// Methods that need the desktop app.
-pub const NEEDS_APP: &str = "needs the desktop app: start `inkstone --control 7981` and run `inkstone-cli mcp --connect 127.0.0.1:7981`";
+pub const NEEDS_APP: &str =
+    "needs the desktop app; `inkstone-cli mcp --connect` is refused until the app confines its control channel to automation roots (#3695)";
 
 /// An in-process session.
 pub struct Headless {

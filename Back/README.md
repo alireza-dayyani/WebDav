@@ -10,16 +10,24 @@ No Vue server is needed to use the API. Development Swagger UI is at http://loca
 
 Run `dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true` from the repository root for unit and endpoint contract tests. The [test guide](../Tests/Inkstone.Api.Tests/README.md) describes the isolated SQLite/TestServer setup and real-converter integration coverage.
 
+The API ↔ Rust boundary is documented in [CLI protocol](../docs/CLI_PROTOCOL.md). Run `python Tests/inkstone_cli_protocol_smoke.py` and `python Tests/converter_hostile_smoke.py` after `dotnet build Back/Inkstone.Api.csproj`.
+
+Editor `postMessage` boundaries and iframe sandboxing are summarized in [Security model](../docs/SECURITY_MODEL.md).
+
 ## Capacity and recipient privacy
 
 `Conversion:ValidationSlots` and `Conversion:ConversionSlots` default to 2 each
-(allowed range 1–16). Native preflight uses its own pool so exports cannot occupy
-save-validation permits. This allows up to four simultaneous CLI processes by
-default; tune both values to the machine's measured memory/CPU budget. Validation
-also serves template/letter preflight and is not a dedicated autosave-only queue.
-Both pools wait at most five seconds before returning 429 `converter_busy`.
+(allowed range 1–16). `Conversion:PreflightTimeoutSeconds` defaults to 30;
+`Conversion:TimeoutSeconds` defaults to 60 (allowed range 1–600 for each).
+Native preflight uses its own pool so exports cannot occupy save-validation permits.
+This allows up to four simultaneous CLI processes by default; tune both values to
+the machine's measured memory/CPU budget. Validation also serves template/letter
+preflight and is not a dedicated autosave-only queue. Both pools wait at most five
+seconds before returning 429 `converter_busy`.
 The `Inkstone.Conversion` .NET meter publishes `inkstone.converter.queue_wait`
-(milliseconds), `inkstone.converter.active`, and `inkstone.converter.rejected`.
+(milliseconds), `inkstone.converter.active`, `inkstone.converter.rejected`,
+`inkstone.converter.timeouts`, and `inkstone.converter.failures` (labels: `pool`,
+`exit_code` only).
 The only metric label is pool (`validation` or `conversion`); no account/document
 identifiers or content are emitted. Connect a .NET metrics collector to export
 these instruments; a dashboard/alert backend is future infrastructure work.

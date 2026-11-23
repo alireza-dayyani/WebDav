@@ -1,7 +1,6 @@
 # Contributors in the About window
 
-**About ▸ Contributors** credits everyone who contributed to Inkstone, and **About ▸ Models** credits
-the AI models named in `Co-Authored-By` trailers. This follows the shared craftrules standard
+**About ▸ Contributors** credits everyone who contributed to Inkstone. This follows the shared craftrules standard
 `standards/contributors.md`;
 this page is the local copy of the decision.
 
@@ -24,7 +23,7 @@ this page is the local copy of the decision.
 
 ## In Inkstone
 
-- The About window is `Dialog::About` in `crates/ui-egui/src/dialogs.rs` (Help, or Backstage ▸ About); `ui.dialog {"name":"contributors"}` / `"models"` opens a tab.
+- The About window is `Dialog::About` in `crates/ui-egui/src/dialogs.rs` (Help, or Backstage ▸ About); `ui.dialog {"name":"contributors"}` opens the Contributors tab.
 
 ## Credit yourself
 

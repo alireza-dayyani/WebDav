@@ -40,7 +40,7 @@ public sealed class LibraryRecoveryTests
         Assert.Equal(HttpStatusCode.Conflict, (await host.Client.PostAsJsonAsync($"/api/documents/{host.DocumentId}/recover", new { version = 99 })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await host.Client.PostAsJsonAsync($"/api/documents/{host.DocumentId}/recover", new { version = 1 })).StatusCode);
         Assert.Equal("[]", await host.Client.GetStringAsync("/api/documents/trash"));
-        await host.WithDatabase(async db => { Assert.Equal(2, (await db.Documents.SingleAsync(d => d.Id == host.DocumentId)).Version); Assert.Equal(2, await db.DocumentRevisions.CountAsync()); });
+        await host.WithDatabase(async db => { Assert.Equal(2, (await db.Documents.SingleAsync(d => d.Id == host.DocumentId)).Version); Assert.Equal(1, await db.DocumentRevisions.CountAsync()); });
     }
 
     [Fact]

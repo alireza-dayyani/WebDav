@@ -1161,15 +1161,14 @@ fn about_dialog(ui: &mut Ui, d: &mut Dialog) -> bool {
         return false;
     };
     ui.set_width(820.0);
-    let names = [tl!("About").to_string(), tl!("Contributors").to_string(), tl!("Models").to_string(), tl!("Language data").to_string()];
+    let names = [tl!("About").to_string(), tl!("Contributors").to_string(), tl!("Language data").to_string()];
     if let Some(i) = crate::widgets::dialog_tabs(ui, &names, *tab as usize) {
         *tab = i as u8;
     }
     ui.add_space(6.0);
     match *tab {
         1 => crate::credits::contributors_ui(ui),
-        2 => crate::credits::models_ui(ui),
-        3 => crate::language_packs::about_tab(ui),
+        2 => crate::language_packs::about_tab(ui),
         _ => {
             ui.label(egui::RichText::new(tl!("Inkstone")).font(semibold(22.0)));
             let build = option_env!("INKSTONE_BUILD_SHA").map(|s| s.get(..8).unwrap_or(s)).unwrap_or(tl!("development build"));

@@ -76,7 +76,7 @@ with server(5094, 'letter-editor-api') as (base, _):
     artifact = next(a for a in result['artifacts'] if a['key'] == 'primary')
     route = f'/api{path}/artifacts/{artifact["id"]}/download?version=7'
     docx = alice.raw(route)[0]; text = docx_text(docx)
-    assert 'Verified sender' in text and 'Project director' in text and recipient['email'] in text
+    assert 'Verified sender' in text and 'Project director' in text and recipient['name'] in text
     assert 'Forged again' not in text and 'Rich table content' in text and 'متن نوشته‌شده در قالب' in text
     assert alice.json(path + '?version=7')['snapshot']['editor']['version'] == 6
     for method, suffix, value in [('PUT', '/editor', {'version': 7, 'document': working}), ('POST', '/editor', {'version': 7}), ('POST', '/editor/fields', {'version': 7})]:

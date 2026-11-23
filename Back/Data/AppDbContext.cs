@@ -33,10 +33,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             {
                 var previous = entry.OriginalValues;
                 var oldVersion = previous.GetValue<long>(nameof(StoredDocument.Version));
-                if (oldVersion != document.Version && !await HasRevisionAsync(document.Id, oldVersion, cancellationToken))
-                    DocumentRevisions.Add(new DocumentRevision { DocumentId = document.Id, Version = oldVersion, Title = previous.GetValue<string>(nameof(StoredDocument.Title)), Content = previous.GetValue<byte[]>(nameof(StoredDocument.Content)).ToArray(), CreatedAt = previous.GetValue<long>(nameof(StoredDocument.UpdatedAt)) });
+                var oldTitle = previous.GetValue<string>(nameof(StoredDocument.Title)) ?? "";
+                var oldContent = previous.GetValue<byte[]>(nameof(StoredDocument.Content)) ?? [];
+                if (oldVersion != document.Version && !await HasRevisionAsync(document.Id, oldVersion, cancellationToken)
+                    && (!SameBytes(oldContent, document.Content) || oldTitle != document.Title))
+                    DocumentRevisions.Add(new DocumentRevision { DocumentId = document.Id, Version = oldVersion, Title = oldTitle, Content = oldContent.ToArray(), CreatedAt = previous.GetValue<long>(nameof(StoredDocument.UpdatedAt)) });
             }
-            if (!await HasRevisionAsync(document.Id, document.Version, cancellationToken))
+            if (!await HasRevisionAsync(document.Id, document.Version, cancellationToken) && !await RedundantRevisionAsync(document, cancellationToken))
                 DocumentRevisions.Add(new DocumentRevision { DocumentId = document.Id, Version = document.Version, Title = document.Title, Content = document.Content.ToArray(), CreatedAt = document.UpdatedAt });
         }
         var saved = await base.SaveChangesAsync(cancellationToken);
@@ -54,6 +57,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         => DocumentRevisions.Local.Any(r => r.DocumentId == documentId && r.Version == version)
             ? Task.FromResult(true)
             : DocumentRevisions.AnyAsync(r => r.DocumentId == documentId && r.Version == version, ct);
+
+    private async Task<bool> RedundantRevisionAsync(StoredDocument document, CancellationToken ct)
+    {
+        var latest = await DocumentRevisions.AsNoTracking().Where(r => r.DocumentId == document.Id).OrderByDescending(r => r.Version).FirstOrDefaultAsync(ct);
+        return latest is not null && latest.Title == document.Title && SameBytes(latest.Content, document.Content);
+    }
+
+    private static bool SameBytes(byte[] left, byte[] right) => left.AsSpan().SequenceEqual(right);
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

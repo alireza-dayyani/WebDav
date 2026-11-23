@@ -49,6 +49,29 @@ public sealed class SearchRetentionTests
         await host.WithDatabase(async db => Assert.Single(await db.Documents.ToListAsync()));
     }
     [Fact]
+    public async Task Search_hides_trashed_documents_until_recovered()
+    {
+        await using var host = await EndpointHost.CreateAsync();
+        const string term = "recoverablefind";
+        await host.WithDatabase(async db =>
+        {
+            var doc = await db.Documents.SingleAsync();
+            doc.Content = JsonSerializer.SerializeToUtf8Bytes(new { body = new[] { new { text = term } } });
+            doc.Version++;
+            await db.SaveChangesAsync();
+        });
+        Assert.Equal(1, (await host.Client.GetFromJsonAsync<JsonElement>("/api/library?q=" + term)).GetProperty("total").GetInt32());
+        await host.WithDatabase(async db =>
+        {
+            db.TrashedDocuments.Add(new TrashedDocument { DocumentId = host.DocumentId });
+            await db.SaveChangesAsync();
+        });
+        Assert.Equal(0, (await host.Client.GetFromJsonAsync<JsonElement>("/api/library?q=" + term)).GetProperty("total").GetInt32());
+        Assert.Equal(HttpStatusCode.OK, (await host.Client.PostAsJsonAsync("/api/documents/" + host.DocumentId + "/recover", new { version = 2 })).StatusCode);
+        Assert.Equal(1, (await host.Client.GetFromJsonAsync<JsonElement>("/api/library?q=" + term)).GetProperty("total").GetInt32());
+    }
+
+    [Fact]
     public async Task Retention_requires_opt_in_current_policy_and_preserves_first_and_recent_versions()
     {
         await using var host = await EndpointHost.CreateAsync();

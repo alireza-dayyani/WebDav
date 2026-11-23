@@ -110,7 +110,7 @@ with server(5101, 'document-automation') as (base, data_dir):
     current = result['metadata']
     properties = alice.json(path + f'/properties?version={current["version"]}')['result']
     assert properties['core']['subject'] == 'Invoice' and 'INV-42' in json.dumps(properties['custom'])
-    alice.json(path + '/properties', 'PATCH', {'version': current['version'], 'values': {'language': 'fa-IR'}}, expected=400)
+    alice.json(path + '/properties', 'PATCH', {'version': current['version'], 'values': {'language': 'fa-IR'}}, expected=422)
     result = alice.json(path + '/comments', 'POST', {'version': current['version'], 'action': 'add', 'target': {'ref': 'b.0', 'start': 0, 'end': 8}, 'text': 'Check this name'})
     current = result['metadata']
     comments = alice.json(path + f'/comments?version={current["version"]}')['result']

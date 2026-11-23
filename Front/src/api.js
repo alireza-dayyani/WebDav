@@ -80,17 +80,9 @@ export async function previewPdf(path, options = {}) {
     const blob = pdfBlob(
       await api(path, { ...options, download: false, blob: true }),
     );
+    if (preview.closed) return;
     url = URL.createObjectURL(blob);
-    if (preview.closed) {
-      const fallback = window.open(url, "_blank", "noopener,noreferrer");
-      if (!fallback) {
-        const error = new Error("Allow pop-ups for this site to preview PDFs.");
-        error.code = "preview_blocked";
-        throw error;
-      }
-    } else {
-      preview.location.replace(url);
-    }
+    preview.location.replace(url);
     const timer = setInterval(() => {
       if (preview.closed) {
         clearInterval(timer);

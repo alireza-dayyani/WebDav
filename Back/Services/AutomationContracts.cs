@@ -42,7 +42,7 @@ public sealed record TokenCreate(string Name, string[] Scopes, int ExpiresInDays
 public sealed record VersionRequest(long Version);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record JobRequest(string Kind, ResourceRef? Source = null, JsonElement[]? Operations = null, string Format = "pdf", ResourceRef[]? Sources = null, string Separator = "paragraph", string? IdempotencyKey = null, ResourceRef? Template = null, RenderRecord[]? Records = null);
-public sealed record JobWork(byte[] Input, byte[][] Sources, JsonElement Parameters);
+public sealed record JobWork(byte[] Input, byte[][] Sources, JsonElement Parameters, ResourceRef[]? DocumentRefs = null, ResourceRef? Template = null);
 
 public static class Automation
 {
@@ -119,6 +119,20 @@ public static class Automation
             result.Add(document.Content);
         }
         return result.ToArray();
+    }
+
+    public static async Task EnsureJobSourcesAsync(AppDbContext db, string owner, string kind, JobWork work, CancellationToken ct)
+    {
+        if (kind == "renderBatch")
+        {
+            if (work.Template is null) return;
+            var template = await Studio.Find(db, owner, "template", work.Template.Id, ct, false);
+            if (template is null || template.Version != work.Template.Version)
+                throw new ConversionException("Template source is no longer available.", 404);
+            return;
+        }
+        if (work.DocumentRefs is { Length: > 0 })
+            await ReadSources(db, owner, work.DocumentRefs, ct);
     }
     public static object JobSummary(DocumentJob job) => new { job.Id, job.Kind, job.Status, job.Version, job.CreatedAt, job.UpdatedAt, job.Format, error = job.Error.Length == 0 ? null : job.Error,
         progress = new { stage = job.Status }, report = JsonSerializer.Deserialize<JsonElement>(job.Report), downloadUrl = job.Status == "succeeded" && job.Result.Length > 0 ? $"/api/document-jobs/{job.Id}/download?version={job.Version}" : null };
