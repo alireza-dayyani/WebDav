@@ -3,7 +3,7 @@
 # exports VERSION and NFPM_ARCH.
 #
 #   nfpm package -f packaging/linux/nfpm.yaml -p deb -t dist/release/
-name: inkstone
+name: papyrus
 arch: ${NFPM_ARCH}
 platform: linux
 version: ${VERSION}
@@ -12,7 +12,7 @@ version_schema: semver
 release: 1
 section: graphics
 priority: optional
-maintainer: ${INKSTONE_MAINTAINER}
+maintainer: ${PAPYRUS_MAINTAINER}
 vendor: Learning Machines LLC
 homepage: /
 license: MIT OR Apache-2.0
@@ -20,7 +20,7 @@ description: |-
   Open-source, native word processor that works the way Word users expect.
   The ribbon, styles, tables, track changes, references and mail merge; reads
   and writes .docx, opens .odt, .rtf, .html, .md and .txt, and exports PDF.
-  Includes inkstone-cli, a headless converter and command runner.
+  Includes papyrus-cli, a headless converter and command runner.
 
 # The binaries link only glibc and libgcc_s directly. Windowing (X11/Wayland, xkbcommon) and the
 # GPU (Vulkan, EGL/GL) are loaded at runtime, so they are dependencies/recommendations here
@@ -67,26 +67,26 @@ overrides:
       - espeak-ng
 
 contents:
-  - src: ${STAGE}/usr/bin/inkstone
-    dst: /usr/bin/inkstone
+  - src: ${STAGE}/usr/bin/papyrus
+    dst: /usr/bin/papyrus
     file_info: { mode: 0755 }
-  - src: ${STAGE}/usr/bin/inkstone-cli
-    dst: /usr/bin/inkstone-cli
+  - src: ${STAGE}/usr/bin/papyrus-cli
+    dst: /usr/bin/papyrus-cli
     file_info: { mode: 0755 }
   # Named one by one rather than as a tree of /usr/share: a tree would also own shared directories
   # such as /usr/share/mime, which openSUSE's filesystem package owns with other modes, and RPM
   # refuses to install a package that conflicts with it.
-  - src: ${STAGE}/usr/share/applications/ai.storyteller.inkstone.desktop
-    dst: /usr/share/applications/ai.storyteller.inkstone.desktop
-  - src: ${STAGE}/usr/share/mime/packages/ai.storyteller.inkstone.xml
-    dst: /usr/share/mime/packages/ai.storyteller.inkstone.xml
-  - src: ${STAGE}/usr/share/metainfo/ai.storyteller.inkstone.metainfo.xml
-    dst: /usr/share/metainfo/ai.storyteller.inkstone.metainfo.xml
+  - src: ${STAGE}/usr/share/applications/ai.storyteller.papyrus.desktop
+    dst: /usr/share/applications/ai.storyteller.papyrus.desktop
+  - src: ${STAGE}/usr/share/mime/packages/ai.storyteller.papyrus.xml
+    dst: /usr/share/mime/packages/ai.storyteller.papyrus.xml
+  - src: ${STAGE}/usr/share/metainfo/ai.storyteller.papyrus.metainfo.xml
+    dst: /usr/share/metainfo/ai.storyteller.papyrus.metainfo.xml
   - src: ${STAGE}/usr/share/icons/hicolor/
     dst: /usr/share/icons/hicolor/
     type: tree
-  - src: ${STAGE}/usr/share/doc/inkstone/
-    dst: /usr/share/doc/inkstone/
+  - src: ${STAGE}/usr/share/doc/papyrus/
+    dst: /usr/share/doc/papyrus/
     type: tree
 
 scripts:

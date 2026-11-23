@@ -1,4 +1,4 @@
-# Production roadmap for Inkstone
+# Production roadmap for Papyrus
 
 This is a development guide, not a claim of production capacity. The target is
 3,000–4,000 registered accounts; simultaneous editors and document sizes must be

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Tests/**;App_Data/**;**/App_Data/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RustCrate>inkstone-cli</RustCrate>
+    <RustExecutableName>papyrus-cli</RustExecutableName>
+    <RustExecutableName Condition="$([MSBuild]::IsOSPlatform('Windows'))">papyrus-cli.exe</RustExecutableName>
+    <RustBuiltName>inkstone-cli</RustBuiltName>
+    <RustBuiltName Condition="$([MSBuild]::IsOSPlatform('Windows'))">inkstone-cli.exe</RustBuiltName>
+    <RustProfileDirectory>debug</RustProfileDirectory>
+    <RustBuildArguments></RustBuildArguments>
+    <RustProfileDirectory Condition="'$(Configuration)' == 'Release'">release</RustProfileDirectory>
+    <RustBuildArguments Condition="'$(Configuration)' == 'Release'">--release</RustBuildArguments>
+    <RustBuiltPath>$(MSBuildProjectDirectory)/../Application/target/$(RustProfileDirectory)/$(RustBuiltName)</RustBuiltPath>
+    <RustDeployPath>$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\$(RustExecutableName)</RustDeployPath>
+  </PropertyGroup>
+  <Target Name="BuildRustConverter" BeforeTargets="Build" Condition="'$(SkipRustBuild)' != 'true'">
+    <Exec Command="cargo build --locked -p $(RustCrate) $(RustBuildArguments)" WorkingDirectory="$(MSBuildProjectDirectory)/../Application" />
+    <MakeDir Directories="$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)" />
+    <Copy SourceFiles="$(RustBuiltPath)" DestinationFiles="$(RustDeployPath)" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="PublishRustConverter" AfterTargets="Publish">
+    <Error Condition="!Exists('$(RustBuiltPath)')" Text="The $(RustProfileDirectory) Rust converter is missing. Build the converter for the deployment platform before publishing." />
+    <Copy SourceFiles="$(RustBuiltPath)" DestinationFiles="$(PublishDir)$(RustExecutableName)" />
+  </Target>
+  <ItemGroup>
+    <PackageReference Include="QRCoder" Version="1.8.1" />
+    <None Update="legal/**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.13.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.4" />
+  </ItemGroup>
+</Project>

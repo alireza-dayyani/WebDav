@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build, sign and (optionally) notarize the macOS release artifacts:
 #
-#   $DIST/inkstone-<version>-macos-<arch>.dmg          Inkstone.app on a drag-to-Applications DMG
-#   $DIST/inkstone-cli-<version>-macos-<arch>.zip      the headless CLI
+#   $DIST/papyrus-<version>-macos-<arch>.dmg          Papyrus.app on a drag-to-Applications DMG
+#   $DIST/papyrus-cli-<version>-macos-<arch>.zip      the headless CLI
 #
 # Usage: packaging/macos/package.sh [--arch universal|aarch64|x86_64] [--skip-build]
 #
@@ -39,9 +39,9 @@ export MACOSX_DEPLOYMENT_TARGET=11.0
 IDENTITY="${MACOS_SIGN_IDENTITY:--}"
 SHORT_VERSION="${VERSION%%-*}"
 WORK="$CARGO_TARGET_DIR/macos-package"
-APP="$WORK/Inkstone.app"
-DMG="$DIST/inkstone-$VERSION-macos-$ARCH.dmg"
-CLI_ZIP="$DIST/inkstone-cli-$VERSION-macos-$ARCH.zip"
+APP="$WORK/Papyrus.app"
+DMG="$DIST/papyrus-$VERSION-macos-$ARCH.dmg"
+CLI_ZIP="$DIST/papyrus-cli-$VERSION-macos-$ARCH.zip"
 
 NOTARIZE=0
 if [[ "$IDENTITY" = "-" ]]; then
@@ -52,18 +52,18 @@ else
   warn "macOS: APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID incomplete; signed but not notarized"
 fi
 
-echo "==> Inkstone $VERSION for macOS ($ARCH), identity: $IDENTITY, notarize: $NOTARIZE"
+echo "==> Papyrus $VERSION for macOS ($ARCH), identity: $IDENTITY, notarize: $NOTARIZE"
 
 # ---- build -------------------------------------------------------------------------------------
 if [[ "$SKIP_BUILD" = 0 ]]; then
   args=()
   for t in "${TARGETS[@]}"; do args+=(--target "$t"); done
-  (cd "$ROOT" && cargo build --release --locked -p inkstone -p inkstone-cli "${args[@]}")
+  (cd "$ROOT" && cargo build --release --locked -p papyrus -p papyrus-cli "${args[@]}")
 fi
 
 rm -rf "$WORK"
 mkdir -p "$WORK/bin"
-for bin in inkstone inkstone-cli; do
+for bin in papyrus papyrus-cli; do
   inputs=()
   for t in "${TARGETS[@]}"; do inputs+=("$CARGO_TARGET_DIR/$t/release/$bin"); done
   lipo -create -output "$WORK/bin/$bin" "${inputs[@]}"
@@ -112,16 +112,16 @@ notarize() {
   fi
 }
 
-# ---- Inkstone.app ----------------------------------------------------------------------------
+# ---- Papyrus.app ----------------------------------------------------------------------------
 echo "==> assembling $APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 # Executable and icon carry the display name (CFBundleExecutable / CFBundleIconFile).
-cp "$WORK/bin/inkstone" "$APP/Contents/MacOS/Inkstone"
-cp "$ROOT/assets/app-icon/inkstone.icns" "$APP/Contents/Resources/Inkstone.icns"
+cp "$WORK/bin/papyrus" "$APP/Contents/MacOS/Papyrus"
+cp "$ROOT/assets/app-icon/papyrus.icns" "$APP/Contents/Resources/Papyrus.icns"
 # Licences of the embedded craft-fonts fonts (only when built with CRAFT_FONTS_DIR).
 copy_docs "$APP/Contents/Resources"
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@SHORT_VERSION@/$SHORT_VERSION/g" \
-  -e "s/@BUILD_SHA@/${INKSTONE_BUILD_SHA:-unknown}/g" \
+  -e "s/@BUILD_SHA@/${PAPYRUS_BUILD_SHA:-unknown}/g" \
   "$HERE/Info.plist.in" >"$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist"
 printf 'APPL????' >"$APP/Contents/PkgInfo"
@@ -132,13 +132,13 @@ printf 'APPL????' >"$APP/Contents/PkgInfo"
 xattr -cr "$APP"
 # Sign inside-out: nested code first, then the bundle itself (no --deep on the final signature).
 # Today the only nested code is the main executable; frameworks/helpers would be signed here too.
-sign --options runtime --entitlements "$HERE/entitlements.plist" "$APP/Contents/MacOS/Inkstone"
+sign --options runtime --entitlements "$HERE/entitlements.plist" "$APP/Contents/MacOS/Papyrus"
 sign --options runtime --entitlements "$HERE/entitlements.plist" "$APP"
 codesign --verify --strict --deep --verbose=2 "$APP"
 
 if [[ "$NOTARIZE" = 1 ]]; then
-  ditto -c -k --keepParent "$APP" "$WORK/Inkstone-notarize.zip"
-  notarize "$WORK/Inkstone-notarize.zip"
+  ditto -c -k --keepParent "$APP" "$WORK/Papyrus-notarize.zip"
+  notarize "$WORK/Papyrus-notarize.zip"
   stapler_retry staple "$APP"
   stapler_retry validate "$APP"
   spctl --assess --type execute -vvv "$APP"
@@ -148,7 +148,7 @@ fi
 echo "==> building $DMG"
 STAGE="$WORK/dmg"
 mkdir -p "$STAGE"
-ditto "$APP" "$STAGE/Inkstone.app"
+ditto "$APP" "$STAGE/Papyrus.app"
 ln -s /Applications "$STAGE/Applications"
 # Finder window layout: background, icon size and positions (packaging/macos/dmg/README.md).
 mkdir -p "$STAGE/.background"
@@ -181,7 +181,7 @@ hdiutil_retry() {
 # (Finder location -1,-1), so the signed app failed `codesign --verify --deep --strict` inside the
 # mounted DMG and after copying it out (#525). The volume name has no version: .DS_Store finds the
 # background through an alias that includes it.
-hdiutil_retry create -srcfolder "$STAGE" -volname "Inkstone" -fs HFS+ -format UDZO \
+hdiutil_retry create -srcfolder "$STAGE" -volname "Papyrus" -fs HFS+ -format UDZO \
   -imagekey zlib-level=9 -ov "$DMG"
 sign "$DMG"
 codesign --verify --strict --verbose=2 "$DMG"
@@ -193,21 +193,21 @@ verify_dmg_app() {
   local dmg="$1" mount="$WORK/dmg-check" copy="$WORK/dmg-check-copy" rc=0
   mkdir -p "$mount" "$copy"
   hdiutil_retry attach -readonly -nobrowse -noautoopen -mountpoint "$mount" "$dmg" >/dev/null
-  echo "==> strict signature check of Inkstone.app inside $(basename "$dmg")"
-  codesign --verify --deep --strict --verbose=2 "$mount/Inkstone.app" || rc=1
+  echo "==> strict signature check of Papyrus.app inside $(basename "$dmg")"
+  codesign --verify --deep --strict --verbose=2 "$mount/Papyrus.app" || rc=1
   if [[ "$rc" = 0 ]]; then
-    ditto "$mount/Inkstone.app" "$copy/Inkstone.app" || rc=1
+    ditto "$mount/Papyrus.app" "$copy/Papyrus.app" || rc=1
   fi
   if [[ "$rc" = 0 ]]; then
     echo "==> strict signature check of a ditto copy of it"
-    codesign --verify --deep --strict --verbose=2 "$copy/Inkstone.app" || rc=1
+    codesign --verify --deep --strict --verbose=2 "$copy/Papyrus.app" || rc=1
   fi
   if [[ "$rc" = 0 ]] && [[ "$NOTARIZE" = 1 ]]; then
-    spctl --assess --type execute -vvv "$copy/Inkstone.app" || rc=1
+    spctl --assess --type execute -vvv "$copy/Papyrus.app" || rc=1
   fi
   if [[ "$rc" != 0 ]]; then
-    echo "error: Inkstone.app in $(basename "$dmg") fails strict verification; extended attributes:" >&2
-    xattr -lr "$mount/Inkstone.app" >&2 || true
+    echo "error: Papyrus.app in $(basename "$dmg") fails strict verification; extended attributes:" >&2
+    xattr -lr "$mount/Papyrus.app" >&2 || true
   fi
   hdiutil_retry detach "$mount" >/dev/null || hdiutil detach "$mount" -force >/dev/null || rc=1
   rm -rf "$copy"
@@ -223,17 +223,17 @@ fi
 
 # ---- CLI ---------------------------------------------------------------------------------------
 echo "==> building $CLI_ZIP"
-CLI_DIR="$WORK/inkstone-cli-$VERSION-macos-$ARCH"
+CLI_DIR="$WORK/papyrus-cli-$VERSION-macos-$ARCH"
 mkdir -p "$CLI_DIR"
-cp "$WORK/bin/inkstone-cli" "$CLI_DIR/"
+cp "$WORK/bin/papyrus-cli" "$CLI_DIR/"
 copy_docs "$CLI_DIR"
-sign --options runtime "$CLI_DIR/inkstone-cli"
-codesign --verify --strict --verbose=2 "$CLI_DIR/inkstone-cli"
+sign --options runtime "$CLI_DIR/papyrus-cli"
+codesign --verify --strict --verbose=2 "$CLI_DIR/papyrus-cli"
 rm -f "$CLI_ZIP"
 ditto -c -k --norsrc --noextattr --keepParent "$CLI_DIR" "$CLI_ZIP"
 # A bare Mach-O can't carry a stapled ticket; Gatekeeper looks the notarization up online.
 if [[ "$NOTARIZE" = 1 ]]; then notarize "$CLI_ZIP"; fi
 
-"$WORK/bin/inkstone-cli" --version
+"$WORK/bin/papyrus-cli" --version
 echo "==> done"
 ls -lh "$DMG" "$CLI_ZIP"

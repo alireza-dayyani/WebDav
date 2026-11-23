@@ -64,7 +64,7 @@ with server(5096, 'workspace-sequence') as (base, data):
     # Retention operates only on synthetic history deliberately aged in this disposable DB.
     history = alice.json('/documents/', 'POST', {'title': 'Retention fixture'}, expected=201)
     for _ in range(11): history = alice.json(f'/documents/{history["id"]}/content', 'PUT', {'version': history['version'], 'document': model})
-    with closing(sqlite3.connect(data / 'inkstone.db')) as db:
+    with closing(sqlite3.connect(data / 'papyrus.db')) as db:
         db.execute('UPDATE DocumentRevisions SET CreatedAt=0 WHERE UPPER(DocumentId)=?', (history['id'].upper(),)); db.commit()
     policy = alice.json('/retention/', 'PUT', {'version': 0, 'enabled': False, 'keepLatest': 5, 'days': 7})
     assert alice.json('/retention/preview', 'POST', {'version': policy['version']})['count'] == 6

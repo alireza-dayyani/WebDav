@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Data;
+namespace Papyrus.Web.Data;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<IdentityUser>(options)
 {
@@ -23,7 +23,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         await using var transaction = Database.CurrentTransaction is null ? await Database.BeginTransactionAsync(cancellationToken) : null;
-        await Inkstone.Web.Services.LibrarySearch.EnsureAsync(this, cancellationToken);
+        await Papyrus.Web.Services.LibrarySearch.EnsureAsync(this, cancellationToken);
         ChangeTracker.DetectChanges();
         var changed = ChangeTracker.Entries<StoredDocument>().Where(e => e.State is EntityState.Added or EntityState.Modified).Select(e => e.Entity).ToArray();
         foreach (var entry in ChangeTracker.Entries<StoredDocument>().Where(e => e.State is EntityState.Added or EntityState.Modified).ToArray())
@@ -45,9 +45,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         var saved = await base.SaveChangesAsync(cancellationToken);
         foreach (var document in changed)
         {
-            await Inkstone.Web.Services.LibrarySearch.IndexAsync(this, document, cancellationToken);
+            await Papyrus.Web.Services.LibrarySearch.IndexAsync(this, document, cancellationToken);
             var policy = await RetentionPolicies.AsNoTracking().SingleOrDefaultAsync(p => p.OwnerId == document.OwnerId && p.Enabled, cancellationToken);
-            if (policy is not null) await Inkstone.Web.Services.RevisionRetention.Eligible(this, document.OwnerId, policy, document.Id).ExecuteDeleteAsync(cancellationToken);
+            if (policy is not null) await Papyrus.Web.Services.RevisionRetention.Eligible(this, document.OwnerId, policy, document.Id).ExecuteDeleteAsync(cancellationToken);
         }
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return saved;

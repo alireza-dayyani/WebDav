@@ -4,7 +4,7 @@ Vue owns the account screens and document library. The Rust editor runs in an if
 
 The API stores complete native document models in SQLite outside the static web root. Every document query is scoped to its owner. Browser downloads and server exports use the Rust format implementation.
 
-The Rust workspace retains separate model, font, layout, format, rendering, engine, and UI crates, with proofing supplied by `craft-proof` (`storytold/craft-libs`, aliased as `inkstone-proof`). `cargo xtask layers` checks those boundaries. The CLI is the native integration boundary for server-side conversion; server deployments do not require Vue or a browser for file operations.
+The Rust workspace retains separate model, font, layout, format, rendering, engine, and UI crates, with proofing supplied by `craft-proof` (`storytold/craft-libs`, aliased as `papyrus-proof`). `cargo xtask layers` checks those boundaries. The CLI is the native integration boundary for server-side conversion; server deployments do not require Vue or a browser for file operations.
 
 On 2026-10-28, `find crates apps xtask -type f -name '*.rs' -print0 | xargs -0 wc -l` counted
 333,448 Rust source lines across 16 crates, 3 apps and `xtask`. `Cargo.toml` declares workspace
@@ -20,7 +20,7 @@ crate name links to its source tree.
 | L1 | [`doc`](../crates/doc/src) | 23,719 | Document model: stories, paragraphs, runs, tables, sections, styles, numbering, fields, notes, comments, revisions and equations; edit primitives and bidi |
 | L1 | [`fonts`](../crates/fonts/src) | 7,088 | Font database, metrics, outlines, HarfRust shaping, Word font substitution and OpenType MATH |
 | L1 (external) | [`craft-metafile`](https://github.com/storytold/craft-libs/tree/main/crates/metafile) | — | WMF, EMF and EMF+ reader shared with the other Craft apps: paths, pattern fills, bitmaps and text with their clips, placed into a picture frame for the renderers |
-| L1 (external) | [`craft-proof`](https://github.com/storytold/craft-libs/tree/main/crates/proof) (package alias `inkstone-proof`) | — | Proofing moved to craft-libs (CP1, 2026-11): fifteen spelling dictionaries: English (US, GB, CA), Polish, Portuguese, Italian, Croatian, Turkish, Russian, Czech, Indonesian and Spanish (Spain, Mexico, Latin America, Uruguay); language modules provide spelling, suggestions and grammar, while Bulgarian and German have hyphenation only. Its word lists and patterns are craft-i18n's `language-data/`, embedded from `CRAFT_I18N_DIR` at the commit in `craft-i18n.rev` (CI and releases set `CRAFT_I18N_REQUIRED=1`); without them English spelling falls back to an installed Hunspell English or craft-proof's built-in Moby list, and pattern hyphenation is off (Bulgarian, Turkish and Russian hyphenate by rule) |
+| L1 (external) | [`craft-proof`](https://github.com/storytold/craft-libs/tree/main/crates/proof) (package alias `papyrus-proof`) | — | Proofing moved to craft-libs (CP1, 2026-11): fifteen spelling dictionaries: English (US, GB, CA), Polish, Portuguese, Italian, Croatian, Turkish, Russian, Czech, Indonesian and Spanish (Spain, Mexico, Latin America, Uruguay); language modules provide spelling, suggestions and grammar, while Bulgarian and German have hyphenation only. Its word lists and patterns are craft-i18n's `language-data/`, embedded from `CRAFT_I18N_DIR` at the commit in `craft-i18n.rev` (CI and releases set `CRAFT_I18N_REQUIRED=1`); without them English spelling falls back to an installed Hunspell English or craft-proof's built-in Moby list, and pattern hyphenation is off (Bulgarian, Turkish and Russian hyphenate by rule) |
 | L2 | [`docbin`](../crates/docbin/src) | 8,815 | Word 97–2003 `.doc` reader (FIB, piece table, FKPs, SPRMs, stylesheet, lists, tables, notes, pictures) over a CFB container |
 | L2 | [`docx`](../crates/docx/src) | 37,376 | OOXML WordprocessingML reader/writer (Transitional and Strict), OMML, custom properties and preserved VBA parts |
 | L2 | [`formats`](../crates/formats/src) | 23,058 | TXT, Markdown, HTML, RTF, ODT and LaTeX import/export through the shared document model |
@@ -31,9 +31,9 @@ crate name links to its source tree.
 | L5 | [`mcp`](../crates/mcp/src) | 1,822 | MCP server exposing commands as tools; headless or bridged to the running app |
 | L5 | [`zotero`](../crates/zotero/src) | 2,372 | Zotero word-processor integration protocol answered against a `Session` |
 | L6 | [`ui-egui`](../crates/ui-egui/src) | 81,759 | Front end: ribbon, keytips, mini-toolbar, Backstage, canvas, rulers, panes, dialogs, i18n, themes, control channel and headless `ui_shot` example |
-| apps | [`inkstone`](../apps/inkstone/src) | 3,740 | Desktop app (eframe + wgpu; logging, window geometry and file associations) |
-| apps | [`inkstone-cli`](../apps/inkstone-cli/src) | 1,901 | `convert`, `text`, `inspect`, `run`, `commands`, `parity`, `mcp` and `zotero` |
-| apps | [`inkstone-web`](../apps/inkstone-web/src) | 1,159 | Browser build (eframe web runner, WebGPU with WebGL2 fallback) |
+| apps | [`papyrus`](../apps/papyrus/src) | 3,740 | Desktop app (eframe + wgpu; logging, window geometry and file associations) |
+| apps | [`papyrus-cli`](../apps/papyrus-cli/src) | 1,901 | `convert`, `text`, `inspect`, `run`, `commands`, `parity`, `mcp` and `zotero` |
+| apps | [`papyrus-web`](../apps/papyrus-web/src) | 1,159 | Browser build (eframe web runner, WebGPU with WebGL2 fallback) |
 | tooling | [`xtask`](../xtask/src) | 1,488 | Workspace maintenance and quality-gate commands, including `layers` |
 
 ## Data flow

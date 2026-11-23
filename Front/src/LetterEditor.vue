@@ -31,7 +31,7 @@ watch(locale, () => {
 });
 function save() {
   frame.value?.contentWindow?.postMessage(
-    { type: "inkstone:save-request" },
+    { type: "papyrus:save-request" },
     location.origin,
   );
 }
@@ -53,22 +53,20 @@ function message(event) {
     event.source !== frame.value?.contentWindow
   )
     return;
+  if (!event.data?.type?.startsWith("papyrus:")) return;
   const data = event.data;
-  if (data?.type === "inkstone:state") {
+  if (data.type === "papyrus:state") {
     dirty.value = data.dirty;
     pending.value = data.pending;
     if (!failed.value)
       status.value = t(
         pending.value ? "saving" : dirty.value ? "unsaved" : "saved",
       );
-  } else if (
-    data?.type === "inkstone:ready" ||
-    data?.type === "inkstone:saved"
-  ) {
+  } else if (data.type === "papyrus:ready" || data.type === "papyrus:saved") {
     record(data.document);
     failed.value = false;
     status.value = t("saved");
-  } else if (data?.type === "inkstone:error") {
+  } else if (data.type === "papyrus:error") {
     failed.value = true;
     status.value = errorMessage(data);
   }

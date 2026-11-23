@@ -2,11 +2,11 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using QRCoder;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public sealed record LetterPlan(LetterDraft Draft, WorkspaceItem? Template, WorkspaceItem? Sender, WorkspaceItem? Signature, WorkspaceItem? Logo,
     StoredDocument? Body, StoredDocument[] Attachments, RecipientSnapshot[] Recipients, ValidationIssue[] Issues, string Language);
@@ -173,7 +173,7 @@ public sealed class LetterComposer(AppDbContext db, DocumentConverter converter)
         if (plan.Logo is not null) images[config.Fields["Logo"]] = new(Convert.ToBase64String(plan.Logo.Content), 90, "Organization logo");
         if (draft.IncludeQrCode)
         {
-            using var data = QRCodeGenerator.GenerateQrCode($"Inkstone|{letter.Id}|{Number(letter, draft)}|{draft.Date}", QRCodeGenerator.ECCLevel.Q);
+            using var data = QRCodeGenerator.GenerateQrCode($"Papyrus|{letter.Id}|{Number(letter, draft)}|{draft.Date}", QRCodeGenerator.ECCLevel.Q);
             using var qr = new PngByteQRCode(data);
             images[config.Fields["QRCode"]] = new(Convert.ToBase64String(qr.GetGraphic(4)), 54, "Letter tracking QR code");
         }

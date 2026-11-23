@@ -7,7 +7,7 @@ export default defineConfig({
     lib: {
       entry: "src/editor-host-bridge.js",
       formats: ["iife"],
-      name: "InkstoneEditorHost",
+      name: "PapyrusEditorHost",
       fileName: () => "editor-host.js",
     },
     outDir: "public",

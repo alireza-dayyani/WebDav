@@ -1,14 +1,14 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public static class AutomationTokens
 {
-    public const string Claim = "inkstone:automation";
+    public const string Claim = "papyrus:automation";
     public static void MapAutomationTokens(this WebApplication app)
     {
         var routes = app.MapGroup("/api/automation-tokens").RequireAuthorization().WithTags("Automation tokens").WithMetadata(new BookmarkValuesRequest()).ValidateRequests();
@@ -52,8 +52,8 @@ public static class AutomationTokens
         if (needed.Length == 0 || needed.Any(scope => !scopes.Contains(scope) && !(scope.EndsWith(":read", StringComparison.Ordinal) && scopes.Contains(scope.Replace(":read", ":write", StringComparison.Ordinal)))))
         { context.Response.StatusCode = 403; return; }
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, token.OwnerId), new(ClaimTypes.Name, account.Email ?? "Automation"), new(Claim, token.Id.ToString()) };
-        claims.AddRange(scopes.Select(scope => new Claim("inkstone:scope", scope)));
-        context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "InkstoneToken"));
+        claims.AddRange(scopes.Select(scope => new Claim("papyrus:scope", scope)));
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "PapyrusToken"));
         await next(context);
     }
 
@@ -75,5 +75,5 @@ public static class AutomationTokens
     }
 
     public static bool HasScope(ClaimsPrincipal user, string area) => !user.HasClaim(c => c.Type == Claim)
-        || user.HasClaim("inkstone:scope", area + ":read") || user.HasClaim("inkstone:scope", area + ":write");
+        || user.HasClaim("papyrus:scope", area + ":read") || user.HasClaim("papyrus:scope", area + ":write");
 }

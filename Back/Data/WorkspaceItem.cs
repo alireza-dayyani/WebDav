@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Data;
+namespace Papyrus.Web.Data;
 
 // Private reusable resources and letter drafts. Letters stay outside the ordinary document library.
 public sealed class WorkspaceItem

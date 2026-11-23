@@ -1,4 +1,4 @@
-"""Shared subprocess helpers for inkstone-cli smoke tests."""
+"""Shared subprocess helpers for converter CLI smoke tests."""
 import os
 import subprocess
 import time
@@ -9,20 +9,20 @@ DEADLINE_SECONDS = 65
 
 
 def cli_executable():
-    override = os.environ.get("INKSTONE_CLI")
+    override = os.environ.get("PAPYRUS_CLI")
     if override and Path(override).is_file():
         return Path(override)
     for relative in (
-        "Back/bin/Debug/net10.0/inkstone-cli.exe",
-        "Back/bin/Release/net10.0/inkstone-cli.exe",
-        "Back/bin/Debug/net10.0/inkstone-cli",
-        "Application/target/debug/inkstone-cli.exe",
-        "Application/target/debug/inkstone-cli",
+        "Back/bin/Debug/net10.0/papyrus-cli.exe",
+        "Back/bin/Release/net10.0/papyrus-cli.exe",
+        "Back/bin/Debug/net10.0/papyrus-cli",
+        "Application/target/debug/papyrus-cli.exe",
+        "Application/target/debug/papyrus-cli",
     ):
         path = ROOT / relative
         if path.is_file():
             return path
-    raise RuntimeError("Build Back/Inkstone.Api.csproj (or cargo build -p inkstone-cli) before running this smoke.")
+    raise RuntimeError("Build Back/Papyrus.Api.csproj before running this smoke.")
 
 
 def run_cli(args, stdin=None, timeout=DEADLINE_SECONDS):

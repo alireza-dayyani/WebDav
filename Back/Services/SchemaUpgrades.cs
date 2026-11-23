@@ -1,7 +1,7 @@
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 // Existing databases are baselined in place. Each subsequent numbered upgrade is
 // transactional and recorded with its schema change; never recreate customer data.

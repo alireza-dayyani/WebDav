@@ -1,288 +1,288 @@
 {
-  "id": "inkstone",
-  "name": "Inkstone",
+  "id": "papyrus",
+  "name": "Papyrus",
   "upgradeCode": "075497F9-E861-45D0-9C7F-A74F8C34E6BA",
   "sources": [
-    "inkstone.wxs"
+    "papyrus.wxs"
   ],
-  "icon": "assets/app-icon/inkstone.ico",
+  "icon": "assets/app-icon/papyrus.ico",
   "localization": [],
   "extensions": [
     "UI",
     "Util"
   ],
   "payloads": [
-    "inkstone-cli.exe",
-    "inkstone.exe"
+    "papyrus-cli.exe",
+    "papyrus.exe"
   ],
   "registry": [
     [
       "-1",
-      "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\inkstone.exe",
+      "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\papyrus.exe",
       "",
-      "[#InkstoneExe]"
+      "[#PapyrusExe]"
     ],
     [
       "-1",
       "Software\\RegisteredApplications",
-      "Inkstone",
-      "Software\\Inkstone\\Capabilities"
+      "Papyrus",
+      "Software\\Papyrus\\Capabilities"
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities",
+      "Software\\Papyrus\\Capabilities",
       "ApplicationName",
-      "Inkstone"
+      "Papyrus"
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities",
+      "Software\\Papyrus\\Capabilities",
       "ApplicationDescription",
       "Write and design documents; open and save Word files."
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities",
+      "Software\\Papyrus\\Capabilities",
       "ApplicationIcon",
-      "\"[#InkstoneExe]\",0"
+      "\"[#PapyrusExe]\",0"
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe",
+      "Software\\Classes\\Applications\\papyrus.exe",
       "FriendlyAppName",
-      "Inkstone"
+      "Papyrus"
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\shell\\open\\command",
+      "Software\\Classes\\Applications\\papyrus.exe\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.Document\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.Document\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.docx\\OpenWithProgids",
-      "Inkstone.Document",
+      "Papyrus.Document",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".docx",
       ""
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities\\FileAssociations",
+      "Software\\Papyrus\\Capabilities\\FileAssociations",
       ".docx",
-      "Inkstone.Document"
+      "Papyrus.Document"
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.DocumentMacroEnabled\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.DocumentMacroEnabled\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.docm\\OpenWithProgids",
-      "Inkstone.DocumentMacroEnabled",
+      "Papyrus.DocumentMacroEnabled",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".docm",
       ""
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities\\FileAssociations",
+      "Software\\Papyrus\\Capabilities\\FileAssociations",
       ".docm",
-      "Inkstone.DocumentMacroEnabled"
+      "Papyrus.DocumentMacroEnabled"
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.Template\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.Template\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.dotx\\OpenWithProgids",
-      "Inkstone.Template",
+      "Papyrus.Template",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".dotx",
       ""
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities\\FileAssociations",
+      "Software\\Papyrus\\Capabilities\\FileAssociations",
       ".dotx",
-      "Inkstone.Template"
+      "Papyrus.Template"
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.TemplateMacroEnabled\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.TemplateMacroEnabled\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.dotm\\OpenWithProgids",
-      "Inkstone.TemplateMacroEnabled",
+      "Papyrus.TemplateMacroEnabled",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".dotm",
       ""
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities\\FileAssociations",
+      "Software\\Papyrus\\Capabilities\\FileAssociations",
       ".dotm",
-      "Inkstone.TemplateMacroEnabled"
+      "Papyrus.TemplateMacroEnabled"
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.LegacyDocument\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.LegacyDocument\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.doc\\OpenWithProgids",
-      "Inkstone.LegacyDocument",
+      "Papyrus.LegacyDocument",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".doc",
       ""
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities\\FileAssociations",
+      "Software\\Papyrus\\Capabilities\\FileAssociations",
       ".doc",
-      "Inkstone.LegacyDocument"
+      "Papyrus.LegacyDocument"
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.LegacyTemplate\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.LegacyTemplate\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.dot\\OpenWithProgids",
-      "Inkstone.LegacyTemplate",
+      "Papyrus.LegacyTemplate",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".dot",
       ""
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities\\FileAssociations",
+      "Software\\Papyrus\\Capabilities\\FileAssociations",
       ".dot",
-      "Inkstone.LegacyTemplate"
+      "Papyrus.LegacyTemplate"
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.RichText\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.RichText\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.rtf\\OpenWithProgids",
-      "Inkstone.RichText",
+      "Papyrus.RichText",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".rtf",
       ""
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities\\FileAssociations",
+      "Software\\Papyrus\\Capabilities\\FileAssociations",
       ".rtf",
-      "Inkstone.RichText"
+      "Papyrus.RichText"
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.OpenDocumentText\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.OpenDocumentText\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.odt\\OpenWithProgids",
-      "Inkstone.OpenDocumentText",
+      "Papyrus.OpenDocumentText",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".odt",
       ""
     ],
     [
       "-1",
-      "Software\\Inkstone\\Capabilities\\FileAssociations",
+      "Software\\Papyrus\\Capabilities\\FileAssociations",
       ".odt",
-      "Inkstone.OpenDocumentText"
+      "Papyrus.OpenDocumentText"
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.Markdown\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.Markdown\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.md\\OpenWithProgids",
-      "Inkstone.Markdown",
+      "Papyrus.Markdown",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".md",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Inkstone.PlainText\\shell\\open\\command",
+      "Software\\Classes\\Papyrus.PlainText\\shell\\open\\command",
       "",
-      "\"[#InkstoneExe]\" \"%1\""
+      "\"[#PapyrusExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.txt\\OpenWithProgids",
-      "Inkstone.PlainText",
+      "Papyrus.PlainText",
       ""
     ],
     [
       "-1",
-      "Software\\Classes\\Applications\\inkstone.exe\\SupportedTypes",
+      "Software\\Classes\\Applications\\papyrus.exe\\SupportedTypes",
       ".txt",
       ""
     ]

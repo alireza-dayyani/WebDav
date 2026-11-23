@@ -1,21 +1,21 @@
-# inkstone-cli integration protocol
+# Converter CLI integration protocol
 
-Inkstone's .NET API invokes **`inkstone-cli`** as a separate process. This document is the versioned contract between them. It describes what the API relies on today (`protocolVersion` **1**).
+Papyrus's .NET API invokes **`papyrus-cli`** as a separate process. This document is the versioned contract between them. It describes what the API relies on today (`protocolVersion` **1**).
 
 ## Roles
 
 | Component | Responsibility |
 | --- | --- |
 | ASP.NET Core (`DocumentConverter`) | Validates uploads, enforces pool limits, writes temp files, spawns CLI, parses reports, maps errors to HTTP |
-| `inkstone-cli` | Opens documents, runs engine commands, writes outputs |
+| `papyrus-cli` | Opens documents, runs engine commands, writes outputs |
 | Rust engine | Document semantics (not part of this wire protocol) |
 
 ## Process invocation
 
-- **Executable:** `Rust:Executable` in configuration, or `inkstone-cli` / `inkstone-cli.exe` next to `Inkstone.Api`.
-- **Working directory:** An isolated temp folder per job (`inkstone-convert-*`). All relative paths in scripts resolve inside it.
+- **Executable:** `Rust:Executable` in configuration, or `papyrus-cli` / `papyrus-cli.exe` next to `Papyrus.Api`.
+- **Working directory:** An isolated temp folder per job (`papyrus-convert-*`). All relative paths in scripts resolve inside it.
 - **No shell:** Arguments use `ProcessStartInfo.ArgumentList` (no string interpolation of user content).
-- **Timeouts:** `Conversion:PreflightTimeoutSeconds` (default **30**) for `document.preflight`; `Conversion:TimeoutSeconds` (default **60**) for imports, exports, and other commands (range 1–600). API request cancellation is linked to the same timer. On engine timeout the API kills the **entire process tree** and increments `inkstone.converter.timeouts`.
+- **Timeouts:** `Conversion:PreflightTimeoutSeconds` (default **30**) for `document.preflight`; `Conversion:TimeoutSeconds` (default **60**) for imports, exports, and other commands (range 1–600). API request cancellation is linked to the same timer. On engine timeout the API kills the **entire process tree** and increments `papyrus.converter.timeouts`.
 - **Concurrency:** `Conversion:ValidationSlots` and `Conversion:ConversionSlots` (default 2 each). `document.preflight` uses the validation pool; conversions and other commands use the conversion pool. Queue wait is at most 5 seconds (HTTP 429 `converter_busy`).
 
 ## Operations used by the API
@@ -40,10 +40,10 @@ Written to `job.json` in the job directory:
 
 Rules (enforced by CLI):
 
-- Maximum script size: **4 MiB** (`MAX_SCRIPT_BYTES` in `inkstone-cli`).
+- Maximum script size: **4 MiB** (`MAX_SCRIPT_BYTES` in `papyrus-cli`).
 - Maximum commands per script: **100 000**.
 - At most **64** save targets per script.
-- Command ids and params match the engine registry (`inkstone-cli commands --json`).
+- Command ids and params match the engine registry (`papyrus-cli commands --json`).
 
 The API serializes:
 
@@ -110,7 +110,7 @@ Archive checks use ZIP central-directory metadata before Rust runs. They do not 
 | Converter missing | 503 | — |
 | Timeout / overload | 422 / 429 | `converter_busy` |
 
-Failures and timeouts increment `inkstone.converter.failures` / `inkstone.converter.timeouts` with `pool` and `exit_code` labels only (no document or account ids).
+Failures and timeouts increment `papyrus.converter.failures` / `papyrus.converter.timeouts` with `pool` and `exit_code` labels only (no document or account ids).
 
 ## Version compatibility
 
@@ -120,8 +120,8 @@ Failures and timeouts increment `inkstone.converter.failures` / `inkstone.conver
 ## Verification
 
 ```powershell
-dotnet build Back/Inkstone.Api.csproj
-python Tests/inkstone_cli_protocol_smoke.py
+dotnet build Back/Papyrus.Api.csproj
+python Tests/papyrus_cli_protocol_smoke.py
 python Tests/converter_hostile_smoke.py
 ```
 

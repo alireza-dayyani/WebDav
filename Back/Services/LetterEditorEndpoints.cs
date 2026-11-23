@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public sealed class LetterEditorRequest;
 public sealed record SaveLetterEditor(long Version, JsonElement Document);

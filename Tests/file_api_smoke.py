@@ -40,16 +40,16 @@ class Client:
         return json.loads(body) if body else None
 
     def upload(self, name, content, expected=201, csrf=True):
-        boundary = 'inkstone-file-test-boundary'
+        boundary = 'papyrus-file-test-boundary'
         data = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode()
                 + content + f'\r\n--{boundary}--\r\n'.encode())
         body, _ = self.request('/api/documents/upload', 'POST', data, f'multipart/form-data; boundary={boundary}', expected, csrf)
         return json.loads(body) if body else None
 
 
-with tempfile.TemporaryDirectory(prefix='inkstone-files-test-') as data, open(ROOT / 'Tests/file-api.log', 'w', encoding='utf-8') as log:
+with tempfile.TemporaryDirectory(prefix='papyrus-files-test-') as data, open(ROOT / 'Tests/file-api.log', 'w', encoding='utf-8') as log:
     environment = {**os.environ, 'ASPNETCORE_ENVIRONMENT': 'Development', 'Storage__DataDirectory': data}
-    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Inkstone.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=environment, stdout=log, stderr=log)
+    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Papyrus.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=environment, stdout=log, stderr=log)
     try:
         guest = Client()
         for _ in range(120):
@@ -69,7 +69,7 @@ with tempfile.TemporaryDirectory(prefix='inkstone-files-test-') as data, open(RO
         assert 'multipart/form-data' in spec['paths']['/api/documents/upload']['post']['requestBody']['content']
         assert 'language' not in spec['components']['schemas']['DocumentTitle']['properties']
         swagger, _ = guest.request('/swagger/index.html')
-        assert b'Inkstone API' in swagger
+        assert b'Papyrus API' in swagger
         swagger_script, _ = guest.request('/swagger/index.js')
         assert b'X-CSRF-TOKEN' in swagger_script
         # Execute the package's actual initializer to verify that it can parse our interceptor.
@@ -155,7 +155,7 @@ with tempfile.TemporaryDirectory(prefix='inkstone-files-test-') as data, open(RO
         process.wait(timeout=20)
 
     environment['ASPNETCORE_ENVIRONMENT'] = 'Production'
-    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Inkstone.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=environment, stdout=log, stderr=log)
+    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Papyrus.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=environment, stdout=log, stderr=log)
     try:
         for _ in range(120):
             try:

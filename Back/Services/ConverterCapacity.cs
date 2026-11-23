@@ -2,7 +2,7 @@ using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public sealed class ConverterCapacityOptions
 {
@@ -19,9 +19,9 @@ public sealed class ConverterCapacityOptions
 /// <summary>OpenTelemetry counters for CLI failures; labels exclude document or account identifiers.</summary>
 public static class ConversionTelemetry
 {
-    private static readonly Meter Meter = new("Inkstone.Conversion");
-    private static readonly Counter<long> Timeouts = Meter.CreateCounter<long>("inkstone.converter.timeouts");
-    private static readonly Counter<long> Failures = Meter.CreateCounter<long>("inkstone.converter.failures");
+    private static readonly Meter Meter = new("Papyrus.Conversion");
+    private static readonly Counter<long> Timeouts = Meter.CreateCounter<long>("papyrus.converter.timeouts");
+    private static readonly Counter<long> Failures = Meter.CreateCounter<long>("papyrus.converter.failures");
 
     public static void RecordTimeout(bool preflight) =>
         Timeouts.Add(1, new KeyValuePair<string, object?>("pool", preflight ? "validation" : "conversion"));
@@ -47,10 +47,10 @@ public static class ConversionTelemetry
 /// <summary>Exports cannot occupy permits reserved for native save validation.</summary>
 public sealed class ConverterCapacity(IOptions<ConverterCapacityOptions> options) : IDisposable
 {
-    private static readonly Meter Meter = new("Inkstone.Conversion");
-    private static readonly Histogram<double> Wait = Meter.CreateHistogram<double>("inkstone.converter.queue_wait", "ms");
-    private static readonly UpDownCounter<long> Active = Meter.CreateUpDownCounter<long>("inkstone.converter.active");
-    private static readonly Counter<long> Rejected = Meter.CreateCounter<long>("inkstone.converter.rejected");
+    private static readonly Meter Meter = new("Papyrus.Conversion");
+    private static readonly Histogram<double> Wait = Meter.CreateHistogram<double>("papyrus.converter.queue_wait", "ms");
+    private static readonly UpDownCounter<long> Active = Meter.CreateUpDownCounter<long>("papyrus.converter.active");
+    private static readonly Counter<long> Rejected = Meter.CreateCounter<long>("papyrus.converter.rejected");
     private readonly SemaphoreSlim validation = new(options.Value.ValidationSlots, options.Value.ValidationSlots);
     private readonly SemaphoreSlim conversion = new(options.Value.ConversionSlots, options.Value.ConversionSlots);
 

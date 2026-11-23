@@ -68,7 +68,7 @@ for (const locale of ["en", "fa"])
       await mkdir(output, { recursive: true });
       await page.setViewportSize({ width, height: 1000 });
       await page.addInitScript(
-        (locale) => localStorage.setItem("inkstone.locale", locale),
+        (locale) => localStorage.setItem("papyrus.locale", locale),
         locale,
       );
       const errors = [];
@@ -181,7 +181,7 @@ for (const locale of ["en", "fa"])
     test(`${locale} ${width}: account screen`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.addInitScript(
-        (locale) => localStorage.setItem("inkstone.locale", locale),
+        (locale) => localStorage.setItem("papyrus.locale", locale),
         locale,
       );
       await mock(page, false);
@@ -199,8 +199,8 @@ for (const locale of ["en", "fa"])
         await page.setViewportSize({ width, height: 900 });
         await page.addInitScript(
           ({ locale, theme }) => {
-            localStorage.setItem("inkstone.locale", locale);
-            localStorage.setItem("inkstone.theme", theme);
+            localStorage.setItem("papyrus.locale", locale);
+            localStorage.setItem("papyrus.theme", theme);
           },
           { locale, theme },
         );

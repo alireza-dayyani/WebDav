@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Bring storytold/wordcraft changes into Application/ without losing Inkstone's own edits.
+"""Bring storytold/wordcraft changes into Application/ without losing Papyrus's own edits.
 
 Every upstream file is mapped to this workspace (paths under Application/, `wordcraft`
-identifiers renamed to `inkstone`) and three-way merged into the working copy: the base is the
+identifiers renamed to `papyrus`) and three-way merged into the working copy: the base is the
 mapped upstream file before the change, "theirs" the mapped file after it, and "ours" the local
 file. Local edits survive unless upstream changed the same lines; those files get conflict
 markers and are listed at the end.
@@ -46,7 +46,7 @@ EXCLUDED = [
 # Names that must keep the upstream spelling: links to the upstream project, commit references
 # and craft-i18n's catalog file name.
 PROTECTED = ["storytold/wordcraft", "wordcraft.tsv", "wordcraft@"]
-RENAMES = [("WORDCRAFT", "INKSTONE"), ("WordCraft", "Inkstone"), ("Wordcraft", "Inkstone"), ("wordcraft", "inkstone")]
+RENAMES = [("WORDCRAFT", "PAPYRUS"), ("WordCraft", "Papyrus"), ("Wordcraft", "Papyrus"), ("wordcraft", "papyrus")]
 
 
 def git(*args, check=True, root=None):
@@ -61,7 +61,7 @@ def git_text(*args, root=None):
 
 
 def map_path(p):
-    return p.replace("wordcraft", "inkstone")
+    return p.replace("wordcraft", "papyrus")
 
 
 def map_text(text):
@@ -155,7 +155,7 @@ def merge3(ours, base, theirs):
             f = Path(tmp) / name
             f.write_bytes(data.replace(b"\r\n", b"\n"))
             files.append(str(f))
-        r = subprocess.run(["git", "merge-file", "-L", "Inkstone", "-L", "upstream before", "-L", "upstream after", *files], capture_output=True)
+        r = subprocess.run(["git", "merge-file", "-L", "Papyrus", "-L", "upstream before", "-L", "upstream after", *files], capture_output=True)
         if r.returncode < 0:
             sys.exit(f"git merge-file failed: {r.stderr.decode(errors='replace')}")
         return Path(files[0]).read_bytes(), r.returncode
@@ -229,7 +229,7 @@ def print_report(report, dry):
                 print(f"  {f}")
     print(f"\n{len(report['unchanged'])} file(s) already matched upstream.")
     if report["conflict"]:
-        print("\nResolve the <<<<<<< Inkstone / >>>>>>> upstream after markers above, then build and test.")
+        print("\nResolve the <<<<<<< Papyrus / >>>>>>> upstream after markers above, then build and test.")
     if any(f.endswith("Cargo.lock") for k in ("merged", "conflict") for f in report[k]):
         print("Cargo.lock changed: run `cargo check --workspace` in Application/ to settle it.")
 

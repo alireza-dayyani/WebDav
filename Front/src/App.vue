@@ -415,7 +415,7 @@ async function submitDialog() {
 }
 function requestSave() {
   editorFrame.value?.contentWindow?.postMessage(
-    { type: "inkstone:save-request" },
+    { type: "papyrus:save-request" },
     location.origin,
   );
 }
@@ -423,11 +423,11 @@ function editorMessage(event) {
   if (
     event.origin !== location.origin ||
     event.source !== editorFrame.value?.contentWindow ||
-    !event.data?.type?.startsWith("inkstone:")
+    !event.data?.type?.startsWith("papyrus:")
   )
     return;
   const message = event.data;
-  if (message.type === "inkstone:state") {
+  if (message.type === "papyrus:state") {
     editorPending.value = message.pending;
     editorDirty.value = message.dirty || message.pending;
     if (!editorFailed.value)
@@ -436,12 +436,12 @@ function editorMessage(event) {
         : message.dirty
           ? t("unsaved")
           : t("saved");
-  } else if (message.type === "inkstone:saved") {
+  } else if (message.type === "papyrus:saved") {
     active.value = { ...active.value, ...message.document };
     editorStatus.value = t("saved");
     editorFailed.value = false;
     history.replaceState(null, "", `/#/documents/${message.document.id}`);
-  } else if (message.type === "inkstone:error") {
+  } else if (message.type === "papyrus:error") {
     editorStatus.value = errorMessage({
       status: message.status,
       message: message.message,
@@ -449,7 +449,7 @@ function editorMessage(event) {
       maxBytes: message.maxBytes,
     });
     editorFailed.value = true;
-  } else if (message.type === "inkstone:ready") {
+  } else if (message.type === "papyrus:ready") {
     if (message.document)
       active.value = { ...active.value, ...message.document };
     editorStatus.value = t("saved");
@@ -481,7 +481,7 @@ onBeforeUnmount(() => {
   <div v-else-if="!user" class="auth-layout">
     <aside class="auth-story">
       <a class="brand brand-light" href="/" dir="ltr"
-        ><img src="/icon.svg" alt="" />Inkstone<span class="brand-dot"
+        ><img src="/icon.svg" alt="" />Papyrus<span class="brand-dot"
           >·</span
         ></a
       >
@@ -570,7 +570,7 @@ onBeforeUnmount(() => {
       </form>
       <footer class="auth-footer">
         <span>{{ t("footer") }}</span
-        ><span dir="ltr">Inkstone · {{ new Date().getFullYear() }}</span>
+        ><span dir="ltr">Papyrus · {{ new Date().getFullYear() }}</span>
       </footer>
     </main>
   </div>
@@ -635,7 +635,7 @@ onBeforeUnmount(() => {
   <div v-if="user" v-show="!active && !activeLetter" class="workspace">
     <aside class="sidebar">
       <a class="brand" href="/" dir="ltr" @click.prevent="showDocuments()"
-        ><img src="/icon.svg" alt="" />Inkstone<span class="brand-dot"
+        ><img src="/icon.svg" alt="" />Papyrus<span class="brand-dot"
           >·</span
         ></a
       >

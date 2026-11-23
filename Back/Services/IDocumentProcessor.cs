@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 /// <summary>The engine boundary used by document automation and background jobs.</summary>
 public interface IDocumentProcessor

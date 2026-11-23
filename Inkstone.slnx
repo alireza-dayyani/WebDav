@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="Back/Inkstone.Api.csproj" />
-  <Project Path="Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj" />
-</Solution>

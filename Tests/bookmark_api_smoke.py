@@ -42,7 +42,7 @@ class Client:
         return json.loads(body) if body else None
 
     def upload(self, content):
-        boundary = 'inkstone-bookmark-test'
+        boundary = 'papyrus-bookmark-test'
         body = f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="template.docx"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode() + content + f'\r\n--{boundary}--\r\n'.encode()
         result, _ = self.request('/api/documents/upload', 'POST', body, 'multipart/form-data; boundary=' + boundary, 201)
         return json.loads(result)
@@ -71,9 +71,9 @@ def template(body=None):
     return content.getvalue()
 
 
-with tempfile.TemporaryDirectory(prefix='inkstone-bookmarks-') as data, open(ROOT / 'Tests/bookmark-api.log', 'w', encoding='utf-8') as log:
+with tempfile.TemporaryDirectory(prefix='papyrus-bookmarks-') as data, open(ROOT / 'Tests/bookmark-api.log', 'w', encoding='utf-8') as log:
     environment = {**os.environ, 'ASPNETCORE_ENVIRONMENT': 'Development', 'Storage__DataDirectory': data}
-    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Inkstone.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=environment, stdout=log, stderr=log)
+    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Papyrus.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=environment, stdout=log, stderr=log)
     try:
         guest = Client()
         for _ in range(120):

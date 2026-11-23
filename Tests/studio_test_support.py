@@ -57,7 +57,7 @@ class Client:
         return next(u for u in self.json('/letters/directory?search=' + name + '@example.test')['items'] if u['email'] == name + '@example.test')
 
     def multipart(self, path, name, data, fields=None, expected=201, csrf=True):
-        boundary = 'inkstone-studio-fixture'
+        boundary = 'papyrus-studio-fixture'
         body = b''
         for key, value in (fields or {}).items():
             body += f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode()
@@ -71,10 +71,10 @@ class Client:
 
 @contextlib.contextmanager
 def server(port, label):
-    with tempfile.TemporaryDirectory(prefix='inkstone-' + label + '-') as data, open(ROOT / 'Tests' / (label + '.log'), 'w', encoding='utf-8') as log:
+    with tempfile.TemporaryDirectory(prefix='papyrus-' + label + '-') as data, open(ROOT / 'Tests' / (label + '.log'), 'w', encoding='utf-8') as log:
         base = f'http://127.0.0.1:{port}'
         environment = {**os.environ, 'ASPNETCORE_ENVIRONMENT': 'Development', 'Storage__DataDirectory': data, 'BootstrapAdmin__File': str(Path(data) / 'no-bootstrap.json')}
-        api_dll = os.environ.get('INKSTONE_TEST_API_DLL', str(ROOT / 'Back/bin/Debug/net10.0/Inkstone.Api.dll'))
+        api_dll = os.environ.get('PAPYRUS_TEST_API_DLL', str(ROOT / 'Back/bin/Debug/net10.0/Papyrus.Api.dll'))
         process = subprocess.Popen(['dotnet', api_dll, '--urls', base], cwd=ROOT / 'Back', env=environment, stdout=log, stderr=log)
         try:
             for _ in range(120):

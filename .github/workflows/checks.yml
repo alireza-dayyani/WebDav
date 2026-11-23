@@ -1,4 +1,4 @@
-name: Inkstone checks
+name: Papyrus checks
 on:
   push:
   pull_request:
@@ -24,8 +24,18 @@ jobs:
       - run: node --test Tests/editor-host.test.mjs Tests/http-core.test.mjs Tests/locales.test.mjs Tests/library-api.test.mjs Tests/use-studio-workspace.test.mjs Tests/pdf-preview.test.mjs Tests/workspace-ui.test.mjs Tests/automation-ui.test.mjs Tests/studio-state.test.mjs
       - run: npm run build
         working-directory: Front
-      - run: dotnet build Back/Inkstone.Api.csproj
-      - run: dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true
-      - run: python3 Tests/inkstone_cli_protocol_smoke.py
+      - run: dotnet build Back/Papyrus.Api.csproj
+      - run: dotnet test Tests/Papyrus.Api.Tests/Papyrus.Api.Tests.csproj -p:SkipRustBuild=true
+      - run: python3 Tests/papyrus_cli_protocol_smoke.py
       - run: python3 Tests/converter_hostile_smoke.py
       - run: python3 Tests/backup_test.py
+  rust-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.95.0
+      - run: rustup target add wasm32-unknown-unknown
+      - run: cargo check --workspace --locked
+        working-directory: Application

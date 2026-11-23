@@ -1,11 +1,11 @@
-using static Inkstone.Web.Services.Ownership;
+using static Papyrus.Web.Services.Ownership;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
-using Inkstone.Web.Data;
-using Inkstone.Web.Services;
+using Papyrus.Web.Data;
+using Papyrus.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -18,11 +18,12 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 var dataDirectory = Path.GetFullPath(builder.Configuration["Storage:DataDirectory"] ?? "App_Data", builder.Environment.ContentRootPath);
 Directory.CreateDirectory(dataDirectory);
+var databaseFile = Path.Combine(dataDirectory, "papyrus.db");
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = FileLimits.MaxRequestBytes);
 builder.Services.Configure<IISServerOptions>(o => o.MaxRequestBodySize = FileLimits.MaxRequestBytes);
 builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = (long)FileLimits.MaxUploadMiB * FileLimits.MiB);
-builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite($"Data Source={Path.Combine(dataDirectory, "inkstone.db")}"));
-builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDirectory, "keys"))).SetApplicationName("Inkstone");
+builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite($"Data Source={databaseFile}"));
+builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDirectory, "keys"))).SetApplicationName("Papyrus");
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(o =>
 {
     o.User.RequireUniqueEmail = true;
@@ -33,7 +34,7 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(o =>
 }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
 builder.Services.ConfigureApplicationCookie(o =>
 {
-    o.Cookie.Name = "Inkstone.Session";
+    o.Cookie.Name = "Papyrus.Session";
     o.Cookie.HttpOnly = true;
     o.Cookie.SameSite = SameSiteMode.Lax;
     o.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
@@ -48,7 +49,7 @@ builder.Services.AddAntiforgery(o =>
 {
     o.HeaderName = "X-CSRF-TOKEN";
     o.SuppressReadingTokenFromFormBody = true;
-    o.Cookie.Name = "Inkstone.Csrf";
+    o.Cookie.Name = "Papyrus.Csrf";
     o.Cookie.SameSite = SameSiteMode.Strict;
     o.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
 });
@@ -80,7 +81,7 @@ builder.Services.AddSingleton<DocumentJobRunner>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<DocumentJobRunner>());
 builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
 {
-    document.Info.Title = "Inkstone API";
+    document.Info.Title = "Papyrus API";
     document.Info.Version = "v1";
     document.Info.Description = "Private document workspace. Register or log in to obtain a session cookie. Before every mutation, fetch /api/csrf with the same cookie jar and send its token in X-CSRF-TOKEN. Refresh the token after login/logout. Uploads accept multipart/form-data; downloads return file attachments. Documents are private by default; explicit reader/editor grants authorize cookie-session access. Sharing management and complete history remain owner-only; scoped tokens never inherit grants. Explicit /api/admin routes allow live-role-authorized administrators to inspect accounts, read any document by ID, assign administrator roles and change upload limits.";
     return Task.CompletedTask;
@@ -156,9 +157,11 @@ app.UseAuthorization();
 // additional constraint; authentication and resource authorization still apply.
 app.Use(async (context, next) =>
 {
-    if (context.Request.Headers.TryGetValue("X-Inkstone-Account", out var expected)
+    if (!context.Request.Headers.TryGetValue("X-Papyrus-Account", out var accountHeader))
+        accountHeader = default;
+    if (accountHeader.Count > 0
         && context.User.Identity?.IsAuthenticated == true
-        && !string.Equals(expected.ToString(), context.User.Identity.Name, StringComparison.OrdinalIgnoreCase))
+        && !string.Equals(accountHeader.ToString(), context.User.Identity.Name, StringComparison.OrdinalIgnoreCase))
     {
         await Results.Problem("The signed-in account changed. Sign in to the original account before saving this document.", statusCode: 403,
             extensions: new Dictionary<string, object?> { ["code"] = "account_changed" }).ExecuteAsync(context);
@@ -222,15 +225,15 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.UseSwaggerUI(o =>
     {
-        o.SwaggerEndpoint("/openapi/v1.json", "Inkstone API v1");
-        o.DocumentTitle = "Inkstone API";
+        o.SwaggerEndpoint("/openapi/v1.json", "Papyrus API v1");
+        o.DocumentTitle = "Papyrus API";
         o.UseRequestInterceptor("function (request) { request.credentials = 'same-origin'; if (['GET', 'HEAD'].includes((request.method || 'GET').toUpperCase())) return request; return fetch('/api/csrf', { credentials: 'same-origin' }).then(function (response) { if (!response.ok) throw new Error('Cannot obtain CSRF token'); return response.json(); }).then(function (data) { request.headers['X-CSRF-TOKEN'] = data.token; return request; }); }");
     });
 }
 app.MapGet("/api/health", () => TypedResults.Ok(new HealthResponse("ok"))).WithTags("Session");
 app.MapGet("/api/ready", async (AppDbContext db, CancellationToken ct) =>
 {
-    var executable = builder.Configuration["Rust:Executable"] ?? Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "inkstone-cli.exe" : "inkstone-cli");
+    var executable = builder.Configuration["Rust:Executable"] ?? Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "papyrus-cli.exe" : "papyrus-cli");
     try { return await db.Database.CanConnectAsync(ct) && File.Exists(executable) ? Results.Ok(new { status = "ready" }) : Results.StatusCode(503); }
     catch (Exception) when (!ct.IsCancellationRequested) { return Results.StatusCode(503); }
 }).WithTags("Session");

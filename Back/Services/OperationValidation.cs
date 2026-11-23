@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 /// <summary>Checks operation syntax and bounded values; the engine checks document-specific ranges and locks.</summary>
 public static class OperationValidation

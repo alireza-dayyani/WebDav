@@ -1,5 +1,5 @@
 """Real HTTP integration checks, using isolated accounts and a disposable SQLite database.
-Run: python Tests/api_smoke.py (build Back/Inkstone.Api.csproj first).
+Run: python Tests/api_smoke.py (build Back/Papyrus.Api.csproj first).
 """
 import http.cookiejar
 from concurrent.futures import ThreadPoolExecutor
@@ -25,7 +25,7 @@ class Client:
             self.token = self.request('/csrf')['token']
         data = json.dumps(body).encode() if body is not None else None
         headers = {'Content-Type': 'application/json'}
-        if account is not None: headers['X-Inkstone-Account'] = account
+        if account is not None: headers['X-Papyrus-Account'] = account
         if csrf and self.token:
             headers['X-CSRF-TOKEN'] = self.token
         req = urllib.request.Request(BASE + '/api' + path, data=data, headers=headers, method=method)
@@ -44,7 +44,7 @@ class Client:
 
 def start(directory, log):
     env = {**os.environ, 'ASPNETCORE_ENVIRONMENT': 'Development', 'Storage__DataDirectory': directory}
-    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Inkstone.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=env, stdout=log, stderr=log)
+    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Papyrus.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=env, stdout=log, stderr=log)
     for _ in range(120):
         try:
             Client().request('/health')
@@ -60,7 +60,7 @@ def stop(process):
     process.terminate()
     process.wait(timeout=20)
 
-with tempfile.TemporaryDirectory(prefix='inkstone-tests-') as data, open(ROOT / 'Tests/api-test.log', 'w', encoding='utf-8') as log:
+with tempfile.TemporaryDirectory(prefix='papyrus-tests-') as data, open(ROOT / 'Tests/api-test.log', 'w', encoding='utf-8') as log:
     process = start(data, log)
     try:
         guest, alice, bob = Client(), Client(), Client()

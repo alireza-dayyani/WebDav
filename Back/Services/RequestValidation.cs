@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public sealed class RequestValidationException(string field, string message, int status = 400) : Exception(message)
 {

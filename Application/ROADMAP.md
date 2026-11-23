@@ -1,4 +1,4 @@
-# Inkstone roadmap
+# Papyrus roadmap
 
 The current application combines a Vue frontend, a .NET 10 account and storage API, and the Rust browser editor.
 

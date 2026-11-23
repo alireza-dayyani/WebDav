@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public static class Ownership
 {

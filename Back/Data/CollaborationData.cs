@@ -1,4 +1,4 @@
-namespace Inkstone.Web.Data;
+namespace Papyrus.Web.Data;
 
 public sealed class DocumentGrant
 {

@@ -1,8 +1,8 @@
 using System.Text.Json;
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public sealed record ResourceRef(Guid Id, long Version);
 public sealed record TemplateConfig(string Kind, string Language, Dictionary<string, string> Fields, string[] RequiredFields);

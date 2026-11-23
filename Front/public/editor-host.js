@@ -39,7 +39,7 @@
         headers: {
           ...!form && options.body !== void 0 ? { "Content-Type": "application/json" } : {},
           ...method !== "GET" && method !== "HEAD" ? { "X-CSRF-TOKEN": token } : {},
-          ...scope ? { "X-Inkstone-Account": scope } : {},
+          ...scope ? { "X-Papyrus-Account": scope } : {},
           ...options.headers
         },
         body: form || options.body === void 0 ? options.body : typeof options.body === "string" ? options.body : JSON.stringify(options.body)
@@ -70,11 +70,11 @@
   });
   function notify(type, data = {}) {
     window.parent.postMessage(
-      { type: "inkstone:" + type, ...data },
+      { type: "papyrus:" + type, ...data },
       location.origin
     );
   }
-  window.inkstoneHost = {
+  window.papyrusHost = {
     async load() {
       try {
         const parameters = new URLSearchParams(location.search);
@@ -189,7 +189,7 @@
     }
   };
   window.addEventListener("message", (event) => {
-    if (event.origin === location.origin && event.source === window.parent && event.data?.type === "inkstone:save-request")
-      requested = true;
+    if (event.origin !== location.origin || event.source !== window.parent) return;
+    if (event.data?.type === "papyrus:save-request") requested = true;
   });
 })();

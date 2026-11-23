@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerate every app icon from assets/app-icon/inkstone.svg.
+# Regenerate every app icon from assets/app-icon/papyrus.svg.
 #
 # Needs: resvg (brew install resvg / cargo install resvg). On macOS, iconutil also writes the
 # .icns. The outputs are committed, so builds and packaging never need these tools.
@@ -8,8 +8,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIR="$ROOT/assets/app-icon"
-SVG="$DIR/inkstone.svg"
-ID="ai.storyteller.inkstone"
+SVG="$DIR/papyrus.svg"
+ID="ai.storyteller.papyrus"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -27,9 +27,9 @@ render() {
   return 0
 }
 
-render "$SVG" 1024 "$DIR/inkstone-1024.png"
-# Runtime window/Dock icon on macOS (embedded by apps/inkstone); other platforms use hicolor 256.
-render "$MAC" 512 "$DIR/inkstone-macos-512.png"
+render "$SVG" 1024 "$DIR/papyrus-1024.png"
+# Runtime window/Dock icon on macOS (embedded by apps/papyrus); other platforms use hicolor 256.
+render "$MAC" 512 "$DIR/papyrus-macos-512.png"
 
 # Linux hicolor theme.
 for s in 16 24 32 48 64 128 256 512; do
@@ -45,18 +45,18 @@ for s in 16 20 24 32 40 48 64 128 256; do
   render "$SVG" "$s" "$TMP/ico-$s.png"
   ICO_PNGS+=("$TMP/ico-$s.png")
 done
-(cd "$ROOT" && cargo run -q -p xtask -- ico "$DIR/inkstone.ico" "${ICO_PNGS[@]}")
+(cd "$ROOT" && cargo run -q -p xtask -- ico "$DIR/papyrus.ico" "${ICO_PNGS[@]}")
 
 # macOS .icns.
 if command -v iconutil >/dev/null; then
-  SET="$TMP/inkstone.iconset"
+  SET="$TMP/papyrus.iconset"
   mkdir -p "$SET"
   for s in 16 32 128 256 512; do
     render "$MAC" "$s" "$SET/icon_${s}x${s}.png"
     render "$MAC" $((s * 2)) "$SET/icon_${s}x${s}@2x.png"
   done
-  iconutil -c icns -o "$DIR/inkstone.icns" "$SET"
+  iconutil -c icns -o "$DIR/papyrus.icns" "$SET"
 else
-  echo "warning: iconutil not found (macOS only); inkstone.icns not regenerated" >&2
+  echo "warning: iconutil not found (macOS only); papyrus.icns not regenerated" >&2
 fi
 echo "icons written to $DIR"

@@ -1,5 +1,5 @@
 {
-  "about": "Fonts a document may ask for that their publisher offers for download at no charge, and the publisher's own download page. Inkstone links to the page; it never downloads, bundles or redistributes the fonts, and the user is responsible for the publisher's licence terms. 'family' also covers every name that continues it after a space: 'Aptos' covers 'Aptos Display'. 'restricted': true marks a font whose publisher limits who may use it or what for; the app then says so beside the download.",
+  "about": "Fonts a document may ask for that their publisher offers for download at no charge, and the publisher's own download page. Papyrus links to the page; it never downloads, bundles or redistributes the fonts, and the user is responsible for the publisher's licence terms. 'family' also covers every name that continues it after a space: 'Aptos' covers 'Aptos Display'. 'restricted': true marks a font whose publisher limits who may use it or what for; the app then says so beside the download.",
   "downloads": [
     {
       "family": "Aptos",

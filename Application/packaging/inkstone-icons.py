@@ -1,4 +1,4 @@
-"""Generate Inkstone's original geometric icon. Requires Pillow, only for asset maintenance."""
+"""Generate Papyrus's original geometric icon. Requires Pillow, only for asset maintenance."""
 from pathlib import Path
 from PIL import Image, ImageDraw
 
@@ -20,9 +20,9 @@ for path in icons.rglob('*'):
         icon(size).save(path)
     elif path.suffix == '.svg':
         path.write_text(svg, encoding='utf-8')
-icon(256).save(icons / 'inkstone.ico', sizes=[(16, 16), (32, 32), (48, 48), (128, 128), (256, 256)])
-icon(1024).save(icons / 'inkstone.icns')
+icon(256).save(icons / 'papyrus.ico', sizes=[(16, 16), (32, 32), (48, 48), (128, 128), (256, 256)])
+icon(1024).save(icons / 'papyrus.icns')
 background = root / 'packaging/macos/dmg/background.svg'
-background.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="660" height="400"><rect width="660" height="400" fill="#f1f3ed"/><text x="330" y="65" text-anchor="middle" font-family="serif" font-size="32" fill="#155e50">Inkstone</text><text x="330" y="330" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#55765f">Drag the app to Applications</text></svg>\n', encoding='utf-8')
+background.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="660" height="400"><rect width="660" height="400" fill="#f1f3ed"/><text x="330" y="65" text-anchor="middle" font-family="serif" font-size="32" fill="#155e50">Papyrus</text><text x="330" y="330" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#55765f">Drag the app to Applications</text></svg>\n', encoding='utf-8')
 Image.new('RGB', (660, 400), '#f1f3ed').save(background.with_suffix('.tiff'))
-print('Generated original Inkstone icons and packaging background.')
+print('Generated original Papyrus icons and packaging background.')

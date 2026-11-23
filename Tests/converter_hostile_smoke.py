@@ -1,4 +1,4 @@
-"""Converter boundary checks: archive validation at the API and inkstone-cli subprocess limits."""
+"""Converter boundary checks: archive validation at the API and converter CLI subprocess limits."""
 import json
 import tempfile
 from pathlib import Path
@@ -32,7 +32,7 @@ def main():
         upload_expect(client, "inflated.docx", zip_inflated_metadata(), 413)
         upload_expect(client, "broken.docx", b"not-a-zip", 422)
 
-        with tempfile.TemporaryDirectory(prefix="inkstone-hostile-cli-") as workspace:
+        with tempfile.TemporaryDirectory(prefix="papyrus-hostile-cli-") as workspace:
             source = Path(workspace) / "source.docx"
             destination = Path(workspace) / "result.json"
             source.write_bytes(good)

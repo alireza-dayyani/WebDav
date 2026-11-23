@@ -5,19 +5,19 @@ use wasm_bindgen_futures::JsFuture;
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = inkstoneHost, js_name = preferenceScope)]
+    #[wasm_bindgen(js_namespace = papyrusHost, js_name = preferenceScope)]
     pub fn preference_scope() -> String;
-    #[wasm_bindgen(js_namespace = inkstoneHost, catch, js_name = load)]
+    #[wasm_bindgen(js_namespace = papyrusHost, catch, js_name = load)]
     fn host_load() -> Result<js_sys::Promise, JsValue>;
-    #[wasm_bindgen(js_namespace = inkstoneHost, catch, js_name = save)]
+    #[wasm_bindgen(js_namespace = papyrusHost, catch, js_name = save)]
     fn host_save(json: &str, generation: &str, title: &str) -> Result<js_sys::Promise, JsValue>;
-    #[wasm_bindgen(js_namespace = inkstoneHost, js_name = bind)]
+    #[wasm_bindgen(js_namespace = papyrusHost, js_name = bind)]
     pub fn bind(generation: &str);
-    #[wasm_bindgen(js_namespace = inkstoneHost, js_name = takeSaveRequest)]
+    #[wasm_bindgen(js_namespace = papyrusHost, js_name = takeSaveRequest)]
     pub fn take_save_request() -> bool;
-    #[wasm_bindgen(js_namespace = inkstoneHost, js_name = canAutosave)]
+    #[wasm_bindgen(js_namespace = papyrusHost, js_name = canAutosave)]
     pub fn can_autosave() -> bool;
-    #[wasm_bindgen(js_namespace = inkstoneHost, js_name = state)]
+    #[wasm_bindgen(js_namespace = papyrusHost, js_name = state)]
     pub fn state(dirty: bool, pending: bool, generation: &str);
 }
 

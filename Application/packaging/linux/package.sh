@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Build and package Inkstone for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
+# Build and package Papyrus for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
 #
-#   $DIST/inkstone-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
-#   $DIST/inkstone-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
-#   $DIST/inkstone-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
-#   $DIST/inkstone-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
-#   $DIST/inkstone-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
+#   $DIST/papyrus-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
+#   $DIST/papyrus-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
+#   $DIST/papyrus-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
+#   $DIST/papyrus-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
+#   $DIST/papyrus-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
 #
 # Usage: packaging/linux/package.sh [--skip-build] [--formats "appimage deb rpm tar"]
 #
@@ -17,7 +17,7 @@ set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 HERE="$ROOT/packaging/linux"
-APP_ID=ai.storyteller.inkstone
+APP_ID=ai.storyteller.papyrus
 
 SKIP_BUILD=0
 FORMATS="appimage deb rpm tar"
@@ -37,16 +37,16 @@ case "$ARCH" in
   aarch64 | arm64) ARCH=aarch64; DEB_ARCH=arm64 ;;
   *) echo "unsupported architecture $ARCH" >&2; exit 2 ;;
 esac
-export INKSTONE_MAINTAINER="${INKSTONE_MAINTAINER:-Inkstone maintainers <inkstone@storyteller.ai>}"
-BASENAME="inkstone-$VERSION-linux-$ARCH"
+export PAPYRUS_MAINTAINER="${PAPYRUS_MAINTAINER:-Papyrus maintainers <papyrus@storyteller.ai>}"
+BASENAME="papyrus-$VERSION-linux-$ARCH"
 
-echo "==> Inkstone $VERSION for Linux $ARCH ($FORMATS)"
+echo "==> Papyrus $VERSION for Linux $ARCH ($FORMATS)"
 
 if [[ "$SKIP_BUILD" = 0 ]]; then
   if [[ -n "${CROSS_TARGET:-}" ]]; then
-    (cd "$ROOT" && cargo build --release --locked -p inkstone -p inkstone-cli --target "$CROSS_TARGET")
+    (cd "$ROOT" && cargo build --release --locked -p papyrus -p papyrus-cli --target "$CROSS_TARGET")
   else
-    (cd "$ROOT" && cargo build --release --locked -p inkstone -p inkstone-cli)
+    (cd "$ROOT" && cargo build --release --locked -p papyrus -p papyrus-cli)
   fi
 fi
 BIN="$CARGO_TARGET_DIR/${CROSS_TARGET:+$CROSS_TARGET/}release"
@@ -55,18 +55,18 @@ STAGE="$WORK/root"
 rm -rf "$WORK"
 
 # ---- stage an FHS tree (shared by every format) -------------------------------------------------
-install -Dm755 "$BIN/inkstone" "$STAGE/usr/bin/inkstone"
-install -Dm755 "$BIN/inkstone-cli" "$STAGE/usr/bin/inkstone-cli"
-"${CROSS_COMPILE:-}strip" "$STAGE/usr/bin/inkstone" "$STAGE/usr/bin/inkstone-cli" 2>/dev/null || true
+install -Dm755 "$BIN/papyrus" "$STAGE/usr/bin/papyrus"
+install -Dm755 "$BIN/papyrus-cli" "$STAGE/usr/bin/papyrus-cli"
+"${CROSS_COMPILE:-}strip" "$STAGE/usr/bin/papyrus" "$STAGE/usr/bin/papyrus-cli" 2>/dev/null || true
 install -Dm644 "$HERE/$APP_ID.desktop" "$STAGE/usr/share/applications/$APP_ID.desktop"
 install -Dm644 "$HERE/$APP_ID.mime.xml" "$STAGE/usr/share/mime/packages/$APP_ID.xml"
 mkdir -p "$STAGE/usr/share/metainfo"
-sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$INKSTONE_BUILD_DATE/g" \
+sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$PAPYRUS_BUILD_DATE/g" \
   "$HERE/$APP_ID.metainfo.xml.in" >"$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
 mkdir -p "$STAGE/usr/share/icons"
 cp -R "$ROOT/assets/app-icon/hicolor" "$STAGE/usr/share/icons/"
-mkdir -p "$STAGE/usr/share/doc/inkstone"
-copy_docs "$STAGE/usr/share/doc/inkstone"
+mkdir -p "$STAGE/usr/share/doc/papyrus"
+copy_docs "$STAGE/usr/share/doc/papyrus"
 
 if command -v desktop-file-validate >/dev/null; then
   desktop-file-validate "$STAGE/usr/share/applications/$APP_ID.desktop"
@@ -129,9 +129,9 @@ if has appimage; then
     printf '%s  %s\n' "$expected_sha" "$target" | sha256sum -c -
     return 0
   }
-  APPDIR="$WORK/Inkstone.AppDir"
+  APPDIR="$WORK/Papyrus.AppDir"
   cp -R "$STAGE" "$APPDIR"
-  ln -s usr/bin/inkstone "$APPDIR/AppRun"
+  ln -s usr/bin/papyrus "$APPDIR/AppRun"
   cp "$HERE/$APP_ID.desktop" "$APPDIR/$APP_ID.desktop"
   cp "$ROOT/assets/app-icon/hicolor/256x256/apps/$APP_ID.png" "$APPDIR/$APP_ID.png"
   ln -s "$APP_ID.png" "$APPDIR/.DirIcon"
@@ -162,7 +162,7 @@ if has appimage; then
   # each AppImage on GitHub Releases. `latest` is the newest published release that is not a
   # pre-release. A fork's builds point at its own releases through GITHUB_REPOSITORY.
   REPO="${GITHUB_REPOSITORY:-alireza-dayyani/WebDav}"
-  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|inkstone-*-linux-$ARCH.AppImage.zsync"
+  UPDATE_INFO="gh-releases-zsync|${REPO%%/*}|${REPO#*/}|latest|papyrus-*-linux-$ARCH.AppImage.zsync"
   # Extract-and-run: works without FUSE (containers, CI). The output embeds the pinned static
   # runtime, so users don't need libfuse2 either. With zsyncmake on the host (CI installs the zsync
   # package) appimagetool also writes the .zsync, into its working directory, hence the cd.
@@ -177,9 +177,9 @@ if has appimage; then
 fi
 
 if [[ -z "${CROSS_TARGET:-}" ]]; then
-  "$STAGE/usr/bin/inkstone-cli" --version
+  "$STAGE/usr/bin/papyrus-cli" --version
 elif [[ -n "${EMULATOR:-}" ]]; then
-  "$EMULATOR" "$STAGE/usr/bin/inkstone-cli" --version
+  "$EMULATOR" "$STAGE/usr/bin/papyrus-cli" --version
 fi
 echo "==> done"
 ls -lh "$DIST"

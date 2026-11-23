@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Text.Json;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public sealed class ConversionException(string message, int status = 422, string? code = null, long? maxBytes = null) : Exception(message)
 {
@@ -148,9 +148,9 @@ public sealed class DocumentConverter(IConfiguration configuration, ILogger<Docu
         string? directory = null;
         try
         {
-            var executable = configuration["Rust:Executable"] ?? Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "inkstone-cli.exe" : "inkstone-cli");
+            var executable = configuration["Rust:Executable"] ?? Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "papyrus-cli.exe" : "papyrus-cli");
             if (!File.Exists(executable)) throw new ConversionException("The document converter is unavailable. Build the backend with Rust enabled.", 503);
-            directory = Directory.CreateTempSubdirectory("inkstone-convert-").FullName;
+            directory = Directory.CreateTempSubdirectory("papyrus-convert-").FullName;
             var source = Path.Combine(directory, "source." + inputFormat);
             var destination = Path.Combine(directory, "result." + outputFormat);
             var start = new ProcessStartInfo(Path.GetFullPath(executable))

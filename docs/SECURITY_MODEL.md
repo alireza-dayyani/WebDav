@@ -5,7 +5,7 @@ The Vue workspace loads the Rust WASM editor in a **same-origin** iframe (`/edit
 ## Parent shell (workspace)
 
 - **Origin checks:** `App.vue` and `LetterEditor.vue` ignore `message` events unless `event.origin === location.origin` and `event.source` is the iframe's `contentWindow`.
-- **Bridge:** `editor-host-bridge.js` posts to `location.origin` only and accepts `inkstone:save-request` from `window.parent` on the same origin.
+- **Bridge:** `editor-host-bridge.js` posts to `location.origin` only and accepts `papyrus:save-request` from `window.parent` on the same origin.
 - **CSP:** ASP.NET sets `Content-Security-Policy` on every response (`Back/Program.cs`), including `default-src 'self'`, `wasm-unsafe-eval` for the editor bundle, `worker-src 'self' blob:`, and `frame-ancestors 'self'`.
 
 ## Editor iframe

@@ -47,7 +47,7 @@ class Api:
         return self.request('/api' + path, method, data)
 
     def upload(self, path, name, content, title):
-        boundary = 'inkstone-demo-' + secrets.token_hex(10)
+        boundary = 'papyrus-demo-' + secrets.token_hex(10)
         data = (f'--{boundary}\r\nContent-Disposition: form-data; name="title"\r\n\r\n{title}\r\n'
                 f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()
         data += content + f'\r\n--{boundary}--\r\n'.encode()
@@ -106,7 +106,7 @@ def seed_resources(api, person, recipients, extras):
     fa4 = ensure(templates, '[Demo] نامه رسمی فارسی A4', lambda: api.json('/templates/starter','POST',{'title':'[Demo] نامه رسمی فارسی A4','kind':'letter','paper':'A4'}))
     en = ensure(templates, '[Demo] English block letter', lambda: api.json('/templates/starter','POST',{'title':'[Demo] English block letter','kind':'letter','paper':'Letter'}))
     sender = ensure(senders,'مدیر پروژه (نمونه)',lambda: api.json('/letters/senders/','POST',{'version':0,'fullName':person[1],'title':'مدیر پروژه (نمونه)','organization':'سازمان آزمایشی اینکستون','address':'نشانی آزمایشی — بدون مقصد واقعی'}))
-    ensure(senders,'Project lead (demo)',lambda: api.json('/letters/senders/','POST',{'version':0,'fullName':person[2],'title':'Project lead (demo)','organization':'Inkstone demonstration team','address':'Example address, no delivery'}))
+    ensure(senders,'Project lead (demo)',lambda: api.json('/letters/senders/','POST',{'version':0,'fullName':person[2],'title':'Project lead (demo)','organization':'Papyrus demonstration team','address':'Example address, no delivery'}))
     signature = ensure(images,'[Demo] Synthetic signature 1',lambda: api.upload('/letters/images/','signature-1.png',demo_png(),'[Demo] Synthetic signature 1'))
     ensure(images,'[Demo] Synthetic signature 2',lambda: api.upload('/letters/images/','signature-2.png',demo_png(1),'[Demo] Synthetic signature 2'))
     logo = ensure(images,'[Demo] Original sample logo',lambda: api.upload('/letters/images/','logo.png',demo_png(logo=True),'[Demo] Original sample logo'))
@@ -174,7 +174,7 @@ def local_server(data):
     base = 'http://127.0.0.1:' + str(port)
     environment = {**os.environ,'ASPNETCORE_ENVIRONMENT':'Development','Storage__DataDirectory':str(data)}
     with open(data/'demo/seed.log','w',encoding='utf-8') as log:
-        process = subprocess.Popen(['dotnet',str(ROOT/'Back/bin/Debug/net10.0/Inkstone.Api.dll'),'--urls',base],cwd=ROOT/'Back',env=environment,stdout=log,stderr=log)
+        process = subprocess.Popen(['dotnet',str(ROOT/'Back/bin/Debug/net10.0/Papyrus.Api.dll'),'--urls',base],cwd=ROOT/'Back',env=environment,stdout=log,stderr=log)
         try:
             for _ in range(120):
                 if process.poll() is not None: raise RuntimeError('Demo API failed to start; see the private seed log.')
@@ -224,7 +224,7 @@ def seed(base, data):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--api-url',help='Use an already-running loopback Inkstone API instead of a temporary local process.')
+    parser.add_argument('--api-url',help='Use an already-running loopback Papyrus API instead of a temporary local process.')
     parser.add_argument('--data-directory',type=Path,default=Path(os.environ.get('Storage__DataDirectory',str(ROOT/'Back/App_Data'))))
     args = parser.parse_args()
     data = args.data_directory.resolve(); protect(data/'demo')

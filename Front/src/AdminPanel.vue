@@ -145,7 +145,7 @@ onMounted(initialize);
   <section class="admin-page" :class="{ embedded }">
     <header class="admin-header">
       <div>
-        <div class="eyebrow muted">Inkstone</div>
+        <div class="eyebrow muted">Papyrus</div>
         <h1>{{ t("administration") }}</h1>
       </div>
       <div class="header-tools">

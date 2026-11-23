@@ -1,10 +1,10 @@
 # Bosnian interface
 
-> **Last reviewed:** 2026-10-29 · **Last updated:** 2026-10-29 · **Change:** major (first version) · **Target:** Inkstone 0.7.0
+> **Last reviewed:** 2026-10-29 · **Last updated:** 2026-10-29 · **Change:** major (first version) · **Target:** Papyrus 0.7.0
 
 Choose **File › Options › Interface language › Bosanski**, or follow a Bosnian system display
 language (`bs-BA`, `bs_BA.UTF-8`, `bs-Latn-BA`). The catalog code is `bs`; `ui.language` with
-`{"value":"bs"}` selects it explicitly, and `INKSTONE_LANGUAGE=bs-BA` does the same for a headless
+`{"value":"bs"}` selects it explicitly, and `PAPYRUS_LANGUAGE=bs-BA` does the same for a headless
 screenshot or a launch while the preference is `auto`. Document text, command ids, CLI/MCP/control
 responses and file paths do not change.
 

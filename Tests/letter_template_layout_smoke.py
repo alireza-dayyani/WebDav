@@ -27,15 +27,15 @@ with server(5088,'letter-layout') as (base,_):
         expected = {'A5':(419.5276,595.2756),'A4':(595.2756,841.8898),'Letter':(612,792)}[paper]
         assert abs(section['pageW']-expected[0]) < .05 and abs(section['pageH']-expected[1]) < .05
         styles = {s['id']:s for s in model['styles']['styles']}
-        body = styles['InkstoneLetterBody']; heading = styles['InkstoneLetterHeading']
+        body = styles['PapyrusLetterBody']; heading = styles['PapyrusLetterHeading']
         assert body['chr']['font'] == ('B Zar' if persian else 'Times New Roman')
         assert body['chr']['fontCs'] == body['chr']['font'] and body['chr']['sizeCs'] == (13 if persian else 12)
         assert body['chr']['boldCs'] == persian and body['para']['bidi'] == persian
         assert heading['chr']['font'] == ('B Titr' if persian else 'Times New Roman')
         assert heading['chr']['size'] == (11 if persian else 12)
         if persian:
-            assert styles['InkstoneLetterCopies']['chr']['size'] == 9
-            assert styles['InkstoneLetterContact']['chr']['size'] == 7
+            assert styles['PapyrusLetterCopies']['chr']['size'] == 9
+            assert styles['PapyrusLetterContact']['chr']['size'] == 7
         else:
             assert section['marginLeft'] == section['marginRight'] == 72
             assert body['para']['spaceAfter'] == 12 and body['para']['lineSpacing'] == {'rule':'multiple','value':1.0}

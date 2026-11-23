@@ -3,7 +3,7 @@ import { languages, translate } from "./locales.js";
 import { maxUploadBytes, maxDocumentBytes } from "./fileLimits.js";
 let preferred;
 try {
-  preferred = localStorage.getItem("inkstone.locale");
+  preferred = localStorage.getItem("papyrus.locale");
 } catch {
   /* Storage may be disabled. */
 }
@@ -23,7 +23,7 @@ watch(
     document.documentElement.lang = value;
     document.documentElement.dir = language.value.dir;
     try {
-      localStorage.setItem("inkstone.locale", value);
+      localStorage.setItem("papyrus.locale", value);
     } catch {
       /* Storage may be disabled. */
     }

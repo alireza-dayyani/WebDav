@@ -1,11 +1,11 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public static class DocumentEndpoints
 {

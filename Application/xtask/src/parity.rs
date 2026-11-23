@@ -1,15 +1,15 @@
 //! `cargo xtask parity`: write docs/parity-checklist.md from the live command registry compared with the
-//! word-processor feature catalog (via `inkstone-cli parity --markdown`).
+//! word-processor feature catalog (via `papyrus-cli parity --markdown`).
 
 use std::path::Path;
 
 pub fn run(root: &Path) -> Result<(), String> {
     let out = crate::cargo()
-        .args(["run", "-q", "-p", "inkstone-cli", "--", "parity", "--markdown"])
+        .args(["run", "-q", "-p", "papyrus-cli", "--", "parity", "--markdown"])
         .output()
-        .map_err(|e| format!("cargo run inkstone-cli: {e}"))?;
+        .map_err(|e| format!("cargo run papyrus-cli: {e}"))?;
     if !out.status.success() {
-        return Err(format!("inkstone-cli parity failed:\n{}", String::from_utf8_lossy(&out.stderr)));
+        return Err(format!("papyrus-cli parity failed:\n{}", String::from_utf8_lossy(&out.stderr)));
     }
     let md = String::from_utf8_lossy(&out.stdout).to_string();
     let path = root.join("docs/parity-checklist.md");

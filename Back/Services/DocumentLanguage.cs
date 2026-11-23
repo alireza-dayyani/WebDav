@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 /// <summary>Reads a document language from file text and language tags. Callers do not choose it.</summary>
 public static class DocumentLanguage

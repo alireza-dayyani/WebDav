@@ -2,10 +2,10 @@ using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Security.Claims;
 using System.Text.Json;
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public sealed class DocumentJobRunner(IServiceScopeFactory scopes, ILogger<DocumentJobRunner> logger) : BackgroundService
 {

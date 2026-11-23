@@ -1,3 +1,6 @@
+Back/papyrus-cli
+Back/papyrus-cli.exe
+Application/scripts/__pycache__/
 **/bin/
 **/obj/
 **/.vs/
@@ -15,5 +18,5 @@ Scripts/__pycache__/
 Tests/generated/
 *.user
 *.suo
-*.inkstone-backup.zip
+*.papyrus-backup.zip
 Front/public/fonts/

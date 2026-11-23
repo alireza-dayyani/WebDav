@@ -1,7 +1,7 @@
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public sealed class UploadPolicyRequest;
 

@@ -1,23 +1,23 @@
-# Releasing Inkstone
+# Releasing Papyrus
 
 The canonical recipe is craftrules `release/playbook.md`;
-this file has the Inkstone specifics.
+this file has the Papyrus specifics.
 
 1. Bump the version on `main`: `cargo xtask version set 0.2.0` (the one source of truth is
    `[workspace.package] version`; the app shows it in `--version` and About, with the commit from
-   `INKSTONE_BUILD_SHA`).
+   `PAPYRUS_BUILD_SHA`).
 2. Merge `main` into `release` and push. `.github/workflows/release.yml` builds:
 
 | Platform | Artifacts | Signing |
 |---|---|---|
-| macOS | universal `Inkstone.app` in a `.dmg`, universal CLI zip | Developer ID + notarization (`APPLE_*` secrets) |
+| macOS | universal `Papyrus.app` in a `.dmg`, universal CLI zip | Developer ID + notarization (`APPLE_*` secrets) |
 | Windows | x64, x86 and arm64 `.msi` (one dual-scope package: per-user by default, needs no admin rights; "Everyone on this computer" installs per machine) + portable `.zip` | Azure Trusted Signing (`AZURE_*` secrets) |
 | Linux | x86_64 and aarch64 `.AppImage` (+ `.zsync` for AppImageUpdate), `.flatpak` bundle, `.deb`, `.rpm`, `.tar.gz`; Flathub manifest | checksums |
 | Linux riscv64 | `.tar.gz` (cross-compiled on `ubuntu-24.04`, glibc >= 2.39; CLI smoke-tested under QEMU) | checksums |
 | FreeBSD | x86_64 `.tar.gz` | checksums |
-| Web | `inkstone-web-<version>.zip` (static site: `index.html`, wasm, glue) | none |
+| Web | `papyrus-web-<version>.zip` (static site: `index.html`, wasm, glue) | none |
 
-3. The run drafts a GitHub Release `Inkstone v<version>` with `SHA256SUMS.txt`; review and publish it.
+3. The run drafts a GitHub Release `Papyrus v<version>` with `SHA256SUMS.txt`; review and publish it.
 
 Signing secrets live in the repository's `release` environment (deployment branch: `release` only),
 synced from the release manager's machine (`craftrules/release/signing-setup.md`). Missing secrets

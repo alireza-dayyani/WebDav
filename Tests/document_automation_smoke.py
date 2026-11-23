@@ -255,7 +255,7 @@ with server(5101, 'document-automation') as (base, data_dir):
     bearer(base, secret, '/documents/', expected=401)
     # Expiry is checked live, just like revocation. Only the disposable fixture database is edited.
     import sqlite3
-    with closing(sqlite3.connect(data_dir / 'inkstone.db')) as database:
+    with closing(sqlite3.connect(data_dir / 'papyrus.db')) as database:
         database.execute('UPDATE AutomationTokens SET ExpiresAt=0 WHERE Id=?', (write_token['id'].upper(),))
         assert database.total_changes == 1
         database.commit()
@@ -272,9 +272,9 @@ with server(5101, 'document-automation') as (base, data_dir):
     alice.json('/documents/' + race_doc['id'] + '/snapshot', expected=404)
     trashed = next(doc for doc in alice.json('/documents/trash') if doc['id'] == race_doc['id'])
     assert trashed['version'] == 3
-    with closing(sqlite3.connect(data_dir / 'inkstone.db')) as database:
+    with closing(sqlite3.connect(data_dir / 'papyrus.db')) as database:
         assert database.execute('SELECT COUNT(*) FROM DocumentRevisions WHERE DocumentId=?', (race_doc['id'].upper(),)).fetchone()[0] == 3
     alice.json('/documents/' + race_doc['id'] + '/purge?version=3', 'DELETE', expected=204)
-    with closing(sqlite3.connect(data_dir / 'inkstone.db')) as database:
+    with closing(sqlite3.connect(data_dir / 'papyrus.db')) as database:
         assert database.execute('SELECT COUNT(*) FROM DocumentRevisions WHERE DocumentId=?', (race_doc['id'].upper(),)).fetchone()[0] == 0
     print('PASS: structure/search, transactional edits, retry keys, DOCX tables and controls, formatting, images, comments, revisions, normalization, comparison, assembly, template batches, private previews/jobs, scoped tokens, revocation, CSRF and owner/version isolation.')

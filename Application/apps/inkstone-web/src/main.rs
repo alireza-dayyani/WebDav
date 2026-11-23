@@ -1,4 +1,4 @@
-//! Inkstone in the browser.
+//! Papyrus in the browser.
 //!
 //! Runs the same [`inkstone_ui_egui::WordApp`] as the desktop app through eframe's web runner
 //! (wgpu: WebGPU where available, WebGL2 otherwise). Build with `trunk build --release` from this
@@ -9,7 +9,7 @@
 //! Preferences (theme, interface size, editing options…) are kept by the settings store in
 //! `localStorage` (`prefs`).
 //! URL flags: `?webgl` forces WebGL2; `?sample` opens the sample document.
-//! Inkstone uses its authenticated parent bridge (`cloud`) for owner-scoped, versioned storage.
+//! Papyrus uses its authenticated parent bridge (`cloud`) for owner-scoped, versioned storage.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 #[cfg(any(target_arch = "wasm32", test))]

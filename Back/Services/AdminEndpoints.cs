@@ -1,10 +1,10 @@
 using System.Text;
 using System.Text.Json;
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public static class AdminEndpoints
 {

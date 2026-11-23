@@ -22,12 +22,12 @@ const { requestData } = createHttpClient({
 
 function notify(type, data = {}) {
   window.parent.postMessage(
-    { type: "inkstone:" + type, ...data },
+    { type: "papyrus:" + type, ...data },
     location.origin,
   );
 }
 
-window.inkstoneHost = {
+window.papyrusHost = {
   async load() {
     try {
       const parameters = new URLSearchParams(location.search);
@@ -147,10 +147,6 @@ window.inkstoneHost = {
 };
 
 window.addEventListener("message", (event) => {
-  if (
-    event.origin === location.origin &&
-    event.source === window.parent &&
-    event.data?.type === "inkstone:save-request"
-  )
-    requested = true;
+  if (event.origin !== location.origin || event.source !== window.parent) return;
+  if (event.data?.type === "papyrus:save-request") requested = true;
 });

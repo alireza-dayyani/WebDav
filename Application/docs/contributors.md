@@ -1,6 +1,6 @@
 # Contributors in the About window
 
-**About ▸ Contributors** credits everyone who contributed to Inkstone. This follows the shared craftrules standard
+**About ▸ Contributors** credits everyone who contributed to Papyrus. This follows the shared craftrules standard
 `standards/contributors.md`;
 this page is the local copy of the decision.
 
@@ -21,7 +21,7 @@ this page is the local copy of the decision.
   first or last commit date. The name toggle cycles **Username → Display name → Real name**; a
   missing name falls back to `@username`. Alphabetical sorting is case-insensitive and ignores the `@`.
 
-## In Inkstone
+## In Papyrus
 
 - The About window is `Dialog::About` in `crates/ui-egui/src/dialogs.rs` (Help, or Backstage ▸ About); `ui.dialog {"name":"contributors"}` opens the Contributors tab.
 

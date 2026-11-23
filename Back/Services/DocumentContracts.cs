@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 using Microsoft.AspNetCore.Http;
 
 public sealed record DocumentSnapshot(DocumentMetadata Metadata, JsonElement? Document);

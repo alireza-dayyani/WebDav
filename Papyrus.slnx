@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Back/Papyrus.Api.csproj" />
+  <Project Path="Tests/Papyrus.Api.Tests/Papyrus.Api.Tests.csproj" />
+</Solution>

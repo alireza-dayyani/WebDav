@@ -223,7 +223,7 @@ Scopes: `documents:read`, `documents:write`, `templates:read`, `templates:write`
 
 ## Verification
 
-Run `dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true` for C# unit and endpoint contract tests without launching Rust. See [the test guide](../Tests/Inkstone.Api.Tests/README.md) for isolation, coverage and the distinction from full-stack integration checks.
+Run `dotnet test Tests/Papyrus.Api.Tests/Papyrus.Api.Tests.csproj -p:SkipRustBuild=true` for C# unit and endpoint contract tests without launching Rust. See [the test guide](../Tests/Papyrus.Api.Tests/README.md) for isolation, coverage and the distinction from full-stack integration checks.
 
 Automation requests are validated before engine work. Invalid request contracts return 400, invalid operation values return 422, and excessive inputs return 413, with `application/problem+json` responses containing an `errors` map keyed by field/operation path. Malformed JSON or unmapped request properties also return 400 through ASP.NET binding. Positive versions, resource IDs, allowed fields, target/reference shapes, text/image limits, job-kind requirements and token scopes are checked at the API boundary. Actual Unicode offsets in the saved text, bookmark/control existence, protection and format fidelity are checked by the engine. Scope authorization treats route case and trailing slashes consistently with ASP.NET routing.
 

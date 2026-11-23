@@ -300,7 +300,7 @@ export function useStudioLetters(workspace, emit, { st, navigate, fields, requir
       } else if (action === "preview")
         await letterPreview(previewWindow);
       else {
-        const key = `inkstone.generation.${current.value.metadata.id}.${body.version}`;
+        const key = `papyrus.generation.${current.value.metadata.id}.${body.version}`;
         let nonce = sessionStorage.getItem(key);
         if (!nonce) {
           nonce = crypto.randomUUID();

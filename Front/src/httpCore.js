@@ -49,7 +49,7 @@ export function createHttpClient({
         ...(method !== "GET" && method !== "HEAD"
           ? { "X-CSRF-TOKEN": token }
           : {}),
-        ...(scope ? { "X-Inkstone-Account": scope } : {}),
+        ...(scope ? { "X-Papyrus-Account": scope } : {}),
         ...options.headers,
       },
       body:

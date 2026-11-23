@@ -2,7 +2,7 @@ using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public static class ApiTraffic
 {

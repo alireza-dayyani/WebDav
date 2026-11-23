@@ -1,16 +1,16 @@
-# Inkstone API
+# Papyrus API
 
 ASP.NET Core 10, Identity cookie authentication, SQLite document storage and the native Rust converter. Run from the repository root with:
 
 ```powershell
-dotnet run --project Back/Inkstone.Api.csproj
+dotnet run --project Back/Papyrus.Api.csproj
 ```
 
 No Vue server is needed to use the API. Development Swagger UI is at http://localhost:5080/swagger; the OpenAPI document is at http://localhost:5080/openapi/v1.json. Neither route is enabled in Production. Swagger's request interceptor refreshes CSRF tokens before each mutation, including registration and login.
 
-Run `dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true` from the repository root for unit and endpoint contract tests. The [test guide](../Tests/Inkstone.Api.Tests/README.md) describes the isolated SQLite/TestServer setup and real-converter integration coverage.
+Run `dotnet test Tests/Papyrus.Api.Tests/Papyrus.Api.Tests.csproj -p:SkipRustBuild=true` from the repository root for unit and endpoint contract tests. The [test guide](../Tests/Papyrus.Api.Tests/README.md) describes the isolated SQLite/TestServer setup and real-converter integration coverage.
 
-The API ↔ Rust boundary is documented in [CLI protocol](../docs/CLI_PROTOCOL.md). Run `python Tests/inkstone_cli_protocol_smoke.py` and `python Tests/converter_hostile_smoke.py` after `dotnet build Back/Inkstone.Api.csproj`.
+The API ↔ Rust boundary is documented in [CLI protocol](../docs/CLI_PROTOCOL.md). Run `python Tests/papyrus_cli_protocol_smoke.py` and `python Tests/converter_hostile_smoke.py` after `dotnet build Back/Papyrus.Api.csproj`.
 
 Editor `postMessage` boundaries and iframe sandboxing are summarized in [Security model](../docs/SECURITY_MODEL.md).
 
@@ -24,9 +24,9 @@ This allows up to four simultaneous CLI processes by default; tune both values t
 the machine's measured memory/CPU budget. Validation also serves template/letter
 preflight and is not a dedicated autosave-only queue. Both pools wait at most five
 seconds before returning 429 `converter_busy`.
-The `Inkstone.Conversion` .NET meter publishes `inkstone.converter.queue_wait`
-(milliseconds), `inkstone.converter.active`, `inkstone.converter.rejected`,
-`inkstone.converter.timeouts`, and `inkstone.converter.failures` (labels: `pool`,
+The `Papyrus.Conversion` .NET meter publishes `papyrus.converter.queue_wait`
+(milliseconds), `papyrus.converter.active`, `papyrus.converter.rejected`,
+`papyrus.converter.timeouts`, and `papyrus.converter.failures` (labels: `pool`,
 `exit_code` only).
 The only metric label is pool (`validation` or `conversion`); no account/document
 identifiers or content are emitted. Connect a .NET metrics collector to export
@@ -86,7 +86,7 @@ The separate [Templates and Letters API](STUDIO_API.md) documents template snaps
 
 Ordinary document routes require authentication and allow the owner or an explicit reader/editor grant. Readers can read and download; editors can also save and rename. History, Trash, sharing management and document copies remain owner-only. Scoped API tokens retain owner-only access. An inaccessible document returns 404. Mutations require CSRF protection; saves, renames and deletion also require the current version. Download's version parameter is optional and rejects a stale revision with 409. Upload creates a new document and never overwrites an existing one.
 
-Content saves are checked by the native document parser before replacing the stored revision. An unsupported model returns 422 and leaves the content and version unchanged; a busy converter can return 429. Valid submissions retain their original JSON, including extension metadata. Browser editor tabs also send the optional `X-Inkstone-Account` header with the email returned by `/api/account/me`; a different authenticated account returns 403 with code `account_changed`. This header only constrains an already authenticated request and never grants access.
+Content saves are checked by the native document parser before replacing the stored revision. An unsupported model returns 422 and leaves the content and version unchanged; a busy converter can return 429. Valid submissions retain their original JSON, including extension metadata. Browser editor tabs also send the optional `X-Papyrus-Account` header with the email returned by `/api/account/me`; a different authenticated account returns 403 with code `account_changed`. This header only constrains an already authenticated request and never grants access.
 
 New documents are blank. Their language comes from the text and language tags saved in the file, not from a request field. Upload formats: docx, odt, rtf, txt, md, json. Download formats: docx (default), pdf, txt, md, json. Unknown formats return 415. Failed conversions return 422; an unavailable converter returns 503. Uploads default to 10 MiB and may be configured by administrators from 1 to 128 MiB. Converted native models and exports have an independent 256 MiB processing ceiling. GET /api/documents/formats reports the current upload/model limits. Multipart transport includes an additional 1 MiB allowance; the file itself is still checked against the exact policy. Each conversion uses a temporary directory, a 60-second timeout, and one of two execution slots. Compressed uploads may contain at most 2048 entries, 256 MiB total expanded data, and 128 MiB per entry.
 
@@ -160,7 +160,7 @@ Invoke-WebRequest "$apiBase/api/documents/$($document.id)/download?format=docx&v
 
 ## Converter and storage configuration
 
-Normal dotnet builds build inkstone-cli from Application and copy it beside the API. dotnet publish copies it into the published output. Build for the deployment operating system and architecture. Set Rust__Executable to an absolute executable path to use an independently installed converter. Advanced builds may use -p:SkipRustBuild=true and supply that executable themselves.
+Normal dotnet builds build papyrus-cli from Application and copy it beside the API. dotnet publish copies it into the published output. Build for the deployment operating system and architecture. Set Rust__Executable to an absolute executable path to use an independently installed converter. Advanced builds may use -p:SkipRustBuild=true and supply that executable themselves.
 
 Set Storage__DataDirectory to change the private SQLite/key directory. Back up the database and keys together. No database, user file, signing key or converter build output belongs in source control.
 

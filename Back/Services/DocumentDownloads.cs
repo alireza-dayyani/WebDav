@@ -1,6 +1,6 @@
-using Inkstone.Web.Data;
+using Papyrus.Web.Data;
 
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 public static class DocumentDownloads
 {

@@ -7,13 +7,13 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleDisplayName</key>
-  <string>Inkstone</string>
+  <string>Papyrus</string>
   <key>CFBundleName</key>
-  <string>Inkstone</string>
+  <string>Papyrus</string>
   <key>CFBundleExecutable</key>
-  <string>Inkstone</string>
+  <string>Papyrus</string>
   <key>CFBundleIdentifier</key>
-  <string>ai.storyteller.inkstone</string>
+  <string>ai.storyteller.papyrus</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundlePackageType</key>
@@ -24,12 +24,12 @@
   <string>@SHORT_VERSION@</string>
   <key>CFBundleVersion</key>
   <string>@SHORT_VERSION@</string>
-  <key>InkstoneVersion</key>
+  <key>PapyrusVersion</key>
   <string>@VERSION@</string>
-  <key>InkstoneBuildCommit</key>
+  <key>PapyrusBuildCommit</key>
   <string>@BUILD_SHA@</string>
   <key>CFBundleIconFile</key>
-  <string>Inkstone</string>
+  <string>Papyrus</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.productivity</string>
   <!-- Must match MACOSX_DEPLOYMENT_TARGET in package.sh. Big Sur is the first release on
@@ -43,9 +43,9 @@
   <key>NSRequiresAquaSystemAppearance</key>
   <false/>
   <key>NSHumanReadableCopyright</key>
-  <string>Copyright © the Inkstone authors. MIT OR Apache-2.0.</string>
+  <string>Copyright © the Papyrus authors. MIT OR Apache-2.0.</string>
 
-  <!-- Documents Inkstone opens (system type declarations). -->
+  <!-- Documents Papyrus opens (system type declarations). -->
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>

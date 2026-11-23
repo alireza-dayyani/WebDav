@@ -46,7 +46,7 @@ class Client:
         return json.loads(body) if body else None
 
     def upload(self, name, content, expected=201, path='/documents/upload'):
-        boundary = 'inkstone-admin-upload-regression'
+        boundary = 'papyrus-admin-upload-regression'
         body = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode()
                 + content + f'\r\n--{boundary}--\r\n'.encode())
         return json.loads(self.request(path, 'POST', body, 'multipart/form-data; boundary=' + boundary, expected=expected))
@@ -54,7 +54,7 @@ class Client:
 
 def start(data, log):
     environment = {**os.environ, 'ASPNETCORE_ENVIRONMENT': 'Development', 'Storage__DataDirectory': str(data)}
-    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Inkstone.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=environment, stdout=log, stderr=log)
+    process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Papyrus.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=environment, stdout=log, stderr=log)
     for _ in range(160):
         try:
             Client().json('/health')
@@ -90,7 +90,7 @@ def image_document():
     return output.getvalue()
 
 
-with tempfile.TemporaryDirectory(prefix='inkstone-admin-tests-') as directory, open(ROOT / 'Tests/admin-api.log', 'w', encoding='utf-8') as log:
+with tempfile.TemporaryDirectory(prefix='papyrus-admin-tests-') as directory, open(ROOT / 'Tests/admin-api.log', 'w', encoding='utf-8') as log:
     data = Path(directory)
     bootstrap = data / 'bootstrap/superadmin.json'
     bootstrap.parent.mkdir()
@@ -129,7 +129,7 @@ with tempfile.TemporaryDirectory(prefix='inkstone-admin-tests-') as directory, o
 
         # Simulate the previous database schema; existing accounts/files and cookies must survive upgrade.
         stop(process)
-        with sqlite3.connect(data / 'inkstone.db') as database:
+        with sqlite3.connect(data / 'papyrus.db') as database:
             database.execute('DROP TABLE UploadPolicies')
         database.close()
         process = start(data, log)
@@ -154,7 +154,7 @@ with tempfile.TemporaryDirectory(prefix='inkstone-admin-tests-') as directory, o
         protected = find('root@example.test')
         alice.json(f'/admin/users/{protected["id"]}/admin', 'PUT', {'isAdmin': False, 'version': protected['version']}, expected=400)
 
-        proxy_environment = {**os.environ, 'INKSTONE_API_URL': BASE}
+        proxy_environment = {**os.environ, 'PAPYRUS_API_URL': BASE}
         proxy = subprocess.Popen(['node', str(ROOT / 'Front/node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '5181', '--strictPort'], cwd=ROOT / 'Front', env=proxy_environment, stdout=log, stderr=log)
         through_proxy = Client('http://127.0.0.1:5181', alice.opener)
         for _ in range(120):
@@ -192,9 +192,9 @@ with tempfile.TemporaryDirectory(prefix='inkstone-admin-tests-') as directory, o
         stop(process)
         bootstrap.write_text(json.dumps({'Email': 'admin-bob@example.test', 'Password': root_password}))
         collision_environment = {**os.environ, 'ASPNETCORE_ENVIRONMENT': 'Development', 'Storage__DataDirectory': str(data)}
-        process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Inkstone.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=collision_environment, stdout=log, stderr=log)
+        process = subprocess.Popen(['dotnet', str(ROOT / 'Back/bin/Debug/net10.0/Papyrus.Api.dll'), '--urls', BASE], cwd=ROOT / 'Back', env=collision_environment, stdout=log, stderr=log)
         assert process.wait(timeout=20) != 0, 'bootstrap must refuse to take over an existing ordinary account'
-        with sqlite3.connect(data / 'inkstone.db') as connection:
+        with sqlite3.connect(data / 'papyrus.db') as connection:
             elevated = connection.execute("SELECT COUNT(*) FROM AspNetUserRoles ur JOIN AspNetUsers u ON u.Id=ur.UserId JOIN AspNetRoles r ON r.Id=ur.RoleId WHERE u.Email=? AND r.Name='SuperAdmin'", ('admin-bob@example.test',)).fetchone()[0]
         connection.close()
         assert elevated == 0

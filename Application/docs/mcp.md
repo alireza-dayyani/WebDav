@@ -1,30 +1,30 @@
 # MCP server
 
-> **Last updated:** 2026-11-20 · `inkstone-cli mcp` starts only with both `--automation-read-root` and `--automation-write-root`, and `--connect` is refused until the desktop app confines its control channel (#7124, shared rule 18). Earlier: The bridge authenticates once per connection with the control token (`INKSTONE_CONTROL_TOKEN` or the app's token file). Earlier: The protocol core is the shared `craft-mcp-server` crate (#778); `click` and `key` list every argument they accept. Earlier: Keep the complete `type_text` description in one tool-table row; behavior wording unchanged. Delivery review fixes for #2596: unknown outcomes are not replayed, including image exports to a path; invalid UTF-8 returns a parse error without stopping later requests.
+> **Last updated:** 2026-11-20 · `papyrus-cli mcp` starts only with both `--automation-read-root` and `--automation-write-root`, and `--connect` is refused until the desktop app confines its control channel (#7124, shared rule 18). Earlier: The bridge authenticates once per connection with the control token (`PAPYRUS_CONTROL_TOKEN` or the app's token file). Earlier: The protocol core is the shared `craft-mcp-server` crate (#778); `click` and `key` list every argument they accept. Earlier: Keep the complete `type_text` description in one tool-table row; behavior wording unchanged. Delivery review fixes for #2596: unknown outcomes are not replayed, including image exports to a path; invalid UTF-8 returns a parse error without stopping later requests.
 
-Inkstone speaks the [Model Context Protocol](https://modelcontextprotocol.io) over stdio, so
+Papyrus speaks the [Model Context Protocol](https://modelcontextprotocol.io) over stdio, so
 MCP clients can write and edit documents.
 
 ```sh
-inkstone-cli mcp --automation-read-root /work/project --automation-write-root /work/project/out
+papyrus-cli mcp --automation-read-root /work/project --automation-write-root /work/project/out
 ```
 
 The server runs a headless session (no window) and starts only with both roots: see
 [Confining file access](#confining-file-access). Without them it stops with an error naming the
 two flags (shared rule 18, #7124).
 
-**`--connect` is refused for now.** `inkstone-cli mcp --connect HOST:PORT` bridged an MCP client to the
-running app (`inkstone --control 7981`), with clicks, keys and screenshots. The app doesn't
+**`--connect` is refused for now.** `papyrus-cli mcp --connect HOST:PORT` bridged an MCP client to the
+running app (`papyrus --control 7981`), with clicks, keys and screenshots. The app doesn't
 confine its control channel to automation roots yet, so the bridge would expose every file
 the user can reach; it stops with an error pointing to #3695 and #5819. Once the app confines the
 channel, connected mode will be allowed when the app has both roots set. The rest of this page
 describes the connected mode as it will work then.
 
 With `--connect`, the bridge authenticates once per connection with the app's control token, which
-it reads from `INKSTONE_CONTROL_TOKEN` or from the token file the app writes at start. It sends
+it reads from `PAPYRUS_CONTROL_TOKEN` or from the token file the app writes at start. It sends
 the token only to 127.0.0.1 and `localhost`; see [Token](control-protocol.md#token). The bridge serves even when the app
 isn't open yet: tool calls return "not reachable … will retry on each call" and succeed once the
-app's port opens (#4078), so a client that starts before Inkstone doesn't lose the server for
+app's port opens (#4078), so a client that starts before Papyrus doesn't lose the server for
 its whole session.
 
 ## Delivery failures
@@ -44,7 +44,7 @@ the backend, and the server continues with the next line instead of substituting
 in text or paths.
 
 The protocol core (framing, lifecycle, `tools/*`, `resources/*`) is the shared `craft-mcp-server`
-crate; Inkstone supplies the tools, resources and instructions. What that means for a client:
+crate; Papyrus supplies the tools, resources and instructions. What that means for a client:
 
 - A request line over 1 MiB gets `-32600` "request too large" and the server keeps serving.
 - A JSON-RPC batch holds at most 1000 messages; a larger one gets `-32600` "batch too large".
@@ -56,7 +56,7 @@ crate; Inkstone supplies the tools, resources and instructions. What that means 
 
 ## Scripts from the command line
 
-`inkstone-cli run --script job.json` (`--script -` reads standard input) runs the commands in a
+`papyrus-cli run --script job.json` (`--script -` reads standard input) runs the commands in a
 file, in order, exactly like repeated `--cmd`, and then saves. Use it to generate a DOCX and its
 PDF in one run without a window:
 
@@ -80,21 +80,21 @@ status 1, and nothing is saved. Every output is checked (known extension, folder
 
 ## Tracked changes by automation
 
-Tracked changes and comments are recorded under the session's user name ("Inkstone User" by
+Tracked changes and comments are recorded under the session's user name ("Papyrus User" by
 default). Set an author name so reviewers can tell automated edits from people's: start the headless server
-with `inkstone-cli mcp --automation-read-root DIR --automation-write-root DIR --author "Inkstone Automation"`, or run
-`file.setAuthor {"name": "Inkstone Automation"}`. Turn tracking on explicitly with
+with `papyrus-cli mcp --automation-read-root DIR --automation-write-root DIR --author "Papyrus Automation"`, or run
+`file.setAuthor {"name": "Papyrus Automation"}`. Turn tracking on explicitly with
 `review.trackChanges {"value": true}`; without `value` it toggles, which turns tracking *off* in
-a document that was saved with it on. `inkstone-cli run` takes `--author` too.
+a document that was saved with it on. `papyrus-cli run` takes `--author` too.
 
 ## Confining file access
 
 ```sh
-inkstone-cli mcp --automation-read-root /work/project --automation-write-root /work/project/out
+papyrus-cli mcp --automation-read-root /work/project --automation-write-root /work/project/out
 ```
 
 ```json
-{"mcpServers": {"inkstone": {"command": "/abs/path/target/release/inkstone-cli",
+{"mcpServers": {"papyrus": {"command": "/abs/path/target/release/papyrus-cli",
   "args": ["mcp", "--automation-read-root", "/work/project", "--automation-write-root", "/work/project/out"]}}}
 ```
 
@@ -118,7 +118,7 @@ config works across the suite) keep automation to the folders you give it:
   the name it is given, so that name must be inside the write root as well as what it leads to:
   a link outside the root pointing in is refused (#3735).
 - Read and write access are separate. Give the same folder twice for both; a root left out grants
-  none of its access at the engine level. `inkstone-cli mcp` needs both flags and refuses to start
+  none of its access at the engine level. `papyrus-cli mcp` needs both flags and refuses to start
   with one or neither.
 - A path is made absolute against the server's working directory, then its links are followed: a
   file (or folder) link that leads out of a root is outside it. For a file that doesn't exist yet,
@@ -133,8 +133,8 @@ config works across the suite) keep automation to the folders you give it:
 - The roots must be existing folders; a missing one stops the server with an error. Each flag is
   given once (`--flag <dir>` or `--flag=<dir>`).
 
-The flags confine the headless server. Inkstone's desktop app has no equivalent flags yet, so a
-running app (`inkstone --control`) is not confined, and `--connect` is refused, with the flags or
+The flags confine the headless server. Papyrus's desktop app has no equivalent flags yet, so a
+running app (`papyrus --control`) is not confined, and `--connect` is refused, with the flags or
 without (#3695, #5819).
 
 What the roots do not cover: commands that take no path (`text.insert`, `execute` of anything that
@@ -175,7 +175,7 @@ downloading on either: only the person's own click does; the app shows why inste
 
 Installing reads the pinned index of craft-i18n's language-packs-2 release (75 languages). For
 testing packs before they are released, set `CRAFT_LANGUAGE_PACK_INDEX` to another index (a URL or a path
-to an `index.json`) when starting Inkstone or `inkstone-cli`. That index isn't pinned, so the
+to an `index.json`) when starting Papyrus or `papyrus-cli`. That index isn't pinned, so the
 sha256 of each archive only matches what that index says: it catches a broken download, not a
 changed pack. `proof.packs` then returns `"index_override": "<url or path>"`, and the app shows the
 test source in File › Options › Language and on the bar's Install.
@@ -223,7 +223,7 @@ window, so they work on the document on screen.
 `insert.picture` and `insert.icon` leave the caret after the new picture, so typing next doesn't
 replace it; Picture Format commands (`picture.*`, `arrange.*`) still act on it.
 
-Resources: `inkstone://document` (inspect) and `inkstone://commands`.
+Resources: `papyrus://document` (inspect) and `papyrus://commands`.
 
 The acceptance test `crates/mcp/src/tests.rs` writes a formatted document using MCP only.
 

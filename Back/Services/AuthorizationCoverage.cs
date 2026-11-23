@@ -1,4 +1,4 @@
-namespace Inkstone.Web.Services;
+namespace Papyrus.Web.Services;
 
 /// <summary>Authorization audit manifest. Update when document, job, or workspace routes change.</summary>
 public static class AuthorizationCoverage

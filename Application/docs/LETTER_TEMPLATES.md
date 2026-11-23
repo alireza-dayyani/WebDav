@@ -1,6 +1,6 @@
 # Letter layouts
 
-These are original Inkstone layouts with reusable bookmarks, not copies of another organization's letterhead. `document.letterTemplate` creates them in the engine; the standalone API exposes the same operation through `POST /api/templates/starter`.
+These are original Papyrus layouts with reusable bookmarks, not copies of another organization's letterhead. `document.letterTemplate` creates them in the engine; the standalone API exposes the same operation through `POST /api/templates/starter`.
 
 ## Persian
 
@@ -13,7 +13,7 @@ The typography follows [Faragostar's administrative-letter guide](https://www.fa
 | Copies | B Zar | 9 pt | Bold |
 | Company name and contact details | B Zar | 7 pt | Bold |
 
-Persian starters default to A5. Choose A4 for longer correspondence. Both sizes use the same type hierarchy, RTL paragraphs, justified body text and explicit complex-script font properties. Margins, paragraph spacing and image sizes are Inkstone layout choices, rather than requirements stated by that article. Date/reference metadata is 9 pt; tracking and centered page numbers are 7 pt.
+Persian starters default to A5. Choose A4 for longer correspondence. Both sizes use the same type hierarchy, RTL paragraphs, justified body text and explicit complex-script font properties. Margins, paragraph spacing and image sizes are Papyrus layout choices, rather than requirements stated by that article. Date/reference metadata is 9 pt; tracking and centered page numbers are 7 pt.
 
 The B fonts are referenced by family name, **not bundled**: their redistribution rights have not been established. Install licensed B Zar and B Titr on machines rendering or editing these documents for matching glyphs. Without them the engine uses available fallbacks, including bundled OFL Noto Naskh Arabic; DOCX retains the requested B-family names and sizes. No B-font files or assets from the article are included.
 

@@ -3,16 +3,16 @@
   <?ifndef HasCraftFontLicences ?>
   <?define HasCraftFontLicences=0 ?>
   <?endif?>
-  <Package Name="Inkstone" Manufacturer="Learning Machines LLC" Version="$(var.Version)" UpgradeCode="075497F9-E861-45D0-9C7F-A74F8C34E6BA" Scope="perUserOrMachine" Compressed="yes" Language="1033">
-    <SummaryInformation Description="Inkstone word processor" Manufacturer="Learning Machines LLC" />
+  <Package Name="Papyrus" Manufacturer="Learning Machines LLC" Version="$(var.Version)" UpgradeCode="075497F9-E861-45D0-9C7F-A74F8C34E6BA" Scope="perUserOrMachine" Compressed="yes" Language="1033">
+    <SummaryInformation Description="Papyrus word processor" Manufacturer="Learning Machines LLC" />
     <?include $(sys.SOURCEFILEDIR)install-policy.wxi?>
     <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
          (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
-    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of Inkstone is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of Papyrus is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <Icon Id="InkstoneIcon.ico" SourceFile="$(var.IconPath)" />
-    <Property Id="ARPPRODUCTICON" Value="InkstoneIcon.ico" />
+    <Icon Id="PapyrusIcon.ico" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="PapyrusIcon.ico" />
     <Property Id="ARPURLINFOABOUT" Value="/" />
     <Property Id="ARPURLUPDATEINFO" Value="/" />
     <Property Id="ARPHELPLINK" Value="/" />
@@ -20,31 +20,31 @@
     <!-- Installer UI (#198): WixUI_Minimal is welcome + license, progress, then a finish page so
          people can see the install worked. Its dialogs and bitmaps are WiX's own
          (WixToolset.UI.wixext); package.ps1 builds the license RTF from LICENSE-MIT and
-         LICENSE-APACHE. The finish page offers to launch Inkstone (ticked by default) through
+         LICENSE-APACHE. The finish page offers to launch Papyrus (ticked by default) through
          WixShellExec (WixToolset.Util.wixext); silent installs (/qn) never show it. -->
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
-    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Inkstone" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Papyrus" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
-    <Property Id="WixShellExecTarget" Value="[#InkstoneExe]" />
-    <CustomAction Id="LaunchInkstone" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixShellExec" Impersonate="yes" Return="ignore" />
+    <Property Id="WixShellExecTarget" Value="[#PapyrusExe]" />
+    <CustomAction Id="LaunchPapyrus" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixShellExec" Impersonate="yes" Return="ignore" />
     <UI>
       <ui:WixUI Id="WixUI_Minimal" />
-      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchInkstone" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchPapyrus" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
     </UI>
 
     <StandardDirectory Id="ProgramFiles6432Folder">
-      <Directory Id="CraftSuiteFolder" Name="Inkstone">
-        <Directory Id="INSTALLFOLDER" Name="Inkstone" />
+      <Directory Id="CraftSuiteFolder" Name="Papyrus">
+        <Directory Id="INSTALLFOLDER" Name="Papyrus" />
       </Directory>
     </StandardDirectory>
     <StandardDirectory Id="ProgramMenuFolder" />
 
-    <Feature Id="Main" Title="Inkstone" Level="1">
+    <Feature Id="Main" Title="Papyrus" Level="1">
       <ComponentGroupRef Id="AppNotices" />
       <?if $(var.HasCraftFontLicences) = 1 ?>
       <ComponentGroupRef Id="CraftFontLicences" />
       <?endif?>
-      <ComponentGroupRef Id="InkstoneFiles" />
+      <ComponentGroupRef Id="PapyrusFiles" />
     </Feature>
   </Package>
 
@@ -57,92 +57,92 @@
       <Files Include="$(var.DocsDir)\**" />
     </ComponentGroup>
     <?endif?>
-    <ComponentGroup Id="InkstoneFiles" Directory="INSTALLFOLDER">
-      <Component Id="InkstoneApp" Guid="855DCEC6-9285-444F-9382-9654B83B34F6">
-        <File Id="InkstoneExe" Source="$(var.BinDir)\inkstone.exe" KeyPath="yes">
-          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="Inkstone" Description="Inkstone word processor" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="InkstoneIcon.ico" IconIndex="0" />
+    <ComponentGroup Id="PapyrusFiles" Directory="INSTALLFOLDER">
+      <Component Id="PapyrusApp" Guid="855DCEC6-9285-444F-9382-9654B83B34F6">
+        <File Id="PapyrusExe" Source="$(var.BinDir)\papyrus.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="Papyrus" Description="Papyrus word processor" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="PapyrusIcon.ico" IconIndex="0" />
         </File>
 
-        <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\inkstone.exe" Value="[#InkstoneExe]" Type="string" />
-      <RegistryValue Root="HKMU" Key="Software\Inkstone" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\papyrus.exe" Value="[#PapyrusExe]" Type="string" />
+      <RegistryValue Root="HKMU" Key="Software\Papyrus" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
       </Component>
 
-      <!-- File associations (#295). Each document type gets a Inkstone ProgId (name, icon, open
-           command) and is listed under the extension's OpenWithProgids, so Inkstone shows in
-           Explorer's "Open with". The Word, RTF and ODT types are also Inkstone's Capabilities
+      <!-- File associations (#295). Each document type gets a Papyrus ProgId (name, icon, open
+           command) and is listed under the extension's OpenWithProgids, so Papyrus shows in
+           Explorer's "Open with". The Word, RTF and ODT types are also Papyrus's Capabilities
            (RegisteredApplications), so it appears in Settings › Default apps, where the user
            makes it the default (File › Options › General opens that page). Nothing here sets an
            extension's default: the installer never takes over .docx from another app. Markdown and
            plain text are only "Open with" candidates. Removed again on uninstall. -->
-      <Component Id="InkstoneFileTypes" Guid="EFF89E6A-F9B8-49F9-B3AE-E243347484B4">
-        <RegistryValue Root="HKMU" Key="Software\RegisteredApplications" Name="Inkstone" Value="Software\Inkstone\Capabilities" Type="string" KeyPath="yes" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities" Name="ApplicationName" Value="Inkstone" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities" Name="ApplicationDescription" Value="Write and design documents; open and save Word files." Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities" Name="ApplicationIcon" Value="&quot;[#InkstoneExe]&quot;,0" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe" Name="FriendlyAppName" Value="Inkstone" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
+      <Component Id="PapyrusFileTypes" Guid="EFF89E6A-F9B8-49F9-B3AE-E243347484B4">
+        <RegistryValue Root="HKMU" Key="Software\RegisteredApplications" Name="Papyrus" Value="Software\Papyrus\Capabilities" Type="string" KeyPath="yes" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities" Name="ApplicationName" Value="Papyrus" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities" Name="ApplicationDescription" Value="Write and design documents; open and save Word files." Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities" Name="ApplicationIcon" Value="&quot;[#PapyrusExe]&quot;,0" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe" Name="FriendlyAppName" Value="Papyrus" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
 
-        <ProgId Id="Inkstone.Document" Description="Word Document" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.Document\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.docx\OpenWithProgids" Name="Inkstone.Document" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".docx" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities\FileAssociations" Name=".docx" Value="Inkstone.Document" Type="string" />
+        <ProgId Id="Papyrus.Document" Description="Word Document" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.Document\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.docx\OpenWithProgids" Name="Papyrus.Document" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".docx" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities\FileAssociations" Name=".docx" Value="Papyrus.Document" Type="string" />
 
-        <ProgId Id="Inkstone.DocumentMacroEnabled" Description="Word Macro-Enabled Document" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.DocumentMacroEnabled\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.docm\OpenWithProgids" Name="Inkstone.DocumentMacroEnabled" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".docm" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities\FileAssociations" Name=".docm" Value="Inkstone.DocumentMacroEnabled" Type="string" />
+        <ProgId Id="Papyrus.DocumentMacroEnabled" Description="Word Macro-Enabled Document" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.DocumentMacroEnabled\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.docm\OpenWithProgids" Name="Papyrus.DocumentMacroEnabled" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".docm" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities\FileAssociations" Name=".docm" Value="Papyrus.DocumentMacroEnabled" Type="string" />
 
-        <ProgId Id="Inkstone.Template" Description="Word Template" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.Template\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.dotx\OpenWithProgids" Name="Inkstone.Template" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".dotx" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities\FileAssociations" Name=".dotx" Value="Inkstone.Template" Type="string" />
+        <ProgId Id="Papyrus.Template" Description="Word Template" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.Template\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.dotx\OpenWithProgids" Name="Papyrus.Template" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".dotx" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities\FileAssociations" Name=".dotx" Value="Papyrus.Template" Type="string" />
 
-        <ProgId Id="Inkstone.TemplateMacroEnabled" Description="Word Macro-Enabled Template" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.TemplateMacroEnabled\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.dotm\OpenWithProgids" Name="Inkstone.TemplateMacroEnabled" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".dotm" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities\FileAssociations" Name=".dotm" Value="Inkstone.TemplateMacroEnabled" Type="string" />
+        <ProgId Id="Papyrus.TemplateMacroEnabled" Description="Word Macro-Enabled Template" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.TemplateMacroEnabled\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.dotm\OpenWithProgids" Name="Papyrus.TemplateMacroEnabled" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".dotm" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities\FileAssociations" Name=".dotm" Value="Papyrus.TemplateMacroEnabled" Type="string" />
 
-        <ProgId Id="Inkstone.LegacyDocument" Description="Legacy Word Document" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.LegacyDocument\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.doc\OpenWithProgids" Name="Inkstone.LegacyDocument" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".doc" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities\FileAssociations" Name=".doc" Value="Inkstone.LegacyDocument" Type="string" />
+        <ProgId Id="Papyrus.LegacyDocument" Description="Legacy Word Document" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.LegacyDocument\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.doc\OpenWithProgids" Name="Papyrus.LegacyDocument" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".doc" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities\FileAssociations" Name=".doc" Value="Papyrus.LegacyDocument" Type="string" />
 
-        <ProgId Id="Inkstone.LegacyTemplate" Description="Legacy Word Template" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.LegacyTemplate\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.dot\OpenWithProgids" Name="Inkstone.LegacyTemplate" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".dot" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities\FileAssociations" Name=".dot" Value="Inkstone.LegacyTemplate" Type="string" />
+        <ProgId Id="Papyrus.LegacyTemplate" Description="Legacy Word Template" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.LegacyTemplate\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.dot\OpenWithProgids" Name="Papyrus.LegacyTemplate" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".dot" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities\FileAssociations" Name=".dot" Value="Papyrus.LegacyTemplate" Type="string" />
 
-        <ProgId Id="Inkstone.RichText" Description="Rich Text Document" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.RichText\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.rtf\OpenWithProgids" Name="Inkstone.RichText" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".rtf" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities\FileAssociations" Name=".rtf" Value="Inkstone.RichText" Type="string" />
+        <ProgId Id="Papyrus.RichText" Description="Rich Text Document" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.RichText\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.rtf\OpenWithProgids" Name="Papyrus.RichText" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".rtf" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities\FileAssociations" Name=".rtf" Value="Papyrus.RichText" Type="string" />
 
-        <ProgId Id="Inkstone.OpenDocumentText" Description="OpenDocument Text" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.OpenDocumentText\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.odt\OpenWithProgids" Name="Inkstone.OpenDocumentText" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".odt" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Inkstone\Capabilities\FileAssociations" Name=".odt" Value="Inkstone.OpenDocumentText" Type="string" />
+        <ProgId Id="Papyrus.OpenDocumentText" Description="OpenDocument Text" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.OpenDocumentText\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.odt\OpenWithProgids" Name="Papyrus.OpenDocumentText" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".odt" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Papyrus\Capabilities\FileAssociations" Name=".odt" Value="Papyrus.OpenDocumentText" Type="string" />
 
-        <ProgId Id="Inkstone.Markdown" Description="Markdown Document" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.Markdown\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.md\OpenWithProgids" Name="Inkstone.Markdown" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".md" Value="" Type="string" />
+        <ProgId Id="Papyrus.Markdown" Description="Markdown Document" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.Markdown\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.md\OpenWithProgids" Name="Papyrus.Markdown" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".md" Value="" Type="string" />
 
-        <ProgId Id="Inkstone.PlainText" Description="Text Document" Icon="InkstoneExe" IconIndex="0" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Inkstone.PlainText\shell\open\command" Value="&quot;[#InkstoneExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\.txt\OpenWithProgids" Name="Inkstone.PlainText" Value="" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\inkstone.exe\SupportedTypes" Name=".txt" Value="" Type="string" />
+        <ProgId Id="Papyrus.PlainText" Description="Text Document" Icon="PapyrusExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Papyrus.PlainText\shell\open\command" Value="&quot;[#PapyrusExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.txt\OpenWithProgids" Name="Papyrus.PlainText" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\papyrus.exe\SupportedTypes" Name=".txt" Value="" Type="string" />
       </Component>
 
-      <Component Id="InkstoneCli">
-        <File Id="InkstoneCliExe" Source="$(var.BinDir)\inkstone-cli.exe" KeyPath="yes" />
+      <Component Id="PapyrusCli">
+        <File Id="PapyrusCliExe" Source="$(var.BinDir)\papyrus-cli.exe" KeyPath="yes" />
       </Component>
     </ComponentGroup>
   </Fragment>

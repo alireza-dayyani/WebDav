@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Inkstone.Web.Data;
+namespace Papyrus.Web.Data;
 
 public sealed class DocumentRevision
 {

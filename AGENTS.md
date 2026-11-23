@@ -1,6 +1,6 @@
-# Inkstone development
+# Papyrus development
 
-Inkstone has three separate projects: `Front` (Vue), `Back` (.NET 10 API), and `Application` (Rust document engine and editor). Keep the API usable without the frontend.
+Papyrus has three separate projects: `Front` (Vue), `Back` (.NET 10 API), and `Application` (Rust document engine and editor). Keep the API usable without the frontend.
 
 - Read the root README and relevant project instructions before editing.
 - Keep documents private to the authenticated owner. Apply authorization and version checks to every file operation.

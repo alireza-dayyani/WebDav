@@ -1,6 +1,6 @@
-# Inkstone
+# Papyrus
 
-A private document workspace with a separate Vue frontend, .NET 10 API, and Rust editor.
+A private document workspace with a separate Vue frontend, .NET 10 API, and Rust editor (WordCraft engine under `Application/`).
 
 ## Projects
 
@@ -13,6 +13,7 @@ Docker work, see the [production roadmap](docs/PRODUCTION_ROADMAP.md).
 | Back | Authentication, private storage, templates, letters, file conversion and OpenAPI |
 | Application | Rust document engine, WebAssembly editor and native converter |
 | Tests | API, file-conversion, localization and editor-bridge integration checks |
+| docs | `BASELINE_AUDIT.md`, `ARCHITECTURE_QUALITY.md`, `IMPROVEMENT_ROADMAP.md`, `REBRANDING.md` |
 
 ## Run locally
 
@@ -29,7 +30,7 @@ npm run editor:build
 From the repository root, start the backend:
 
 ```powershell
-dotnet run --project Back/Inkstone.Api.csproj
+dotnet run --project Back/Papyrus.Api.csproj
 ```
 
 The first backend build also builds and copies the Rust CLI converter. Subsequent builds reuse Cargo's cache. The backend runs independently of Vue; its published output includes the converter executable for the machine it was built on. Rust is required when building, but a deployed backend does not require the Rust toolchain. Cross-platform deployment requires building the converter for that platform.
@@ -104,8 +105,8 @@ Administrators use the Administration screen to search users, grant/revoke admin
 ## Builds and checks
 
 ```powershell
-dotnet build Back/Inkstone.Api.csproj
-dotnet test Tests/Inkstone.Api.Tests/Inkstone.Api.Tests.csproj -p:SkipRustBuild=true
+dotnet build Back/Papyrus.Api.csproj
+dotnet test Tests/Papyrus.Api.Tests/Papyrus.Api.Tests.csproj -p:SkipRustBuild=true
 python Tests/api_smoke.py
 python Tests/file_api_smoke.py
 python Tests/admin_api_smoke.py
@@ -116,7 +117,7 @@ python Tests/letter_api_smoke.py
 python Tests/letter_editor_api_smoke.py
 python Tests/letter_template_layout_smoke.py
 python Tests/demo_seed_smoke.py
-python Tests/inkstone_cli_protocol_smoke.py
+python Tests/papyrus_cli_protocol_smoke.py
 python Tests/converter_hostile_smoke.py
 npm run editor-host:build --prefix Front
 node --test Tests/editor-host.test.mjs Tests/editor-embed.test.mjs Tests/http-core.test.mjs Tests/locales.test.mjs Tests/library-api.test.mjs Tests/use-studio-workspace.test.mjs Tests/pdf-preview.test.mjs
