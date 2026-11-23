@@ -31,7 +31,7 @@
 | Converter | Subprocess isolation, timeouts, slot caps, process tree kill | `ConverterCapacity`, CLI smokes |
 | Editor embed | `sandbox` + origin-checked `postMessage` | `editor-host.test.mjs`, `docs/SECURITY_MODEL.md` |
 | CSP | Response header on API (stricter on app, relaxed Swagger) | `file_api_smoke.py` |
-| Secrets | `App_Data/` gitignored; no keys in repo | Policy in `AGENTS.md` |
+| Secrets | `App_Data/` gitignored; no keys in repo | Policy in `CONTRIBUTING.md` |
 | Account binding | `X-Papyrus-Account` on editor saves | `editor-host.test.mjs`, API middleware |
 
 ---
@@ -40,7 +40,7 @@
 
 | ID | Risk | Severity | Status / next step |
 | --- | --- | --- | --- |
-| SR-1 | No automated SAST (CodeQL) | Medium | Phase 7 — enable GitHub CodeQL workflow |
+| SR-1 | No automated SAST (CodeQL) | Medium | **Addressed:** `.github/workflows/codeql.yml` (Phase 7) |
 | SR-2 | `cargo xtask ci` not in CI | Medium | P0-2 — document local gate + optional nightly |
 | SR-3 | Playwright browser security flows not in CI | Low | Phase 4 — P2-1 |
 | SR-4 | Multi-instance job runner / horizontal scale | Low | Design only (`PRODUCTION_ROADMAP.md`) |
@@ -63,7 +63,7 @@ Re-run after changing `PackageReference` or `Cargo.lock`.
 ## 5. Recommendations (prioritized)
 
 1. Keep **hostile conversion** and **authorization coverage** tests mandatory in CI (already in `checks.yml`).
-2. Add **CodeQL** for C# and JavaScript when opening the project to broader contributors.
+2. Monitor **CodeQL** alerts on `main` and PRs; triage findings before widening contributor access.
 3. Rotate **automation tokens** and document scopes in operator runbooks (`Back/README.md`).
 4. Before public multi-tenant hosting: revisit **instance lock**, **backup encryption**, and **WAF** — not in current scope.
 

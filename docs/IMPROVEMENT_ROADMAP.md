@@ -1,6 +1,6 @@
 # Improvement roadmap
 
-Prioritized backlog for the **Papyrus** program. Each item should be delivered in **small, verifiable milestones** with tests and docs updated together. Status: **Phase 6 complete** (milestone 6.1, 2026-11-23).
+Prioritized backlog for the **Papyrus** program. Each item should be delivered in **small, verifiable milestones** with tests and docs updated together. Status: **Phase 7 complete** (milestone 7.1, 2026-11-23).
 
 Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/docs · **P3** product · **P4** long-term
 
@@ -36,7 +36,7 @@ Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/doc
 | ID | Item | Notes |
 | --- | --- | --- |
 | P2-1 | Playwright in CI (or nightly) with mocked API | **Done** (Phase 4 `browser` job) |
-| P2-2 | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md` | OSS Phase 7 |
+| P2-2 | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md` | **Done** (Phase 7) |
 | P2-3 | `docs/REBRANDING.md` after Phase 1 | **Done** |
 | P2-4 | `docs/SECURITY_REVIEW.md` (Phase 3 assessment) | **Done** (Phase 3) |
 | P2-5 | Quality report artifact from CI (test counts, no fabrication) | **Done** (`Scripts/quality_report.py`, `docs/QUALITY_REPORT.md`) |
@@ -60,19 +60,19 @@ Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/doc
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| P4-1 | `docs/CODEX_OPEN_SOURCE_READINESS.md` honest assessment | Phase 9 |
+| P4-1 | `docs/OPEN_SOURCE_READINESS.md` honest assessment | Phase 9 |
 | P4-2 | GitHub repo rename to `papyrus` | **Requires user authorization** |
 | P4-3 | Separate release train from WordCraft | |
 | P4-4 | Multi-worker / horizontal scaling | PRODUCTION_ROADMAP |
 
 ---
 
-## Recommended next milestone (Phase 7 → Phase 8)
+## Recommended next milestone (Phase 8 → Phase 9)
 
-1. **Phase 7** — `CONTRIBUTING.md`, CodeQL (SR-1), OSS hygiene (P2-2).  
+1. **Phase 8** — deployment packaging / Docker story (when approved).  
 2. **Phase 4b** — `file_api_smoke.py` in CI.  
 3. **P0-2** — `cargo xtask ci` gate with `CRAFT_I18N_DIR`.  
-4. **P3-5** — accessibility pass on Vue shell.
+4. **Phase 9** — `docs/OPEN_SOURCE_READINESS.md` honest assessment (P4-1).
 
 ---
 

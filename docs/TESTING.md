@@ -41,3 +41,5 @@ Fixtures: `Tests/fixtures/i18n/`. See `docs/I18N_SUPPORT.md`.
 ## CI
 
 `.github/workflows/checks.yml` — `api-and-web`, `rust-engine`, `dependencies`, `browser`.
+
+`.github/workflows/codeql.yml` — CodeQL SAST for C# and JavaScript/TypeScript on `main` (Phase 7).

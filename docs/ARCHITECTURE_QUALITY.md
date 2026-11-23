@@ -59,7 +59,7 @@
 | ID | Severity | Finding | Recommendation |
 | --- | --- | --- | --- |
 | AQ-F1 | Medium | `App.vue` is large (routing, library, editor, auth) | Phase 2b: extract route-level views without behavior change |
-| AQ-F2 | Low | Studio composables overlap patterns | Document conventions in `DEVELOPMENT.md` (Phase 7) |
+| AQ-F2 | Low | Studio composables overlap patterns | Documented in `docs/DEVELOPMENT.md` (Phase 7) |
 | AQ-F3 | Medium | Accessibility not systematically tested | Phase 6 / P3-5: focus order, aria on modals |
 | AQ-F4 | Low | Full WASM `editor:build` not in default CI | Keep `editor-host:build` in CI; document local editor build in README |
 
@@ -101,7 +101,7 @@
 | CI: `cargo check --workspace` on Ubuntu | **Done** |
 | Roadmap updates (P0-1, P1-3) | **Done** |
 | `App.vue` decomposition | **Backlog** (next increment) |
-| Root `ARCHITECTURE.md` (developer-oriented) | **Backlog** (Phase 7) |
+| Root `ARCHITECTURE.md` (developer-oriented) | **Done** (Phase 7) |
 
 ---
 

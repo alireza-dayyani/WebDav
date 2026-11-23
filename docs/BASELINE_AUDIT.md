@@ -139,16 +139,15 @@ Performance: no benchmarks recorded in Phase 0. Converter and large-DOCX behavio
 | Document | Status |
 | --- | --- |
 | Root `README.md` | Present — Papyrus branding |
-| `AGENTS.md` | Present — Papyrus |
-| `CONTRIBUTING.md` | **Missing** |
-| `CODE_OF_CONDUCT.md` | **Missing** |
-| `SECURITY.md` | **Missing** (root); `docs/SECURITY_MODEL.md` is editor-focused |
-| `CHANGELOG.md` | **Missing** |
-| `ARCHITECTURE.md` | Partial — `Application/docs/architecture.md` + this audit |
-| `DEVELOPMENT.md` | Partial — README run instructions |
+| `CONTRIBUTING.md` | **Missing** (added Phase 7) |
+| `CODE_OF_CONDUCT.md` | **Missing** (added Phase 7) |
+| `SECURITY.md` | **Missing** (added Phase 3); `docs/SECURITY_MODEL.md` is editor-focused |
+| `CHANGELOG.md` | **Missing** (added Phase 7) |
+| `ARCHITECTURE.md` | Partial — `Application/docs/architecture.md` + product `ARCHITECTURE.md` (Phase 7) |
+| `DEVELOPMENT.md` | Partial — README run instructions; `docs/DEVELOPMENT.md` (Phase 7) |
 | `ROADMAP.md` | Partial — `docs/PRODUCTION_ROADMAP.md` |
 | Issue/PR templates | **Missing** |
-| Codex/OSS readiness | **Missing** — planned `docs/CODEX_OPEN_SOURCE_READINESS.md` (Phase 9) |
+| OSS readiness assessment | **Missing** — planned `docs/OPEN_SOURCE_READINESS.md` (Phase 9) |
 
 ---
 
@@ -186,7 +185,7 @@ Recent commits emphasize **WordCraft upstream integration**, Studio letters, Vue
 | Scope honesty | Good — private workspace positioning; upstream clearly sourced |
 | Maintenance signal | Real commits; avoid fabricated metrics |
 
-**Verdict:** Suitable foundation for a serious OSS effort after rebranding plan, CI expansion, and contributor/security docs. Not yet optimized for external contributors or Codex-for-OSS application without Phase 7–9 work.
+**Verdict:** Suitable foundation for a serious OSS effort after rebranding plan, CI expansion, and contributor/security docs. Further OSS readiness work tracked in Phases 7–9.
 
 ---
 
@@ -195,7 +194,7 @@ Recent commits emphasize **WordCraft upstream integration**, Studio letters, Vue
 - [x] Architecture and upstream boundary documented  
 - [x] Baseline builds/tests executed (with noted gaps)  
 - [x] Security, debt, branding, and docs gaps recorded  
-- [x] `docs/IMPROVEMENT_ROADMAP.md` and `docs/agent-progress.md` created  
+- [x] `docs/IMPROVEMENT_ROADMAP.md` created  
 - [ ] **Your review** before Phase 1 (rebrand) starts  
 
 **Explicitly not done in Phase 0:** source rebranding, dependency upgrades, architecture refactors, or new features.

@@ -17,6 +17,8 @@ Docker work, see the [production roadmap](docs/PRODUCTION_ROADMAP.md).
 
 See [SECURITY.md](SECURITY.md) to report vulnerabilities, [docs/TESTING.md](docs/TESTING.md) for the test matrix, and [docs/PERFORMANCE_RELIABILITY.md](docs/PERFORMANCE_RELIABILITY.md) for performance and failure behavior.
 
+Contributors: [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), and [CHANGELOG.md](CHANGELOG.md).
+
 ## Run locally
 
 Install .NET 10, Node.js 22.12 or later, Rust 1.95 or later, and Trunk.
