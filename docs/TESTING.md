@@ -21,6 +21,14 @@ python Scripts/quality_report.py
 
 Writes `docs/QUALITY_REPORT.md` using live command output (not fabricated counts).
 
+## Performance baseline (Phase 5)
+
+```powershell
+python Scripts/performance_baseline.py
+```
+
+Writes `docs/PERFORMANCE_BASELINE.md`. See also `docs/PERFORMANCE_RELIABILITY.md`.
+
 ## CI
 
 `.github/workflows/checks.yml` — `api-and-web`, `rust-engine`, `dependencies`, `browser`.

@@ -1,6 +1,6 @@
 # Improvement roadmap
 
-Prioritized backlog for the **Papyrus** program. Each item should be delivered in **small, verifiable milestones** with tests and docs updated together. Status: **Phase 4 in progress** (2026-11-23).
+Prioritized backlog for the **Papyrus** program. Each item should be delivered in **small, verifiable milestones** with tests and docs updated together. Status: **Phase 5 complete** (milestone 5.1, 2026-11-23).
 
 Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/docs · **P3** product · **P4** long-term
 
@@ -67,10 +67,10 @@ Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/doc
 
 ---
 
-## Recommended next milestone (Phase 4 → Phase 5)
+## Recommended next milestone (Phase 6 → Phase 7)
 
-1. **Phase 4b** — `file_api_smoke.py` in CI; regenerate `QUALITY_REPORT` on schedule.  
-2. **Phase 5** — converter latency benchmarks; document baselines.  
+1. **Phase 6** — i18n fixture documents (fa/ar/ur/en) and regression tests (P2-6).  
+2. **Phase 4b** — `file_api_smoke.py` in CI.  
 3. **P0-2** — `cargo xtask ci` gate with `CRAFT_I18N_DIR`.  
 4. **Phase 7** — `CONTRIBUTING.md`, CodeQL (SR-1).
 
