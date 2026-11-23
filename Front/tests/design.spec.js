@@ -265,9 +265,12 @@ for (const locale of ["en", "fa"])
             exact: true,
           })
           .click();
-        await expect(page.locator(".dialog")).toBeVisible();
+        const dialog = page.locator(".dialog.history-dialog");
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator("fieldset")).toBeEnabled();
+        await dialog.focus();
         await page.keyboard.press("Escape");
-        await expect(page.locator(".dialog")).toHaveCount(0);
+        await expect(dialog).toHaveCount(0);
         await expect(letterTitle).toHaveValue("Unsaved letter draft");
       });
     }

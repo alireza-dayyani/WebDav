@@ -1,0 +1,10 @@
+# rustsec/audit-check runs with --deny warnings. These are upstream/transitive
+# unmaintained advisories with no fixed upgrade on the WordCraft pin yet.
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0543", # chrono — engine date conversion; no drop-in replacement in tree
+    "RUSTSEC-2024-0370", # proc-macro-error — transitive
+    "RUSTSEC-2026-0371", # zbus_names — Linux desktop path only
+    "RUSTSEC-2026-0370", # zvariant
+    "RUSTSEC-2026-0372", # zvariant_derive
+]
