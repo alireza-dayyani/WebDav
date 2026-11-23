@@ -13,7 +13,9 @@ Docker work, see the [production roadmap](docs/PRODUCTION_ROADMAP.md).
 | Back | Authentication, private storage, templates, letters, file conversion and OpenAPI |
 | Application | Rust document engine, WebAssembly editor and native converter |
 | Tests | API, file-conversion, localization and editor-bridge integration checks |
-| docs | `BASELINE_AUDIT.md`, `ARCHITECTURE_QUALITY.md`, `IMPROVEMENT_ROADMAP.md`, `REBRANDING.md` |
+| docs | `BASELINE_AUDIT.md`, `ARCHITECTURE_QUALITY.md`, `IMPROVEMENT_ROADMAP.md`, `REBRANDING.md`, `SECURITY_REVIEW.md` |
+
+See [SECURITY.md](SECURITY.md) to report vulnerabilities.
 
 ## Run locally
 

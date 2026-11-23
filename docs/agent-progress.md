@@ -1,40 +1,46 @@
 # Agent progress log
 
 Program: **Papyrus** (Phases 0–11 per project brief)  
-**Current phase:** 2 — Architecture and code quality (**in progress**)
+**Current phase:** 3 — Security hardening (**in progress**)
 
 ---
 
-## 2026-11-23 — Phase 2 (started)
+## 2026-11-23 — Phase 3 (started)
 
-### Completed (milestone 2.1)
+### Completed (milestone 3.1)
 
-- **`docs/ARCHITECTURE_QUALITY.md`** — Back / Front / Rust boundary review, findings (AQ-*), incremental backlog.
-- **CI** — `rust-engine` job: `cargo check --workspace --locked` in `Application/`.
-- **Roadmap** — P0-1, P1-1, P1-3, P2-3 marked done.
+- **[`SECURITY.md`](../SECURITY.md)** — supported versions and private reporting.
+- **[`docs/SECURITY_REVIEW.md`](SECURITY_REVIEW.md)** — controls, gaps (SR-*), dependency audit snapshot.
+- **CI** — `dependencies` job: NuGet vulnerability list + `rustsec/audit-check` on `Application/`.
+- Roadmap: P0-3, P0-4, P2-4 marked in progress / addressed in docs.
 
-### Next (milestone 2.2)
+### Next (milestone 3.2)
 
-- Split `Front/src/App.vue` into smaller views (AQ-F1).
-- Optional: logging scopes on document job worker.
+- Optional: CodeQL workflow (SR-1).
+- Run `Tests/file_api_smoke.py` in CI if runtime is acceptable.
 
 ### Verification
 
 ```powershell
-dotnet test Tests/Papyrus.Api.Tests/Papyrus.Api.Tests.csproj -p:SkipRustBuild=true
-cd Application; cargo check --workspace --locked
+dotnet list Back/Papyrus.Api.csproj package --vulnerable --include-transitive
 ```
 
 ---
 
-## 2026-11-23 — Phase 1 (product identity)
+## 2026-11-23 — Phase 2
 
-- **Papyrus** API, Front, tests, CI, product docs.
-- Converter **`papyrus-cli`** beside API; editor **`papyrusHost`** / `papyrus:` protocol.
-- **265/265** API tests.
+- [`docs/ARCHITECTURE_QUALITY.md`](ARCHITECTURE_QUALITY.md)
+- CI `rust-engine` job
+
+---
+
+## 2026-11-23 — Phase 1
+
+- Papyrus API, Front, tests, `papyrus-cli`, editor bridge
+- **265/265** API tests — commit `e71932ebb`
 
 ---
 
 ## 2026-11-23 — Phase 0
 
-- `docs/BASELINE_AUDIT.md`, `docs/IMPROVEMENT_ROADMAP.md` (initial).
+- `docs/BASELINE_AUDIT.md`, initial roadmap

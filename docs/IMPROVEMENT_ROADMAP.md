@@ -1,6 +1,6 @@
 # Improvement roadmap
 
-Prioritized backlog for the **Papyrus** program. Each item should be delivered in **small, verifiable milestones** with tests and docs updated together. Status: **Phase 2 in progress** (2026-11-23).
+Prioritized backlog for the **Papyrus** program. Each item should be delivered in **small, verifiable milestones** with tests and docs updated together. Status: **Phase 3 in progress** (2026-11-23).
 
 Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/docs · **P3** product · **P4** long-term
 
@@ -12,8 +12,8 @@ Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/doc
 | --- | --- | --- |
 | P0-1 | Stabilize `JobAndTokenEndpointTests.Worker_fails_when_queued_source_revision_changes_before_execution` | **Done** (Phase 1) |
 | P0-2 | Complete baseline run: `cargo xtask ci` + `CRAFT_I18N_DIR` in CI or documented local gate | Not run in Phase 0; large merge risk |
-| P0-3 | Root `SECURITY.md` + supported disclosure channel | Missing for OSS |
-| P0-4 | Dependency vulnerability scan in CI (`dotnet list package`, `cargo audit` or equivalent) | Not automated |
+| P0-3 | Root `SECURITY.md` + supported disclosure channel | **Done** (Phase 3) |
+| P0-4 | Dependency vulnerability scan in CI (`dotnet list package`, `cargo audit` or equivalent) | **Done** (Phase 3 CI job) |
 | P0-5 | Product identity (cookies, DB `papyrus.db`, converter `papyrus-cli`) | Done in Phase 1 |
 
 ---
@@ -38,7 +38,7 @@ Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/doc
 | P2-1 | Playwright in CI (or nightly) with mocked API | Local tests exist; not in GHA |
 | P2-2 | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md` | OSS Phase 7 |
 | P2-3 | `docs/REBRANDING.md` after Phase 1 | **Done** |
-| P2-4 | `docs/SECURITY_REVIEW.md` (Phase 3 assessment) | |
+| P2-4 | `docs/SECURITY_REVIEW.md` (Phase 3 assessment) | **Done** (Phase 3) |
 | P2-5 | Quality report artifact from CI (test counts, no fabrication) | |
 | P2-6 | i18n fixture documents (fa/ar/ur/en) under `Tests/fixtures` | Phase 6 |
 
@@ -67,12 +67,12 @@ Legend: **P0** critical · **P1** architecture/reliability · **P2** testing/doc
 
 ---
 
-## Recommended next milestone (Phase 2 → Phase 3)
+## Recommended next milestone (Phase 3 → Phase 4)
 
-1. **Phase 2b** — `App.vue` decomposition (AQ-F1); no API changes.  
-2. **Phase 3** — `docs/SECURITY_REVIEW.md` + root `SECURITY.md` + dependency audit in CI.  
+1. **Phase 3b** — CodeQL (SR-1) if opening to external contributors.  
+2. **Phase 4** — Playwright smoke in CI; quality report artifact (P2-5).  
 3. **P0-2** — document or wire `cargo xtask ci` gate with `CRAFT_I18N_DIR`.  
-4. **Phase 4** — Playwright smoke in CI.
+4. **Phase 2b** — `App.vue` decomposition (AQ-F1) when convenient.
 
 ---
 
